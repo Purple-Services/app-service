@@ -8,11 +8,17 @@ You will need [Leiningen][1] 1.7.0 or above installed.
 
 [1]: https://github.com/technomancy/leiningen
 
-## Running
+## Running Locally
 
 To start a web server for the application, run:
 
     lein ring server
+
+## Deploying to Development Server (on AWS ElasticBeanstalk)
+
+Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your ~/.lein/profiles.clj with AWS creds):
+
+    lein beanstalk deploy development
 
 ## License
 
