@@ -14,7 +14,7 @@ To start a web server for the application, run:
 
     lein ring server
 
-## Deploying to Development Server (on AWS ElasticBeanstalk)
+## Deploying to Development Server
 
 Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your ~/.lein/profiles.clj with AWS creds):
 
