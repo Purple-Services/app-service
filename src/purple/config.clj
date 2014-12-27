@@ -1,16 +1,12 @@
 (ns purple.config)
 
-
-
 ;; stub for local testing
-;; (System/setProperty "DB_HOST" "")
-;; (System/setProperty "DB_NAME" "")
-;; (System/setProperty "DB_PASSWORD" "")
-;; (System/setProperty "DB_PORT" "3306")
-;; (System/setProperty "DB_USER" "")
-;; (System/setProperty "DB_ENCRYPTION_KEY_HEX" "")
-
-
+(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
+(System/setProperty "DB_NAME" "ebdb")
+(System/setProperty "DB_PORT" "3306")
+(System/setProperty "DB_USER" "purplemaster")
+(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
+(System/setProperty "DB_ENCRYPTION_KEY_HEX" "55555a43376a4b4a44b76b4653")
 
 
 ;;
@@ -34,7 +30,6 @@
 ;; block_encryption_mode parameter to 'aes-256-cbc'
 ;; at this time as aws does not offer that parameter easily...
 (def db-encryption-key-hex (System/getProperty "DB_ENCRYPTION_KEY_HEX"))
-
 
 ;; Email
 (def email {:host "smtp.gmail.com"

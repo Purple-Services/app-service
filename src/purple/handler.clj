@@ -4,13 +4,8 @@
         clojure.walk)
   (:require [purple.config :as config]
             [purple.db :as db]
-            [purple.forms :as forms]
-            [purple.patients :as patients]
-            [purple.physicians :as physicians]
-            [purple.content :as content]
-            [purple.monitoring :as monitoring]
-            [purple.system :as system]
             [purple.util :as util]
+            [purple.users :as users]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -23,46 +18,52 @@
   (-> resp
       (header "Content-Type" "text/html; charset=utf-8")))
 
-(defn auth-system?
-  [db-conn session-id auth-token device-id]
-  (system/valid? (system/get-session db-conn session-id)
-                   device-id
-                   auth-token))
+;; (defn auth-system?
+;;   [db-conn session-id auth-token device-id]
+;;   (system/valid? (system/get-session db-conn session-id)
+;;                    device-id
+;;                    auth-token))
 
-(defmacro demand-system-auth
-  [db-conn session-id auth-token device-id & body]
-  `(if (auth-system? ~db-conn ~session-id ~auth-token ~device-id)
-     (do ~@body)
-     {:success false
-      :message "Bad system auth."}))
+;; (defmacro demand-system-auth
+;;   [db-conn session-id auth-token device-id & body]
+;;   `(if (auth-system? ~db-conn ~session-id ~auth-token ~device-id)
+;;      (do ~@body)
+;;      {:success false
+;;       :message "Bad system auth."}))
 
 (defroutes app-routes
-  (context "/system" []
-           (defroutes system-routes
-             (POST "/start-session" {body :body}
+  (context "/user" []
+           (defroutes user-routes
+             (POST "/login" {body :body}
                    (response
                     (let [b (keywordize-keys body)]
-                      (system/start-session (db/conn)
-                                            (:device_id b)))))
-             (POST "/authorize-session" {body :body}
-                   (response
-                    (let [b (keywordize-keys body)]
-                      (system/attempt-to-authorize-session
-                       (db/conn)
-                       (:password b)
-                       (:session_id b)))))))
-  (context "/sessions" []
-           (defroutes sessions-routes
-             (POST "/all" {body :body}
-                   (response
-                    (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
-                      (demand-system-auth
-                       db-conn
-                       (:session_id b)
-                       (:auth_token b)
-                       (:device_id b)
-                       (system/all-sessions db-conn)))))))
+                      (users/login (db/conn)
+                                   ;; 'type' is either:
+                                   ;; native, facebook, or google
+                                   (:type b)
+                                   ;; 'platform_id' is either:
+                                   ;; native:   email address
+                                   ;; facebook: facebook id
+                                   ;; google:   google id
+                                   (:platform_id b)
+                                   ;; 'auth_key' will depend on the type
+                                   ;; of user it is. If it is a native user,
+                                   ;; this will be their password. For Facebook
+                                   ;; and Google users, this will be their
+                                   ;; auth token from that platform.
+                                   (:auth_key b)))))))
+  ;; (context "/sessions" []
+  ;;          (defroutes sessions-routes
+  ;;            (POST "/all" {body :body}
+  ;;                  (response
+  ;;                   (let [b (keywordize-keys body)
+  ;;                         db-conn (db/conn)]
+  ;;                     (demand-system-auth
+  ;;                      db-conn
+  ;;                      (:session_id b)
+  ;;                      (:auth_token b)
+  ;;                      (:device_id b)
+  ;;                      (system/all-sessions db-conn)))))))
   (GET "/ok" []
         (response {:success true}))
   (route/resources "/")

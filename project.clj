@@ -13,6 +13,8 @@
                  [clj-pdf "1.11.21"]
                  [clj-time "0.8.0"] ;; date/time utilities
                  [com.draines/postal "1.11.2"] ;; send email (for system alerts)
+                 [crypto-password "0.1.3"]
+                 [org.clojars.freeagent/clj-facebook-graph "0.4.0"]
                  ]
   :plugins [[lein-ring "0.8.11"]
             [lein-beanstalk "0.2.7"]]
@@ -22,5 +24,5 @@
          :reload-paths ["src"]}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring-mock "0.1.5"]]}}
-  :aws {:beanstalk {:s3-bucket "leinbeanstalkcustom"
+  :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
