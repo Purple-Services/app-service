@@ -32,12 +32,15 @@
   [user auth-key]
   (password/check auth-key (:password_hash user)))
 
+(defn get-user-from-fb
+  [auth-key]
+  (:body (with-facebook-auth {:access-token auth-key}
+           (fb/get "https://graph.facebook.com/me"))))
+
 (defn auth-facebook
   [user auth-key]
-  (let [fb-user (:body (with-facebook-auth {:access-token auth-key}
-                         (fb/get "https://graph.facebook.com/me")))]
-    (= (:id user)
-       (str "fb" (:id fb-user)))))
+  (= (:id user)
+     (str "fb" (:id (get-user-from-fb auth-key)))))
 
 (defn auth-google
   [user auth-key]
@@ -56,21 +59,6 @@
      :user_id (:id user)
      :token token}))
 
-(defn login
-  "Logs in user depeding on 'type' of user."
-  [db-conn type platform-id auth-key]
-  (let [user (get-user db-conn type platform-id)
-        valid? (case (:type user)
-                 "native" (auth-native user auth-key)
-                 "facebook" (auth-facebook user auth-key)
-                 "google" (auth-google user auth-key)
-                 nil false
-                 (throw (Exception. "Unknown user type!")))]
-    (if valid?
-      (init-session db-conn user)
-      {:success false
-       :message "Invalid login."})))
-
 (defn add
   "Adds new user. Will fail if user_id is already being used."
   [db-conn user & {:keys [password]}]
@@ -80,12 +68,41 @@
                (assoc user :password_hash (password/encrypt password))
                user)))
 
-;; (add (db/conn)
-;;      {:id "1234"
-;;       :email "elwell.christopher@gmail.com"
-;;       :type "native"
-;;       :phone_number "484-682-3011"}
-;;      :password "yoyo")
+(defn login
+  "Logs in user depeding on 'type' of user."
+  [db-conn type platform-id auth-key]
+  (let [user (get-user db-conn type platform-id)]
+    (if user
+      (if (case (:type user)
+            "native" (auth-native user auth-key)
+            "facebook" (auth-facebook user auth-key)
+            "google" (auth-google user auth-key)
+            nil false
+            (throw (Exception. "Unknown user type!")))
+        (init-session db-conn user)
+        {:success false
+         :message "Invalid login."})
+      (do (add db-conn
+               (case type
+                 "facebook" (let [fb-user (get-user-from-fb auth-key)]
+                              {:id (str "fb" (:id fb-user))
+                               :email (:email fb-user)
+                               :name (:name fb-user)
+                               :gender (:gender fb-user)
+                               :type "facebook"})
+                 "google" (auth-google user auth-key)
+                 (throw (Exception. "Invalid login."))))
+          (login db-conn type platform-id auth-key)))))
+
+(defn register
+  "Only for native users."
+  [db-conn platform-id auth-key]
+  (do (add db-conn
+           {:id (util/rand-str-alpha-num 20)
+            :email platform-id
+            :type "native"}
+           :password auth-key))
+  (login db-conn "native" platform-id auth-key))
 
 
 (defn valid-session?
