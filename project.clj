@@ -15,6 +15,7 @@
                  [com.draines/postal "1.11.2"] ;; send email (for system alerts)
                  [crypto-password "0.1.3"]
                  [org.clojars.freeagent/clj-facebook-graph "0.4.0"]
+                 [gapi "1.0.1"]
                  ]
   :plugins [[lein-ring "0.8.11"]
             [lein-beanstalk "0.2.7"]]

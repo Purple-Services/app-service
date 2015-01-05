@@ -1,5 +1,6 @@
 (ns purple.users
-  (:use clj-facebook-graph.auth)
+  (:use clj-facebook-graph.auth
+        gapi.core)
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
@@ -7,13 +8,8 @@
             [crypto.password.bcrypt :as password]
             [clj-facebook-graph.client :as fb]))
 
-;; (def testt (with-facebook-auth {:access-token "CAAWkZBz0JjIwBAOvfzZB4BOQUcn9ClNWgHUd5zk9UdVL13Lfs4KBMIZAwX7RBLp8MYoi0iNhYRgjOhTCNKDpjks6ZAcp7wfHW5DsH6tDrZAHQ7XNChnpQMM8zNmCHM4YuvDcFB65Vrv6ZBkZApiIo9ChVa3fHwsgoYMWFZB4tKPzX9StIu2zlWtqdtsLf75TiAcUFhxcTMZBtoMCUw9u4ZAXbkxsCKAho3bGIZD"}
-;;   (fb/get "https://graph.facebook.com/me")))
-
-;; (:body testt)
-
 (defn get-user
-  "Gets a user from db by user-id."
+  "Gets a user from db by type and platform-id."
   [db-conn type platform-id]
   (first (db/select db-conn
                     "users"
@@ -22,11 +18,24 @@
                      :type
                      :password_hash
                      :phone_number]
-                    (case type
-                      "native" {:email platform-id}
-                      "facebook" {:id (str "fb" platform-id)}
-                      "google" {:id (str "g" platform-id)}
-                      (throw (Exception. "Unknown user type."))))))
+                    (merge {:type type}
+                           (case type
+                             "native" {:email platform-id}
+                             "facebook" {:id (str "fb" platform-id)}
+                             "google" {:id (str "g" platform-id)}
+                             (throw (Exception. "Unknown user type.")))))))
+
+(defn get-user-by-id
+  "Gets a user from db by user-id."
+  [db-conn user-id]
+  (first (db/select db-conn
+                    "users"
+                    [:id
+                     :email
+                     :type
+                     :password_hash
+                     :phone_number]
+                    {:id user-id})))
 
 (defn auth-native
   [user auth-key]
@@ -42,9 +51,20 @@
   (= (:id user)
      (str "fb" (:id (get-user-from-fb auth-key)))))
 
+(def google-plus-service
+  (build "https://www.googleapis.com/discovery/v1/apis/plus/v1/rest"))
+
+(defn get-user-from-google
+  [auth-key]
+  (call (atom {:token auth-key})
+        google-plus-service
+        "plus.people/get"
+        {"userId" "me"}))
+
 (defn auth-google
   [user auth-key]
-  true)
+  (= (:id user)
+     (str "g" (:id (get-user-from-google auth-key)))))
 
 (defn init-session
   [db-conn user]
@@ -72,28 +92,41 @@
   "Logs in user depeding on 'type' of user."
   [db-conn type platform-id auth-key]
   (let [user (get-user db-conn type platform-id)]
-    (if user
-      (if (case (:type user)
-            "native" (auth-native user auth-key)
-            "facebook" (auth-facebook user auth-key)
-            "google" (auth-google user auth-key)
-            nil false
-            (throw (Exception. "Unknown user type!")))
-        (init-session db-conn user)
-        {:success false
-         :message "Invalid login."})
-      (do (add db-conn
-               (case type
-                 "facebook" (let [fb-user (get-user-from-fb auth-key)]
-                              {:id (str "fb" (:id fb-user))
-                               :email (:email fb-user)
-                               :name (:name fb-user)
-                               :gender (:gender fb-user)
-                               :type "facebook"})
-                 "google" (auth-google user auth-key)
-                 (throw (Exception. "Invalid login."))))
-          (login db-conn type platform-id auth-key)))))
+    (try
+      (if user
+        (if (case (:type user)
+              "native" (auth-native user auth-key)
+              "facebook" (auth-facebook user auth-key)
+              "google" (auth-google user auth-key)
+              nil false
+              (throw (Exception. "Unknown user type!")))
+          (init-session db-conn user)
+          (throw (Exception. "Invalid login.")))
+        (do (add db-conn
+                 (case type
+                   "facebook" (let [fb-user (get-user-from-fb auth-key)]
+                                {:id (str "fb" (:id fb-user))
+                                 :email (:email fb-user)
+                                 :name (:name fb-user)
+                                 :gender (:gender fb-user)
+                                 :type "facebook"})
+                   "google" (let [google-user (get-user-from-google auth-key)]
+                              {:id (str "g" (:id google-user))
+                               :email (-> (:emails google-user)
+                                          first
+                                          :value)
+                               :name (:displayName google-user)
+                               :gender (:gender google-user)
+                               :type "google"})
+                   (throw (Exception. "Invalid login."))))
+            (login db-conn type platform-id auth-key)))
+      (catch Exception e (case (.getMessage e)
+                           "Invalid login." {:success false
+                                             :message "Invalid login."}
+                           {:success false
+                            :message "Unknown error."})))))
 
+;; TODO currently allows duplicate email addresses!
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key]
@@ -116,3 +149,26 @@
     (if (seq session)
       true
       false)))
+
+(defn details
+  [db-conn user-id]
+  (let [user (get-user-by-id db-conn user-id)]
+  (if (seq user)
+    {:success true
+     :user (select-keys user
+                        [:id
+                         :email
+                         :phone_number
+                         :type])}
+    {:success false
+     :message "User could not be found."})))
+
+(defn edit
+  [db-conn user-id record-map]
+  (db/update db-conn
+             "users"
+             (select-keys record-map
+                          [:name
+                           :phone_number
+                           :gender])
+             {:id user-id}))

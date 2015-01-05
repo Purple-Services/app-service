@@ -12,8 +12,6 @@
             [clojure.string :as s]
             [ring.middleware.json :as middleware]))
 
-;; (set! *compile-files* true) ;; just to temporarily keep it from running
-
 (defn wrap-page [resp]
   (-> resp
       (header "Content-Type" "text/html; charset=utf-8")))
@@ -50,10 +48,32 @@
                    (response
                     (let [b (keywordize-keys body)]
                       (users/register (db/conn)
-                                   ;; 'platform_id' is email address
-                                   (:platform_id b)
-                                   ;; 'auth_key' is password
-                                   (:auth_key b)))))))
+                                      ;; 'platform_id' is email address
+                                      (:platform_id b)
+                                      ;; 'auth_key' is password
+                                      (:auth_key b)))))
+             (POST "/edit" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (users/edit db-conn
+                                   (:user_id b)
+                                   (:user b))))))
+             ;; Get info about currently auth'd user
+             (POST "/details" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (users/details db-conn
+                                      (:user_id b))))))))
   (GET "/ok" []
         (response {:success true}))
   (route/resources "/")

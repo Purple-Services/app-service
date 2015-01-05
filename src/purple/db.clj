@@ -1,6 +1,6 @@
 (ns purple.db
   (:import com.mchange.v2.c3p0.ComboPooledDataSource
-           [java.sql SQLException])
+           [java.sql SQLException]) 
   (:require [purple.config :as config]
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
