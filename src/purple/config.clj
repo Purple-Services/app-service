@@ -30,9 +30,3 @@
 ;; block_encryption_mode parameter to 'aes-256-cbc'
 ;; at this time as aws does not offer that parameter easily...
 (def db-encryption-key-hex (System/getProperty "DB_ENCRYPTION_KEY_HEX"))
-
-;; Email
-(def email {:host "smtp.gmail.com"
-            :user ""
-            :pass ""
-            :ssl :yes!!!11})

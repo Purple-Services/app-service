@@ -1,7 +1,6 @@
 (ns purple.util
   (:require [purple.config :as config]
-            [clojure.string :as s]
-            [postal.core :as postal]))
+            [clojure.string :as s]))
 
 (defn split-on-comma [x] (s/split x #","))
 
@@ -32,7 +31,3 @@
 
 (defn new-auth-token []
   (rand-str-alpha-num 128))
-
-(defn send-email [message-map]
-  (postal/send-message config/email
-                       message-map))

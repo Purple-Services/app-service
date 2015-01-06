@@ -6,18 +6,19 @@
             [purple.db :as db]
             [clojure.java.jdbc :as sql]
             [crypto.password.bcrypt :as password]
-            [clj-facebook-graph.client :as fb]))
+            [clj-facebook-graph.client :as fb]
+            [clojure.string :as s]))
+
+(def safe-authd-user-keys
+  "Keys of a user map that are safe to send out to auth'd user."
+  [:id :type :email :name :phone_number])
 
 (defn get-user
-  "Gets a user from db by type and platform-id."
+  "Gets a user from db by type and platform-id. Some fields unsafe for output."
   [db-conn type platform-id]
   (first (db/select db-conn
                     "users"
-                    [:id
-                     :email
-                     :type
-                     :password_hash
-                     :phone_number]
+                    ["*"]
                     (merge {:type type}
                            (case type
                              "native" {:email platform-id}
@@ -66,6 +67,10 @@
   (= (:id user)
      (str "g" (:id (get-user-from-google auth-key)))))
 
+(def required-data
+  "These keys cannot be empty for an account to be considered complete."
+  [:id :type :email :name :phone_number])
+
 (defn init-session
   [db-conn user]
   (let [token (util/new-auth-token)]
@@ -75,9 +80,10 @@
                 :token token
                 :ip "1.1.1.1"})
     {:success true
-     :user_type (:type user)
-     :user_id (:id user)
-     :token token}))
+     :token token
+     :user (select-keys user safe-authd-user-keys)
+     :account_complete (not-any? (comp s/blank? str val)
+                                 (select-keys user required-data))}))
 
 (defn add
   "Adds new user. Will fail if user_id is already being used."
@@ -155,11 +161,7 @@
   (let [user (get-user-by-id db-conn user-id)]
   (if (seq user)
     {:success true
-     :user (select-keys user
-                        [:id
-                         :email
-                         :phone_number
-                         :type])}
+     :user (select-keys user safe-authd-user-keys)}
     {:success false
      :message "User could not be found."})))
 
