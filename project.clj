@@ -10,10 +10,9 @@
                  [cheshire "5.4.0"] ;; json and related utilities
                  [clj-http "1.0.0"]
                  [crypto-password "0.1.3"]
-                 [org.clojars.freeagent/clj-facebook-graph "0.4.0"]
-                 ;; [com.draines/postal "1.11.3"]
+                 [com.draines/postal "1.11.3"]
                  [gapi "1.0.1"]
-                 ]
+                 [craygo/clj-oauth2 "0.1.1"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
@@ -23,6 +22,6 @@
          :reload-paths ["src"]}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring-mock "0.1.5"]]}}
-  ;; :aot [clj-facebook-graph.FacebookGraphException]
+  :aot [purple.fb.FacebookGraphException]
   :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})

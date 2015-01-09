@@ -1,12 +1,12 @@
 (ns purple.users
-  (:use clj-facebook-graph.auth
+  (:use purple.fb.auth
         gapi.core)
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
             [clojure.java.jdbc :as sql]
             [crypto.password.bcrypt :as password]
-            [clj-facebook-graph.client :as fb]
+            [purple.fb.client :as fb]
             [clojure.string :as s]))
 
 (def safe-authd-user-keys
@@ -44,8 +44,15 @@
 
 (defn get-user-from-fb
   [auth-key]
-  (:body (with-facebook-auth {:access-token auth-key}
-           (fb/get "https://graph.facebook.com/me"))))
+  true
+  ;; (:body (with-facebook-auth {:access-token auth-key}
+  ;;          (fb/gett "https://graph.facebook.com/me")))
+  )
+
+(defn yo-yo 
+  []
+  (with-facebook-auth {:access-token "CAAWkZBz0JjIwBAFZAxicTZBEsY8V91hdkrsrqZBWXJUjlLYVqngZByWIzT3ldPP9ZAmsqgDHcEj65KQZApepjUPcmLdpQbhjAzPIFZAt00ITXLwo5fXsFdoKN4DzlVCQYfgnn21WMfjawiIUsMTZBdhsh5bXCZB1Yl0MpyYxXXYptloRMERHNqGcm0RhnZAu6dzEFnp8YlINN787EKYv2EN1H0Qn51yzIrU9ZB8ZD"}
+              (fb/gett "https://graph.facebook.com/me")))
 
 (defn auth-facebook
   [user auth-key]
@@ -111,6 +118,7 @@
         (do (add db-conn
                  (case type
                    "facebook" (let [fb-user (get-user-from-fb auth-key)]
+                                (println fb-user)
                                 {:id (str "fb" (:id fb-user))
                                  :email (:email fb-user)
                                  :name (:name fb-user)

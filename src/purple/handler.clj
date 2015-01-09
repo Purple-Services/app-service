@@ -74,6 +74,8 @@
                        (:token b)
                        (users/details db-conn
                                       (:user_id b))))))))
+  (GET "/yo" []
+        (response (users/yo-yo)))
   (GET "/ok" []
         (response {:success true}))
   (route/resources "/")
