@@ -92,17 +92,18 @@
   "Wraps the clj-http client with the Ring-style middleware for the
    Facebook Graph API."
   ([request wrap-request-fn]
-     (-> request
-         wrap-facebook-exceptions
-         wrap-exceptions
-         wrap-request-fn
-         wrap-oauth2
-         wrap-facebook-access-token
-         wrap-json-response-conversion
-         wrap-facebook-url-builder
-         wrap-facebook-data-extractor
-         wrap-fql
-         ))
+     (do (println request)
+         (-> request
+             wrap-facebook-exceptions
+             wrap-exceptions
+             wrap-request-fn             
+             wrap-oauth2
+             wrap-facebook-access-token
+             wrap-json-response-conversion
+             wrap-facebook-url-builder
+             wrap-facebook-data-extractor
+             wrap-fql
+             )))
   ([request] (wrap-request request client/wrap-request)))
 
 (def

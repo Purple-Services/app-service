@@ -12,7 +12,7 @@
                  [crypto-password "0.1.3"]
                  [com.draines/postal "1.11.3"]
                  [gapi "1.0.1"]
-                 [craygo/clj-oauth2 "0.1.1"]]
+                 [stuarth/clj-oauth2 "0.3.2"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
@@ -22,6 +22,8 @@
          :reload-paths ["src"]}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring-mock "0.1.5"]]}}
-  :aot [purple.fb.FacebookGraphException]
+  :aot [purple.fb.FacebookGraphException
+        ;; clj_oauth2.OAuth2Exception
+        ]
   :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
