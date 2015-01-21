@@ -4,7 +4,6 @@
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
-            [clojure.java.jdbc :as sql]
             [crypto.password.bcrypt :as password]
             [purple.fb.client :as fb]
             [clojure.string :as s]))
@@ -78,6 +77,23 @@
   "These keys cannot be empty for an account to be considered complete."
   [:id :type :email :name :phone_number])
 
+(defn get-users-vehicles
+  "Gets all of a user's vehicles."
+  [db-conn user-id]
+  (db/select db-conn
+             "vehicles"
+             [:id
+              :user_id
+              :year
+              :make
+              :model
+              :color
+              :gas_type
+              :license_plate
+              :timestamp_created]
+             {:user_id user-id
+              :active 1}))
+
 (defn init-session
   [db-conn user]
   (let [token (util/new-auth-token)]
@@ -89,6 +105,7 @@
     {:success true
      :token token
      :user (select-keys user safe-authd-user-keys)
+     :vehicles (get-users-vehicles db-conn (:id user))
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
@@ -169,11 +186,13 @@
   (let [user (get-user-by-id db-conn user-id)]
   (if (seq user)
     {:success true
-     :user (select-keys user safe-authd-user-keys)}
+     :user (select-keys user safe-authd-user-keys)
+     :vehicles (get-users-vehicles db-conn user-id)}
     {:success false
      :message "User could not be found."})))
 
-(defn edit
+(defn update-user
+  "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
   (db/update db-conn
              "users"
@@ -182,3 +201,32 @@
                            :phone_number
                            :gender])
              {:id user-id}))
+
+(defn add-vehicle
+  "The user-id given is assumed to have been auth'd already."
+  [db-conn user-id record-map]
+  (db/insert db-conn
+             "vehicles"
+             (assoc record-map
+               :id (util/rand-str-alpha-num 20)
+               :user_id user-id)))
+
+(defn update-vehicle
+  "The user-id given is assumed to have been auth'd already."
+  [db-conn user-id record-map]
+  (db/update db-conn
+             "vehicles"
+             record-map
+             {:id (:id record-map)
+              :user_id user-id}))
+
+(defn edit
+  "The user-id given is assumed to have been auth'd already."
+  [db-conn user-id body]
+  (do (when (not (nil? (:user body)))
+        (update-user db-conn user-id (:user body)))
+      (when (not (nil? (:vehicle body)))
+        (if (= "new" (:id (:vehicle body)))
+          (add-vehicle db-conn user-id (:vehicle body))
+          (update-vehicle db-conn user-id (:vehicle body))))
+      (details db-conn user-id)))

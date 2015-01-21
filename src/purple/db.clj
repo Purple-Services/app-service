@@ -153,6 +153,56 @@
        :unsafeMessage e})))
 
 
+
+
+;; (defn replace-values
+;;   "Replaces rows into a table with values for specified columns only.
+;;   column-names is a vector of strings or keywords identifying columns.
+;;   values is a vector containing values for each column in order."
+;;   [table column-names values encrypt]
+;;   (let [columns (map sql/as-identifier column-names)
+;;         columns-str (apply str (interpose "," columns))
+;;         template-str (insert-tpl column-names encrypt)]
+;;     (apply sql/do-prepared-return-keys
+;;            (format "REPLACE INTO %s (%s) VALUES (%s)"
+;;                    (sql/as-identifier table) columns-str template-str)
+;;            [values])))
+
+;; (defn replace-record
+;;   "Replaces a single record into a table. A record is a map from strings or
+;;   keywords (identifying columns) to values.
+;;   Returns a map of the generated keys."
+;;   [table record encrypt]
+;;   (replace-values table (keys record) (vals record) encrypt))
+
+;; (defn replace
+;;   "Replace row in 'table' of values 'insertion-map'.
+;;   You can pass a set of keys to encrypt values of."
+;;   [db-conn table replacement-map & {:keys [encrypt]}]
+;;   (try
+;;     (do (sql/with-connection db-conn
+;;           (replace-record table replacement-map encrypt))
+;;         {:success true})
+;;     (catch SQLException e
+;;       (cond
+;;        (duplicate-entry-exception? e)
+;;        {:success false
+;;         :message "That ID is already being used."}
+;;        (table-doesnt-exist-exception? e)
+;;        {:success false
+;;         :message "That table doesn't exist."}
+;;        :else
+;;        {:success false
+;;         :message "SQL Error"
+;;         :unsafeMessage e}))
+;;     (catch Exception e
+;;       {:success false
+;;        :message "Unkown Error"
+;;        :unsafeMessage e})))
+
+
+
+
 (defn update-tpl
   [columns encrypt]
   (apply str

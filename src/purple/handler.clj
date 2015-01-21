@@ -6,6 +6,7 @@
             [purple.db :as db]
             [purple.util :as util]
             [purple.users :as users]
+            [purple.orders :as orders]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -52,6 +53,7 @@
                                       (:platform_id b)
                                       ;; 'auth_key' is password
                                       (:auth_key b)))))
+             ;; you can send in one :user and/or one :vehicle key to edit those
              (POST "/edit" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -62,7 +64,7 @@
                        (:token b)
                        (users/edit db-conn
                                    (:user_id b)
-                                   (:user b))))))
+                                   b)))))
              ;; Get info about currently auth'd user
              (POST "/details" {body :body}
                    (response
@@ -74,6 +76,19 @@
                        (:token b)
                        (users/details db-conn
                                       (:user_id b))))))))
+  (context "/orders" []
+           (defroutes orders-routes
+             (POST "/add" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (orders/add db-conn
+                                   (:user_id b)
+                                   (:order b))))))))
   (GET "/yo" []
         (response (users/yo-yo)))
   (GET "/ok" []
