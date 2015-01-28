@@ -22,7 +22,9 @@
 
 (defn reset-password [db-conn key]
   (let [user (users/get-user-by-reset-key db-conn key)]
-    (apply str (reset-password-template {:title "Purple - Reset Password"
-                                         :heading "Reset Password"
-                                         :email (:email user)
-                                         :key key}))))
+    (if user
+      (apply str (reset-password-template {:title "Purple - Reset Password"
+                                           :heading "Reset Password"
+                                           :email (:email user)
+                                           :key key}))
+      (not-found-page))))

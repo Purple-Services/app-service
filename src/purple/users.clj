@@ -1,12 +1,13 @@
 (ns purple.users
-  (:use purple.fb.auth
-        gapi.core)
+  (:use cheshire.core
+        gapi.core
+        clojure.walk)
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
             [purple.orders :as orders]
             [crypto.password.bcrypt :as password]
-            [purple.fb.client :as fb]
+            [clj-http.client :as client]
             [clojure.string :as s]))
 
 (def safe-authd-user-keys
@@ -58,15 +59,10 @@
 
 (defn get-user-from-fb
   [auth-key]
-  true
-  ;; (:body (with-facebook-auth {:access-token auth-key}
-  ;;          (fb/gett "https://graph.facebook.com/me")))
-  )
-
-(defn yo-yo 
-  []
-  (with-facebook-auth {:access-token "CAAWkZBz0JjIwBAFZAxicTZBEsY8V91hdkrsrqZBWXJUjlLYVqngZByWIzT3ldPP9ZAmsqgDHcEj65KQZApepjUPcmLdpQbhjAzPIFZAt00ITXLwo5fXsFdoKN4DzlVCQYfgnn21WMfjawiIUsMTZBdhsh5bXCZB1Yl0MpyYxXXYptloRMERHNqGcm0RhnZAu6dzEFnp8YlINN787EKYv2EN1H0Qn51yzIrU9ZB8ZD"}
-              (fb/gett "https://graph.facebook.com/me")))
+  (-> (client/get (str "https://graph.facebook.com/me?access_token=" auth-key))
+      :body
+      parse-string
+      keywordize-keys))
 
 (defn auth-facebook
   [user auth-key]
@@ -120,7 +116,8 @@
     {:success true
      :token token
      :user (select-keys user safe-authd-user-keys)
-     :vehicles (get-users-vehicles db-conn (:id user))
+     :vehicles (into [] (get-users-vehicles db-conn (:id user)))
+     :orders (into [] (orders/get-by-user db-conn (:id user)))
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
@@ -202,8 +199,8 @@
   (if (seq user)
     {:success true
      :user (select-keys user safe-authd-user-keys)
-     :vehicles (get-users-vehicles db-conn user-id)
-     :orders (orders/get-by-user db-conn user-id)}
+     :vehicles (into [] (get-users-vehicles db-conn user-id))
+     :orders (into [] (orders/get-by-user db-conn user-id))}
     {:success false
      :message "User could not be found."})))
 
@@ -281,17 +278,17 @@
   [db-conn reset-key password]
   (db/update db-conn
              "users"
-             {:password_hash (password/encrypt password)}
+             {:password_hash (password/encrypt password)
+              :reset_key ""}
              {:reset_key reset-key}))
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
-  (do (util/send-email (merge {:from "purpleservicesfeedback@gmail.com" ;; 
-                               :to email-address}
-                              (if (not (nil? user_id))
-                                (let [user (get-user-by-id db-conn user_id)]
-                                  {:subject (str (:name user) " Invited You to Purple")
-                                   :body "Check out Purple app..."}) ;; TODO
-                                {:subject "Invitation to Purple"
-                                 :body "Check out Purple app..."})))
-      {:success true}))
+  (util/send-email (merge {:from "purpleservicesfeedback@gmail.com"
+                           :to email-address}
+                          (if (not (nil? user_id))
+                            (let [user (get-user-by-id db-conn user_id)]
+                              {:subject (str (:name user) " Invited You to Purple")
+                               :body "Check out Purple app..."}) ;; TODO
+                            {:subject "Invitation to Purple"
+                             :body "Check out Purple app..."}))))

@@ -34,18 +34,20 @@
   (rand-str-alpha-num 128))
 
 (defn send-email [message-map]
-  (postal/send-message config/email
-                       message-map))
+  (try (postal/send-message config/email
+                            message-map)
+       {:success true}
+       (catch Exception e {:success false
+                           :message "Message could not be sent to that address."})))
 
 (defn send-feedback
   [text & {:keys [user_id]}]
-  (do (send-email {:from "purpleservicesfeedback@gmail.com"
-                   :to "elwell.christopher@gmail.com"
-                   :subject "Purple Feedback Form Response"
-                   :body (if (not (nil? user_id))
-                           (str "From User ID: "
-                                user_id
-                                "\n\n"
-                                text)
-                           text)})
-      {:success true}))
+  (send-email {:from "purpleservicesfeedback@gmail.com"
+               :to "elwell.christopher@gmail.com"
+               :subject "Purple Feedback Form Response"
+               :body (if (not (nil? user_id))
+                       (str "From User ID: "
+                            user_id
+                            "\n\n"
+                            text)
+                       text)}))

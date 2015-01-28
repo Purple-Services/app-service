@@ -8,7 +8,7 @@
                  [org.clojure/java.jdbc "0.2.3"]
                  [mysql/mysql-connector-java "5.1.18"]
                  [cheshire "5.4.0"] ;; json and related utilities
-                 [clj-http "1.0.0"]
+                 [clj-http "1.0.1"]
                  [crypto-password "0.1.3"]
                  [com.draines/postal "1.11.3"]
                  [gapi "1.0.1"]
