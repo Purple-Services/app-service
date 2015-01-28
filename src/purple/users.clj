@@ -4,6 +4,7 @@
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
+            [purple.orders :as orders]
             [crypto.password.bcrypt :as password]
             [purple.fb.client :as fb]
             [clojure.string :as s]))
@@ -34,8 +35,22 @@
                      :email
                      :type
                      :password_hash
-                     :phone_number]
+                     :phone_number
+                     :name]
                     {:id user-id})))
+
+(defn get-user-by-reset-key
+  "Gets a user from db by user-id."
+  [db-conn key]
+  (first (db/select db-conn
+                    "users"
+                    [:id
+                     :email
+                     :type
+                     :password_hash
+                     :phone_number
+                     :name]
+                    {:reset_key key})))
 
 (defn auth-native
   [user auth-key]
@@ -187,7 +202,8 @@
   (if (seq user)
     {:success true
      :user (select-keys user safe-authd-user-keys)
-     :vehicles (get-users-vehicles db-conn user-id)}
+     :vehicles (get-users-vehicles db-conn user-id)
+     :orders (orders/get-by-user db-conn user-id)}
     {:success false
      :message "User could not be found."})))
 
@@ -230,3 +246,52 @@
           (add-vehicle db-conn user-id (:vehicle body))
           (update-vehicle db-conn user-id (:vehicle body))))
       (details db-conn user-id)))
+
+(defn forgot-password
+  "Only for native accounts; platform-id is email address."
+  [db-conn platform-id]
+  (let [user (get-user db-conn "native" platform-id)]
+    (if user
+      (let [reset-key (util/rand-str-alpha-num 22)]
+        (db/update db-conn
+                   "users"
+                   {:reset_key reset-key}
+                   {:id (:id user)})
+        (util/send-email {:from "purpleservicesfeedback@gmail.com" ;; TODO noreply@purple.com
+                          :to platform-id
+                          :subject "Purple Account - Reset Password"
+                          :body (str "Hello " (:name user) ","
+                                     "\n\nPlease click the link below to reset "
+                                     "your password:"
+                                     "\n\n"
+                                     "http://purple-dev.elasticbeanstalk.com/"
+                                     "user/reset-password/" reset-key
+                                     "\n\nThanks,"
+                                     "\nPurple")})
+        {:success true
+         :message (str "An email has been sent to "
+                       platform-id
+                       ". Please click the link included in "
+                       "that message to reset your password.")})
+      {:success false
+       :message "Sorry, that email address does not have an account on Purple."})))
+
+(defn change-password
+  "Only for native accounts."
+  [db-conn reset-key password]
+  (db/update db-conn
+             "users"
+             {:password_hash (password/encrypt password)}
+             {:reset_key reset-key}))
+
+(defn send-invite
+  [db-conn email-address & {:keys [user_id]}]
+  (do (util/send-email (merge {:from "purpleservicesfeedback@gmail.com" ;; 
+                               :to email-address}
+                              (if (not (nil? user_id))
+                                (let [user (get-user-by-id db-conn user_id)]
+                                  {:subject (str (:name user) " Invited You to Purple")
+                                   :body "Check out Purple app..."}) ;; TODO
+                                {:subject "Invitation to Purple"
+                                 :body "Check out Purple app..."})))
+      {:success true}))

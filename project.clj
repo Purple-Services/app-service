@@ -12,7 +12,8 @@
                  [crypto-password "0.1.3"]
                  [com.draines/postal "1.11.3"]
                  [gapi "1.0.1"]
-                 [stuarth/clj-oauth2 "0.3.2"]]
+                 [stuarth/clj-oauth2 "0.3.2"]
+                 [enlive "1.1.5"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]

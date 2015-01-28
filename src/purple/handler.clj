@@ -7,6 +7,7 @@
             [purple.util :as util]
             [purple.users :as users]
             [purple.orders :as orders]
+            [purple.pages :as pages]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -53,6 +54,21 @@
                                       (:platform_id b)
                                       ;; 'auth_key' is password
                                       (:auth_key b)))))
+             (POST "/forgot-password" {body :body} ;; only for native users
+                   (response
+                    (let [b (keywordize-keys body)]
+                      (users/forgot-password (db/conn)
+                                      ;; 'platform_id' is email address
+                                      (:platform_id b)))))
+
+             ;; only for native users
+             (GET "/reset-password/:key" [key]
+                  (wrap-page (response (pages/reset-password (db/conn) key))))
+             (POST "/reset-password" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)]
+                      (users/change-password (db/conn) (:key b) (:password b)))))
+             
              ;; you can send in one :user and/or one :vehicle key to edit those
              (POST "/edit" {body :body}
                    (response
@@ -89,12 +105,46 @@
                        (orders/add db-conn
                                    (:user_id b)
                                    (:order b))))))))
+  (context "/feedback" []
+           (defroutes feedback-routes
+             (POST "/send" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      ;; they don't have to send user auth
+                      ;; but if they do, it should be correct
+                      (if (not (nil? (:user_id b)))
+                        (demand-user-auth
+                         db-conn
+                         (:user_id b)
+                         (:token b)
+                         (util/send-feedback (:text b)
+                                             :user_id (:user_id b)))
+                        (util/send-feedback (:text b))))))))
+  (context "/invite" []
+           (defroutes invite-routes
+             (POST "/send" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      ;; they don't have to send user auth
+                      ;; but if they do, it should be correct
+                      (if (not (nil? (:user_id b)))
+                        (demand-user-auth
+                         db-conn
+                         (:user_id b)
+                         (:token b)
+                         (users/send-invite db-conn
+                                            (:email b)
+                                            :user_id (:user_id b)))
+                        (users/send-invite db-conn
+                                           (:email b))))))))
   (GET "/yo" []
         (response (users/yo-yo)))
   (GET "/ok" []
         (response {:success true}))
   (route/resources "/")
-  (route/not-found (wrap-page (response "Not found."))))
+  (route/not-found (wrap-page (response (pages/not-found-page)))))
 
 (def app
   (-> (handler/site app-routes)

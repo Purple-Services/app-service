@@ -4,7 +4,7 @@
             [purple.db :as db]
             [clojure.string :as s]))
 
-(defn get-order-by-id
+(defn get-by-id
   "Gets a user from db by user-id."
   [db-conn id]
   (first (db/select db-conn
@@ -13,13 +13,14 @@
                     {:id id})))
 
 
-(defn get-users-orders
+(defn get-by-user
   "Gets all of a user's orders."
   [db-conn user-id]
   (db/select db-conn
              "orders"
              ["*"]
-             {:user_id user-id}))
+             {:user_id user-id}
+             :append "ORDER BY target_time_start DESC"))
 
 (def keys-for-new-orders
   "A new order should have all these keys, and only these."
@@ -54,13 +55,10 @@
             :lat (Double. (:lat order))
             :lng (Double. (:lng order))
             )]
-    (println (assoc (select-keys o keys-for-new-orders)
-                 :id id
-                 :user_id user-id))
-    (println (db/insert db-conn
+    (db/insert db-conn
                "orders"
                (assoc (select-keys o keys-for-new-orders)
                  :id id
-                 :user_id user-id)))
+                 :user_id user-id))
     {:success true}))
 
