@@ -6,7 +6,7 @@
             [purple.util :as util]
             [purple.db :as db]
             [purple.orders :as orders]
-            [crypto.password.bcrypt :as password]
+            [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
             [clojure.string :as s]))
 
@@ -55,7 +55,7 @@
 
 (defn auth-native
   [user auth-key]
-  (password/check auth-key (:password_hash user)))
+  (bcrypt/check auth-key (:password_hash user)))
 
 (defn get-user-from-fb
   [auth-key]
@@ -127,7 +127,7 @@
   (db/insert db-conn
              "users"
              (if (= "native" (:type user))
-               (assoc user :password_hash (password/encrypt password))
+               (assoc user :password_hash (bcrypt/encrypt password))
                user)))
 
 (defn login
@@ -169,17 +169,33 @@
                            {:success false
                             :message "Unknown error."})))))
 
-;; TODO currently allows duplicate email addresses!
+
+(defn good-email
+  "Only for native users."
+  [db-conn email]
+  (and (boolean (re-matches #"^\S+@\S+\.\S+$" email))
+       (not (get-user db-conn "native" email))))
+
+(defn good-password
+  "Only for native users."
+  [password]
+  (boolean (re-matches #"^(?=.*\d).{7,30}$" password)))
+
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key]
-  (do (add db-conn
-           {:id (util/rand-str-alpha-num 20)
-            :email platform-id
-            :type "native"}
-           :password auth-key))
-  (login db-conn "native" platform-id auth-key))
-
+  (if (good-email db-conn platform-id)
+    (if (good-password auth-key)
+      (do (add db-conn
+               {:id (util/rand-str-alpha-num 20)
+                :email platform-id
+                :type "native"}
+               :password auth-key)
+          (login db-conn "native" platform-id auth-key))
+      {:success false
+       :message "Password must be at least 7 characters and contain a number."})
+    {:success false
+     :message "Email Address is incorrectly formatted or is already associated with an account."}))
 
 (defn valid-session?
   [db-conn user-id token]
@@ -278,7 +294,7 @@
   [db-conn reset-key password]
   (db/update db-conn
              "users"
-             {:password_hash (password/encrypt password)
+             {:password_hash (bcrypt/encrypt password)
               :reset_key ""}
              {:reset_key reset-key}))
 

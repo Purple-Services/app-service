@@ -139,10 +139,7 @@
                                             :user_id (:user_id b)))
                         (users/send-invite db-conn
                                            (:email b))))))))
-  (GET "/yo" []
-        (response (users/yo-yo)))
-  (GET "/ok" []
-        (response {:success true}))
+  (GET "/ok" [] (response {:success true}))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 
