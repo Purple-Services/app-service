@@ -100,6 +100,13 @@
              {:user_id user-id
               :active 1}))
 
+(defn get-users-cards
+  "We cache the card info as JSON in the stripe_cards column."
+  [user]
+  (let [default-card (:stripe_default_card user)]
+    (map #(assoc % :default (= default-card (:id %)))
+         (keywordize-keys (parse-string (:stripe_cards user))))))
+
 (defn init-session
   [db-conn user]
   (let [token (util/new-auth-token)]
@@ -113,6 +120,7 @@
      :user (select-keys user safe-authd-user-keys)
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
      :orders (into [] (orders/get-by-user db-conn (:id user)))
+     :cards (into [] (get-users-cards user))
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
@@ -212,11 +220,6 @@
       true
       false)))
 
-(defn get-users-cards
-  "We cache the card info as JSON in the stripe_cards column."
-  [user]
-  (keywordize-keys (parse-string (:stripe_cards user))))
-
 (defn details
   [db-conn user-id]
   (let [user (get-user-by-id db-conn user-id)]
@@ -225,7 +228,7 @@
      :user (select-keys user safe-authd-user-keys)
      :vehicles (into [] (get-users-vehicles db-conn user-id))
      :orders (into [] (orders/get-by-user db-conn user-id))
-     :cards (get-users-cards user)}
+     :cards (into [] (get-users-cards user))}
     {:success false
      :message "User could not be found."})))
 
@@ -298,6 +301,38 @@
                     :coerce :always})
       :body))
 
+(defn delete-stripe-card
+  [customer-id card-id]
+  (-> (client/delete (str stripe-api-url "customers/" customer-id "/cards/" card-id)
+                     {:basic-auth stripe-private-key
+                      :as :json
+                      :coerce :always})
+      :body))
+
+(defn set-default-stripe-card
+  [customer-id card-id]
+  (-> (client/post (str stripe-api-url "customers/" customer-id)
+                   {:form-params {:default_card card-id}
+                    :basic-auth stripe-private-key
+                    :as :json
+                    :coerce :always})
+      :body))
+
+(def cc-fields-to-keep [:id :last4 :brand])
+
+(defn update-user-stripe-fields
+  [db-conn user-id customer-resp]
+  (db/update db-conn
+             "users"
+             {:stripe_customer_id (:id customer-resp)
+              :stripe_cards (->> customer-resp
+                                 :cards
+                                 :data
+                                 (map #(select-keys % cc-fields-to-keep))
+                                 generate-string)
+              :stripe_default_card (:default_card customer-resp)}
+             {:id user-id}))
+
 (defn add-card
   "Add card. If user's first card, create Stripe customer object (+ card) instead."
   [db-conn user-id stripe-token]
@@ -307,28 +342,41 @@
                         (create-stripe-customer user-id stripe-token)
                         (do (add-stripe-card customer-id stripe-token)
                             (get-stripe-customer customer-id)))]
-    (db/update db-conn
-               "users"
-               {:stripe_customer_id (:id customer-resp)
-                :stripe_cards (->> customer-resp
-                                   :cards
-                                   :data
-                                   (map #(select-keys % [:last4 :id]))
-                                   generate-string)}
-               {:id user-id})))
-  
+    (update-user-stripe-fields db-conn user-id customer-resp)))
+
+(defn delete-card
+  [db-conn user-id card-id]
+  (let [user (get-user-by-id db-conn user-id)
+        customer-id (:stripe_customer_id user)
+        customer-resp (do (delete-stripe-card customer-id card-id)
+                          (get-stripe-customer customer-id))]
+    (update-user-stripe-fields db-conn user-id customer-resp)))
+
+(defn set-default-card
+  [db-conn user-id card-id]
+  (let [user (get-user-by-id db-conn user-id)
+        customer-id (:stripe_customer_id user)
+        customer-resp (set-default-stripe-card customer-id card-id)]
+    (update-user-stripe-fields db-conn user-id customer-resp)))
+
 (defn edit
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id body]
   (let [resp (atom {:success true})]
     (when (not (nil? (:user body)))
-      (swap! resp merge (update-user db-conn user-id (:user body))))
+      (swap! resp merge
+             (update-user db-conn user-id (:user body))))
     (when (not (nil? (:vehicle body)))
-      (swap! resp merge (if (= "new" (:id (:vehicle body)))
-                          (add-vehicle db-conn user-id (:vehicle body))
-                          (update-vehicle db-conn user-id (:vehicle body)))))
+      (swap! resp merge
+             (if (= "new" (:id (:vehicle body)))
+               (add-vehicle db-conn user-id (:vehicle body))
+               (update-vehicle db-conn user-id (:vehicle body)))))
     (when (not (nil? (:card body)))
-      (swap! resp merge (add-card db-conn user-id (:stripe_token (:card body)))))
+      (swap! resp merge
+             (case (:action (:card body))
+               "delete" (delete-card db-conn user-id (:id (:card body)))
+               "makeDefault" (set-default-card db-conn user-id (:id (:card body)))
+               nil (add-card db-conn user-id (:stripe_token (:card body))))))
     (if (:success @resp)
       (details db-conn user-id)
       @resp)))
