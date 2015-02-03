@@ -6,6 +6,7 @@
             [purple.util :as util]
             [purple.db :as db]
             [purple.orders :as orders]
+            [purple.payment :as payment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
             [clojure.string :as s]))
@@ -247,76 +248,35 @@
     {:success false
      :message "Required fields cannot be empty."}))
 
+(def required-vehicle-fields
+  [:year :make :model :color :gas_type :license_plate])
+
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (db/insert db-conn
-             "vehicles"
-             (assoc record-map
-               :id (util/rand-str-alpha-num 20)
-               :user_id user-id)))
+  (if (not-any? (comp s/blank? str val)
+                (select-keys record-map required-vehicle-fields))
+    (db/insert db-conn
+               "vehicles"
+               (assoc record-map
+                 :id (util/rand-str-alpha-num 20)
+                 :user_id user-id
+                 :active 1))
+    {:success false
+     :message "Required fields cannot be empty."}))
 
 (defn update-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (db/update db-conn
-             "vehicles"
-             record-map
-             {:id (:id record-map)
-              :user_id user-id}))
-
-(def stripe-api-url "https://api.stripe.com/v1/")
-(def stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3")
-
-;; (-> (client/get (str stripe-api-url "customers")
-;;                 {:basic-auth "sk_test_6Nbxf0bpbBod335kK11SFGw3"
-;;                  :as :json
-;;                  :coerce :always})
-;;       :body)
-
-(defn create-stripe-customer
-  [user-id stripe-token]
-  (-> (client/post (str stripe-api-url "customers")
-                   {:form-params {:description (str "Purple ID: " user-id)
-                                  :card stripe-token}
-                    :basic-auth stripe-private-key
-                    :as :json
-                    :coerce :always})
-      :body))
-
-(defn get-stripe-customer
-  [customer-id]
-  (-> (client/get (str stripe-api-url "customers/" customer-id)
-                   {:basic-auth stripe-private-key
-                    :as :json
-                    :coerce :always})
-      :body))
-
-(defn add-stripe-card
-  [customer-id stripe-token]
-  (-> (client/post (str stripe-api-url "customers/" customer-id "/cards")
-                   {:form-params {:card stripe-token}
-                    :basic-auth stripe-private-key
-                    :as :json
-                    :coerce :always})
-      :body))
-
-(defn delete-stripe-card
-  [customer-id card-id]
-  (-> (client/delete (str stripe-api-url "customers/" customer-id "/cards/" card-id)
-                     {:basic-auth stripe-private-key
-                      :as :json
-                      :coerce :always})
-      :body))
-
-(defn set-default-stripe-card
-  [customer-id card-id]
-  (-> (client/post (str stripe-api-url "customers/" customer-id)
-                   {:form-params {:default_card card-id}
-                    :basic-auth stripe-private-key
-                    :as :json
-                    :coerce :always})
-      :body))
+  (if (not-any? (comp s/blank? str val)
+                (select-keys record-map required-vehicle-fields))
+    (db/update db-conn
+               "vehicles"
+               record-map
+               {:id (:id record-map)
+                :user_id user-id})
+    {:success false
+     :message "Required fields cannot be empty."}))
 
 (def cc-fields-to-keep [:id :last4 :brand])
 
@@ -339,24 +299,24 @@
   (let [user (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id user)
         customer-resp (if (s/blank? customer-id)
-                        (create-stripe-customer user-id stripe-token)
-                        (do (add-stripe-card customer-id stripe-token)
-                            (get-stripe-customer customer-id)))]
+                        (payment/create-stripe-customer user-id stripe-token)
+                        (do (payment/add-stripe-card customer-id stripe-token)
+                            (payment/get-stripe-customer customer-id)))]
     (update-user-stripe-fields db-conn user-id customer-resp)))
 
 (defn delete-card
   [db-conn user-id card-id]
   (let [user (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id user)
-        customer-resp (do (delete-stripe-card customer-id card-id)
-                          (get-stripe-customer customer-id))]
+        customer-resp (do (payment/delete-stripe-card customer-id card-id)
+                          (payment/get-stripe-customer customer-id))]
     (update-user-stripe-fields db-conn user-id customer-resp)))
 
 (defn set-default-card
   [db-conn user-id card-id]
   (let [user (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id user)
-        customer-resp (set-default-stripe-card customer-id card-id)]
+        customer-resp (payment/set-default-stripe-card customer-id card-id)]
     (update-user-stripe-fields db-conn user-id customer-resp)))
 
 (defn edit

@@ -36,3 +36,8 @@
             :user "purpleservicesfeedback"
             :pass "psFeed877877"
             :ssl :yes!!!11})
+
+
+;; Payment
+(def stripe-api-url "https://api.stripe.com/v1/")
+(def stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3")
