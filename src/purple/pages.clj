@@ -28,3 +28,10 @@
                                            :email (:email user)
                                            :key key}))
       (not-found-page))))
+
+(deftemplate terms-template "templates/terms.html"
+  [x]
+  [:title] (content (:title x)))
+
+(defn terms []
+  (apply str (terms-template {:title "Terms of Service"})))

@@ -32,12 +32,7 @@
   [db-conn user-id]
   (first (db/select db-conn
                     "users"
-                    [:id
-                     :email
-                     :type
-                     :password_hash
-                     :phone_number
-                     :name]
+                    ["*"]
                     {:id user-id})))
 
 (defn get-user-by-reset-key
@@ -147,12 +142,19 @@
         (do (add db-conn
                  (case type
                    "facebook" (let [fb-user (get-user-from-fb auth-key)]
-                                (println fb-user)
-                                {:id (str "fb" (:id fb-user))
-                                 :email (:email fb-user)
-                                 :name (:name fb-user)
-                                 :gender (:gender fb-user)
-                                 :type "facebook"})
+                                (if (:email fb-user) 
+                                  {:id (str "fb" (:id fb-user))
+                                   :email (:email fb-user)
+                                   :name (:name fb-user)
+                                   :gender (:gender fb-user)
+                                   :type "facebook"}
+                                  (do (util/send-email
+                                       {:from "purpleservicesfeedback@gmail.com"
+                                        :to "elwell.christopher@gmail.com"
+                                        :subject "Purple - Error"
+                                        :body (str "User did not provide email: "
+                                                   (str "fb" (:id fb-user)))})
+                                      (throw (Exception. "No email.")))))
                    "google" (let [google-user (get-user-from-google auth-key)]
                               {:id (str "g" (:id google-user))
                                :email (-> (:emails google-user)
@@ -166,9 +168,10 @@
       (catch Exception e (case (.getMessage e)
                            "Invalid login." {:success false
                                              :message "Invalid login."}
+                           "No email." {:success false
+                                        :message "You must provide access to your email address. Please contact us via the Feedback form, or use a different method to log in."}
                            {:success false
                             :message "Unknown error."})))))
-
 
 (defn good-email
   "Only for native users."
@@ -179,7 +182,7 @@
 (defn good-password
   "Only for native users."
   [password]
-  (boolean (re-matches #"^(?=.*\d).{7,30}$" password)))
+  (boolean (re-matches #"^(?=.*\d).{7,50}$" password)))
 
 (defn register
   "Only for native users."
@@ -209,6 +212,11 @@
       true
       false)))
 
+(defn get-users-cards
+  "We cache the card info as JSON in the stripe_cards column."
+  [user]
+  (keywordize-keys (parse-string (:stripe_cards user))))
+
 (defn details
   [db-conn user-id]
   (let [user (get-user-by-id db-conn user-id)]
@@ -216,20 +224,25 @@
     {:success true
      :user (select-keys user safe-authd-user-keys)
      :vehicles (into [] (get-users-vehicles db-conn user-id))
-     :orders (into [] (orders/get-by-user db-conn user-id))}
+     :orders (into [] (orders/get-by-user db-conn user-id))
+     :cards (get-users-cards user)}
     {:success false
      :message "User could not be found."})))
 
 (defn update-user
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (db/update db-conn
-             "users"
-             (select-keys record-map
-                          [:name
-                           :phone_number
-                           :gender])
-             {:id user-id}))
+  (if (not-any? (comp s/blank? str val)
+                (select-keys record-map required-data))
+    (db/update db-conn
+               "users"
+               (select-keys record-map
+                            [:name
+                             :phone_number
+                             :gender])
+               {:id user-id})
+    {:success false
+     :message "Required fields cannot be empty."}))
 
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
@@ -249,16 +262,76 @@
              {:id (:id record-map)
               :user_id user-id}))
 
+(def stripe-api-url "https://api.stripe.com/v1/")
+(def stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3")
+
+;; (-> (client/get (str stripe-api-url "customers")
+;;                 {:basic-auth "sk_test_6Nbxf0bpbBod335kK11SFGw3"
+;;                  :as :json
+;;                  :coerce :always})
+;;       :body)
+
+(defn create-stripe-customer
+  [user-id stripe-token]
+  (-> (client/post (str stripe-api-url "customers")
+                   {:form-params {:description (str "Purple ID: " user-id)
+                                  :card stripe-token}
+                    :basic-auth stripe-private-key
+                    :as :json
+                    :coerce :always})
+      :body))
+
+(defn get-stripe-customer
+  [customer-id]
+  (-> (client/get (str stripe-api-url "customers/" customer-id)
+                   {:basic-auth stripe-private-key
+                    :as :json
+                    :coerce :always})
+      :body))
+
+(defn add-stripe-card
+  [customer-id stripe-token]
+  (-> (client/post (str stripe-api-url "customers/" customer-id "/cards")
+                   {:form-params {:card stripe-token}
+                    :basic-auth stripe-private-key
+                    :as :json
+                    :coerce :always})
+      :body))
+
+(defn add-card
+  "Add card. If user's first card, create Stripe customer object (+ card) instead."
+  [db-conn user-id stripe-token]
+  (let [user (get-user-by-id db-conn user-id)
+        customer-id (:stripe_customer_id user)
+        customer-resp (if (s/blank? customer-id)
+                        (create-stripe-customer user-id stripe-token)
+                        (do (add-stripe-card customer-id stripe-token)
+                            (get-stripe-customer customer-id)))]
+    (db/update db-conn
+               "users"
+               {:stripe_customer_id (:id customer-resp)
+                :stripe_cards (->> customer-resp
+                                   :cards
+                                   :data
+                                   (map #(select-keys % [:last4 :id]))
+                                   generate-string)}
+               {:id user-id})))
+  
 (defn edit
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id body]
-  (do (when (not (nil? (:user body)))
-        (update-user db-conn user-id (:user body)))
-      (when (not (nil? (:vehicle body)))
-        (if (= "new" (:id (:vehicle body)))
-          (add-vehicle db-conn user-id (:vehicle body))
-          (update-vehicle db-conn user-id (:vehicle body))))
-      (details db-conn user-id)))
+  (let [resp (atom {:success true})]
+    (when (not (nil? (:user body)))
+      (swap! resp merge (update-user db-conn user-id (:user body))))
+    (when (not (nil? (:vehicle body)))
+      (swap! resp merge (if (= "new" (:id (:vehicle body)))
+                          (add-vehicle db-conn user-id (:vehicle body))
+                          (update-vehicle db-conn user-id (:vehicle body)))))
+    (when (not (nil? (:card body)))
+      (swap! resp merge (add-card db-conn user-id (:stripe_token (:card body)))))
+    (if (:success @resp)
+      (details db-conn user-id)
+      @resp)))
 
 (defn forgot-password
   "Only for native accounts; platform-id is email address."
