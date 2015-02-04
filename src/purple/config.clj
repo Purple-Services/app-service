@@ -40,4 +40,6 @@
 
 ;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
+;; todo make this a system property on the live version
 (def stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3")
+(def default-currency "usd")

@@ -97,6 +97,7 @@
               :color
               :gas_type
               :license_plate
+              :photo
               :timestamp_created]
              {:user_id user-id
               :active 1}))
@@ -378,6 +379,15 @@
              {:password_hash (bcrypt/encrypt password)
               :reset_key ""}
              {:reset_key reset-key}))
+
+(defn charge-user
+  "Charges user amount (an int in cents) using default payment method."
+  [db-conn user-id amount]
+  (let [user (get-user-by-id db-conn user-id)
+        customer-id (:stripe_customer_id user)]
+    (if (s/blank? customer-id)
+      {:success false :message "No payment method is set up."}
+      (payment/charge-stripe-customer customer-id amount))))
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
