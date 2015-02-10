@@ -38,8 +38,20 @@
             :ssl :yes!!!11})
 
 
+
 ;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
 ;; todo make this a system property on the live version
 (def stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3")
 (def default-currency "usd")
+
+
+;;
+;; Dispatch config
+;;
+;; how often to get all unassigned orders from the database (millis)
+(def process-interval (* 1000 5))
+;; maximum displacement a courier should travel for delivery
+;; approx, as bird flies, in degrees squared (use dispatch/disp-squared to calc)
+;; 0.03130913834099598 is about 12 miles
+(def max-service-disp-squared 0.03130913834099598)

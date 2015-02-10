@@ -25,6 +25,7 @@
 (def keys-for-new-orders
   "A new order should have all these keys, and only these."
   [:vehicle_id
+   :status
    :target_time_start
    :target_time_end
    :gallons
@@ -44,7 +45,7 @@
   [db-conn user-id order]
   (let [id (util/rand-str-alpha-num 20)
         o (assoc order
-            :status "new"
+            :status "unassigned"
             :target_time_start (quot (System/currentTimeMillis) 1000)
             :target_time_end (+ (quot (System/currentTimeMillis) 1000)
                                 (* 3600

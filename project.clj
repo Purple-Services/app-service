@@ -12,7 +12,9 @@
                  [crypto-password "0.1.3"]
                  [com.draines/postal "1.11.3"]
                  [gapi "1.0.1"]
-                 [enlive "1.1.5"]]
+                 [enlive "1.1.5"]
+                 [overtone/at-at "1.2.0"] ;; scheduled jobs
+                 ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
