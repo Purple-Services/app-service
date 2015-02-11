@@ -55,3 +55,6 @@
 ;; approx, as bird flies, in degrees squared (use dispatch/disp-squared to calc)
 ;; 0.03130913834099598 is about 12 miles
 (def max-service-disp-squared 0.03130913834099598)
+;; how long of courier app not responding that we consider
+;; them to be disconnected. (seconds)
+(def max-courier-abandon-time (* 60 2))

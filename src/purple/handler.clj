@@ -7,6 +7,7 @@
             [purple.util :as util]
             [purple.users :as users]
             [purple.orders :as orders]
+            [purple.dispatch :as dispatch]
             [purple.pages :as pages]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
@@ -105,6 +106,19 @@
                        (orders/add db-conn
                                    (:user_id b)
                                    (:order b))))))))
+  (context "/dispatch" []
+           (defroutes dispatch-routes
+             (POST "/availability" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (dispatch/availability db-conn
+                                              (Double. (:lat b))
+                                              (Double. (:lng b)))))))))
   (context "/feedback" []
            (defroutes feedback-routes
              (POST "/send" {body :body}

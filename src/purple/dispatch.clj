@@ -2,6 +2,7 @@
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
+            [clojure.java.jdbc :as sql]
             [overtone.at-at :as at-at]
             [clojure.string :as s]))
 
@@ -28,8 +29,8 @@
 (def process-db-conn (db/conn)) ;; ok to use same conn forever (will have to test)
 
 (defn fetch-orders
-  []
-  (db/select process-db-conn
+  [db-conn]
+  (db/select db-conn
              "orders"
              ["*"]
              {:status "unassigned"}
@@ -37,28 +38,41 @@
 
 (defn match-orders-with-couriers
   [orders]
-  (println orders))
+  true
+  ;; (println orders)
+  )
+
+(defn update-courier-state
+  [db-conn]
+  (sql/with-connection db-conn
+    (sql/update-values
+     "couriers"
+     [(str "active = 1 AND connected = 1 AND ("
+           (quot (System/currentTimeMillis) 1000)
+           " - last_ping) > "
+           config/max-courier-abandon-time)]
+     {:connected 0})))
 
 (defn process
+  "Does a few periodic tasks."
   []
-  (-> (fetch-orders)
-      match-orders-with-couriers))
+  (do (update-courier-state process-db-conn)
+      (-> (fetch-orders process-db-conn)
+          match-orders-with-couriers)))
 
 (when (not *compile-files*)
   (def process-job (at-at/every config/process-interval
                                 process
                                 job-pool)))
 
-
-
-(def availability-db-conn (db/conn))
-
 (defn couriers
-  []
-  (db/select availability-db-conn
+  [db-conn]
+  (db/select db-conn
              "couriers"
              ["*"]
-             {}))
+             {:active true
+              :on_duty true
+              :connected true}))
 
 (defn square [x] (* x x))
 
@@ -78,17 +92,19 @@
 
 (defn availability
   "Get courier availability for given constraints."
-  [lat lng]
+  [db-conn lat lng]
   (let [c (->> (map #(assoc % :disp (disp-squared lat lng (:lat %) (:lng %)))
-                    (couriers))
+                    (couriers db-conn))
                (filter (comp (partial > config/max-service-disp-squared) :disp)))]
-    [{:octane "87"
-      :gallons (:gallons_87 (apply max-key :gallons_87 c))
-      :time [1 3]}
-     {:octane "91"
-      :gallons (:gallons_91 (apply max-key :gallons_91 c))
-      :time [1 3]}]))
-
-;; (availability 34.048819 -118.432994)
-
+    {:success true
+     :availability [{:octane "87"
+                     :gallons (if (empty? c)
+                                0
+                                (:gallons_87 (apply max-key :gallons_87 c)))
+                     :time [1 3]}
+                    {:octane "91"
+                     :gallons (if (empty? c)
+                                0
+                                (:gallons_91 (apply max-key :gallons_91 c)))
+                     :time [1 3]}]}))
 
