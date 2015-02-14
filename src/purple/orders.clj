@@ -2,6 +2,7 @@
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
+            [purple.payment :as payment]
             [clojure.string :as s]))
 
 (defn get-by-id
@@ -63,3 +64,63 @@
                  :user_id user-id))
     {:success true}))
 
+(defn update-status
+  "Assumed to have been auth'd properly already."
+  [db-conn order-id status]
+  (db/update db-conn
+             "orders"
+             {:status status}
+             {:id order-id}))
+
+(defn stamp-with-charge
+  "Give it a charge object from Stripe."
+  [db-conn order-id charge]
+  (db/update db-conn
+             "orders"
+             {:paid true
+              :stripe_charge_id (:id charge)
+              :stripe_customer_id_charged (:customer charge)
+              :stripe_balance_transaction_id (:balance_transaction charge)
+              :time_paid (:created charge)}
+             {:id order-id}))
+
+(defn cancel
+  [db-conn user-id order-id]
+  (let [order (get-by-id db-conn order-id)]
+    (if order
+      ;; put more logic in here for checking cancellation eligibility
+      (if (util/in? ["unassigned" "accepted" "enroute"] (:status order))
+        (do (update-status db-conn order-id "cancelled")
+            ((resolve 'purple.users/details) db-conn user-id))
+        {:success false
+         :message "Sorry, it is too late for this order to be cancelled."})
+      {:success false
+       :message "An order with that ID could not be found."})))
+
+(defn complete
+  "Completes order and charges user."
+  [db-conn order-id]
+  (let [o (get-by-id db-conn order-id)]
+    (if o
+      (do (update-status db-conn order-id "completed")
+          (let [charge ((resolve 'purple.users/charge-user)
+                        db-conn (:user_id o) (:total_price o))]
+            (if (:success charge)
+              (stamp-with-charge db-conn order-id charge)
+              charge)))
+      {:success false
+       :message "An order with that ID could not be found."})))
+
+(defn update-rating
+  "Assumed to have been auth'd properly already."
+  [db-conn order-id number-rating text-rating]
+  (db/update db-conn
+             "orders"
+             {:number_rating number-rating
+              :text_rating text-rating}
+             {:id order-id}))
+
+(defn rate
+  [db-conn user-id order-id rating]
+  (do (update-rating db-conn order-id (:number_rating rating) (:text_rating rating))
+      ((resolve 'purple.users/details) db-conn user-id)))

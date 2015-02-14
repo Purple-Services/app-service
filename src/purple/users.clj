@@ -13,7 +13,7 @@
 
 (def safe-authd-user-keys
   "Keys of a user map that are safe to send out to auth'd user."
-  [:id :type :email :name :phone_number])
+  [:id :type :email :name :phone_number :is_courier])
 
 (defn get-user
   "Gets a user from db by type and platform-id. Some fields unsafe for output."
@@ -37,7 +37,7 @@
                     {:id user-id})))
 
 (defn get-user-by-reset-key
-  "Gets a user from db by user-id."
+  "Gets a user from db by reset_key (for password reset)."
   [db-conn key]
   (first (db/select db-conn
                     "users"
@@ -380,15 +380,6 @@
               :reset_key ""}
              {:reset_key reset-key}))
 
-(defn charge-user
-  "Charges user amount (an int in cents) using default payment method."
-  [db-conn user-id amount]
-  (let [user (get-user-by-id db-conn user-id)
-        customer-id (:stripe_customer_id user)]
-    (if (s/blank? customer-id)
-      {:success false :message "No payment method is set up."}
-      (payment/charge-stripe-customer customer-id amount))))
-
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
   (util/send-email (merge {:from "purpleservicesfeedback@gmail.com"
@@ -399,3 +390,12 @@
                                :body "Check out Purple app..."}) ;; TODO
                             {:subject "Invitation to Purple"
                              :body "Check out Purple app..."}))))
+
+(defn charge-user
+  "Charges user amount (an int in cents) using default payment method."
+  [db-conn user-id amount]
+  (let [u (get-user-by-id db-conn user-id)
+        customer-id (:stripe_customer_id u)]
+    (if (s/blank? customer-id)
+      {:success false :message "No payment method is set up."}
+      (payment/charge-stripe-customer customer-id amount))))

@@ -105,7 +105,30 @@
                        (:token b)
                        (orders/add db-conn
                                    (:user_id b)
-                                   (:order b))))))))
+                                   (:order b))))))
+             (POST "/rate" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (orders/rate db-conn
+                                    (:user_id b)
+                                    (:order_id b)
+                                    (:rating b))))))
+             (POST "/cancel" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (orders/cancel db-conn
+                                      (:user_id b)
+                                      (:order_id b))))))))
   (context "/dispatch" []
            (defroutes dispatch-routes
              (POST "/availability" {body :body}
@@ -119,6 +142,21 @@
                        (dispatch/availability db-conn
                                               (Double. (:lat b))
                                               (Double. (:lng b)))))))))
+  (context "/courier" []
+           (defroutes courier-routes
+             (POST "/ping" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (dispatch/courier-ping db-conn
+                                              (:user_id b)
+                                              (Double. (:lat b))
+                                              (Double. (:lng b))
+                                              (:gallons b))))))))
   (context "/feedback" []
            (defroutes feedback-routes
              (POST "/send" {body :body}

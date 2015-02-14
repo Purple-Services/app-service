@@ -108,3 +108,42 @@
                                 (:gallons_91 (apply max-key :gallons_91 c)))
                      :time [1 3]}]}))
 
+(defn courier-ping
+  [db-conn user-id lat lng gallons]
+  (db/update db-conn
+             "couriers"
+             {:lat lat
+              :lng lng
+              :gallons_87 (Integer. (:87 gallons))
+              :gallons_91 (Integer. (:91 gallons))
+              :connected 1
+              :last_ping (quot (System/currentTimeMillis) 1000)}
+             {:id user-id}))
+
+
+
+
+
+
+
+
+;; (def opts [:goat :goat :car])
+
+;; (defn game
+;;   []
+;;   (let [doors (shuffle opts)
+;;         guess (rand-int (count doors))
+;;         narrowed-doors ()]
+    
+;;     (if (= :car (get doors guess))
+;;       1
+;;       0)))
+
+;; (defn play
+;;   "Returns winrate as decimal."
+;;   [times]
+;;   (float (/ (reduce + (repeatedly times game))
+;;             times)))
+
+
+;; (play 50000)

@@ -4,7 +4,6 @@
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
-            [purple.orders :as orders]
             [clj-http.client :as client]
             [clojure.string :as s]))
 
@@ -48,7 +47,7 @@
                  {:form-params {:default_card card-id}}))))
 
 (defn charge-stripe-customer
-  "Amount is an integer of cents to charge."
+  "Amount is an integer of cents to charge. Semi-sensitive info returned!"
   [customer-id amount]
   (try (let [resp (:body (client/post
                           (str config/stripe-api-url "charges")
@@ -57,9 +56,9 @@
                                                 :amount amount
                                                 :currency config/default-currency}})))]
          (if (:paid resp)
-           {:success true}
+           {:success true
+            :charge resp}
            {:success false
             :message (:failure_message resp)}))
        (catch Exception e ;; not ideal, it assumes any bad status code is this
          {:success false :message "No payment method is set up."})))
-
