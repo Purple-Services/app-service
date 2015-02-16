@@ -119,31 +119,3 @@
               :connected 1
               :last_ping (quot (System/currentTimeMillis) 1000)}
              {:id user-id}))
-
-
-
-
-
-
-
-
-;; (def opts [:goat :goat :car])
-
-;; (defn game
-;;   []
-;;   (let [doors (shuffle opts)
-;;         guess (rand-int (count doors))
-;;         narrowed-doors ()]
-    
-;;     (if (= :car (get doors guess))
-;;       1
-;;       0)))
-
-;; (defn play
-;;   "Returns winrate as decimal."
-;;   [times]
-;;   (float (/ (reduce + (repeatedly times game))
-;;             times)))
-
-
-;; (play 50000)
