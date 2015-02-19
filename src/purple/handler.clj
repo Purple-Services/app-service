@@ -191,6 +191,7 @@
                                             :user_id (:user_id b)))
                         (users/send-invite db-conn
                                            (:email b))))))))
+  ;; (GET "/dashboard" [] (wrap-page (response (pages/terms))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (route/resources "/")

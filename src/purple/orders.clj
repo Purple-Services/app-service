@@ -3,6 +3,7 @@
             [purple.util :as util]
             [purple.db :as db]
             [purple.payment :as payment]
+            [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
 
 (defn get-by-id
@@ -21,6 +22,15 @@
              "orders"
              ["*"]
              {:user_id user-id}
+             :append "ORDER BY target_time_start DESC"))
+
+(defn get-by-courier
+  "Gets all of a courier's assigned orders."
+  [db-conn courier-id]
+  (db/select db-conn
+             "orders"
+             ["*"]
+             {:courier_id courier-id}
              :append "ORDER BY target_time_start DESC"))
 
 (def keys-for-new-orders
@@ -72,18 +82,6 @@
              {:status status}
              {:id order-id}))
 
-(defn stamp-with-charge
-  "Give it a charge object from Stripe."
-  [db-conn order-id charge]
-  (db/update db-conn
-             "orders"
-             {:paid true
-              :stripe_charge_id (:id charge)
-              :stripe_customer_id_charged (:customer charge)
-              :stripe_balance_transaction_id (:balance_transaction charge)
-              :time_paid (:created charge)}
-             {:id order-id}))
-
 (defn cancel
   [db-conn user-id order-id]
   (let [order (get-by-id db-conn order-id)]
@@ -96,6 +94,29 @@
          :message "Sorry, it is too late for this order to be cancelled."})
       {:success false
        :message "An order with that ID could not be found."})))
+
+(defn assign-to-courier
+  [db-conn order-id courier-id]
+  (do (sql/with-connection db-conn
+        (sql/do-prepared
+         (str "UPDATE couriers SET queue = CONCAT(queue, '"
+              order-id
+              "', '|') WHERE id = '"
+              courier-id
+              "'")))
+      (update-status db-conn order-id "enroute")))
+
+(defn stamp-with-charge
+  "Give it a charge object from Stripe."
+  [db-conn order-id charge]
+  (db/update db-conn
+             "orders"
+             {:paid true
+              :stripe_charge_id (:id charge)
+              :stripe_customer_id_charged (:customer charge)
+              :stripe_balance_transaction_id (:balance_transaction charge)
+              :time_paid (:created charge)}
+             {:id order-id}))
 
 (defn complete
   "Completes order and charges user."

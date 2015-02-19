@@ -121,7 +121,9 @@
      :token token
      :user (select-keys user safe-authd-user-keys)
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
-     :orders (into [] (orders/get-by-user db-conn (:id user)))
+     :orders (into [] (if (:is_courier user)
+                        (orders/get-by-courier db-conn (:id user))
+                        (orders/get-by-user db-conn (:id user))))
      :cards (into [] (get-users-cards user))
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
@@ -229,7 +231,9 @@
     {:success true
      :user (select-keys user safe-authd-user-keys)
      :vehicles (into [] (get-users-vehicles db-conn user-id))
-     :orders (into [] (orders/get-by-user db-conn user-id))
+     :orders (into [] (if (:is_courier user)
+                        (orders/get-by-courier db-conn (:id user))
+                        (orders/get-by-user db-conn (:id user))))
      :cards (into [] (get-users-cards user))}
     {:success false
      :message "User could not be found."})))
