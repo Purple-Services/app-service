@@ -363,7 +363,7 @@
                                      "\n\nPlease click the link below to reset "
                                      "your password:"
                                      "\n\n"
-                                     "http://purple-dev.elasticbeanstalk.com/"
+                                     config/base-url
                                      "user/reset-password/" reset-key
                                      "\n\nThanks,"
                                      "\nPurple")})

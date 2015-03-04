@@ -67,7 +67,7 @@
 (defn select
   "Select columns from table and decrypt any values whose column name is in the
   set 'decrypt'. All this, according the constraints of simple where-map."
-  [db-conn table columns where-map & {:keys [decrypt append]}]
+  [db-conn table columns where-map & {:keys [decrypt append custom-where]}]
   (sql/with-connection db-conn
     (sql/with-query-results results
       (apply vector
@@ -84,12 +84,14 @@
                   " FROM "
                   table
                   " WHERE "
-                  (if (empty? where-map)
-                    "1"
-                    (->> (keys where-map)
-                         (map #(str (sql/as-identifier %) " = ?"))
-                         (interpose " AND ")
-                         (apply str)))
+                  (if custom-where
+                      custom-where
+                      (if (empty? where-map)
+                        "1"
+                        (->> (keys where-map)
+                             (map #(str (sql/as-identifier %) " = ?"))
+                             (interpose " AND ")
+                             (apply str))))
                   " "
                   append)
              (vals where-map))

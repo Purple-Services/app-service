@@ -118,6 +118,20 @@
                                     (:user_id b)
                                     (:order_id b)
                                     (:rating b))))))
+             ;; for status updates by courier
+             (POST "/update-status-by-courier" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (orders/update-status-by-courier db-conn
+                                                        (:user_id b)
+                                                        (:order_id b)
+                                                        (:status b))))))
+             ;; for cancels by customer
              (POST "/cancel" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -191,7 +205,7 @@
                                             :user_id (:user_id b)))
                         (users/send-invite db-conn
                                            (:email b))))))))
-  ;; (GET "/dashboard" [] (wrap-page (response (pages/terms))))
+  (GET "/dashboard" [] (wrap-page (response (pages/dashboard))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (route/resources "/")

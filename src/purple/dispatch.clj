@@ -7,24 +7,6 @@
             [overtone.at-at :as at-at]
             [clojure.string :as s]))
 
-(comment [:id
-          :status
-          :user_id
-          :vehicle_id
-          :target_time_start
-          :target_time_end
-          :gallons
-          :special_instructions
-          :lat
-          :lng
-          :address_street
-          :address_city
-          :address_state
-          :address_zip
-          :gas_price
-          :service_fee
-          :total_price])
-
 (def job-pool (at-at/mk-pool))
 
 (def process-db-conn (db/conn)) ;; ok to use same conn forever (will have to test)

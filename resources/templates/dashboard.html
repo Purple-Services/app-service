@@ -1,0 +1,54 @@
+<html>
+  <head>
+    <title>Purple</title>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <style>
+     body {
+       font-family: 'Open Sans', sans-serif;
+       text-align: center;
+       color: #333;
+       padding-top: 45px;
+     }
+    </style>
+  </head>
+  <body>
+    <h1 id="heading"></h1>
+
+    <table id="table">
+      <tr>
+        <td class="address_street"></td>
+        <td class="target_time_start"></td>
+      </tr>
+    </table>
+    
+    <script>
+     /*
+     $("#changePasswordForm").submit(function(e){
+       e.preventDefault();
+       var key = $(this).find("input[name='key']").val();
+       var password = $(this).find("input[name='password']").val();
+       $.ajax({
+         type: "POST",
+         url: "http://purple.elasticbeanstalk.com/user/reset-password",
+         data: JSON.stringify(
+           {
+             "key": key,
+             "password": password
+           }
+         ),
+         dataType: "json",
+         contentType: 'application/json',
+         success: function(response) {
+           if (response.success === true) {
+             $("#changePasswordForm").fadeOut(400, function(){
+               $("#successMessage").fadeIn(400);
+             });
+           }
+         }
+       });
+     });
+     */
+    </script>
+  </body>
+</html>

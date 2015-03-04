@@ -51,3 +51,8 @@
                             "\n\n"
                             text)
                        text)}))
+
+(defn send-push
+  "Sends a push notification."
+  [text]
+  {:success true})

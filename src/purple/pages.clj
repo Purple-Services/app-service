@@ -1,6 +1,8 @@
 (ns purple.pages
   (:use net.cgrand.enlive-html)
-  (:require [purple.users :as users]))
+  (:require [purple.users :as users]
+            [purple.orders :as orders]
+            [purple.db :as db]))
 
 (deftemplate index-template "templates/index.html"
   [x]
@@ -35,3 +37,19 @@
 
 (defn terms []
   (apply str (terms-template {:title "Terms of Service"})))
+
+
+(deftemplate dashboard-template "templates/dashboard.html"
+  [x]
+  [:title] (content (:title x))
+  [:#heading] (content (:heading x))
+  ;; [:#table] (content (:table x))
+  [:tr] (clone-for [t (:table x)]
+                   [:td.address_street] (content (:address_street t))
+                   [:td.target_time_start] (content (str (:target_time_start t)))
+                   ))
+
+(defn dashboard []
+  (apply str (dashboard-template {:title "Purple - Dashboard"
+                                  :heading "Dashboard"
+                                  :table (orders/get-all (db/conn))})))

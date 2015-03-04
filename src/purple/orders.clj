@@ -6,6 +6,13 @@
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
 
+(defn get-all
+  [db-conn]
+  (db/select db-conn
+             "orders"
+             ["*"]
+             {}))
+
 (defn get-by-id
   "Gets a user from db by user-id."
   [db-conn id]
@@ -27,11 +34,41 @@
 (defn get-by-courier
   "Gets all of a courier's assigned orders."
   [db-conn courier-id]
-  (db/select db-conn
-             "orders"
-             ["*"]
-             {:courier_id courier-id}
-             :append "ORDER BY target_time_start DESC"))
+  (let [orders (db/select db-conn
+                          "orders"
+                          ["*"]
+                          {:courier_id courier-id}
+                          :append "ORDER BY target_time_start DESC")
+        customer-ids (distinct (map :user_id orders))
+        customers (group-by :id
+                            (db/select db-conn
+                                       "users"
+                                       [:id :name :phone_number]
+                                       {}
+                                       :custom-where
+                                       (str "id IN (\""
+                                            (apply str
+                                                   (interpose "\",\"" customer-ids))
+                                            "\")")))
+        vehicle-ids (distinct (map :vehicle_id orders))
+        vehicles (group-by :id
+                           (db/select db-conn
+                                      "vehicles"
+                                      ["*"]
+                                      {}
+                                      :custom-where
+                                      (str "id IN (\""
+                                           (apply str
+                                                  (interpose "\",\"" vehicle-ids))
+                                           "\")")))]
+    (map #(assoc %
+            :customer
+            (first (get customers (:user_id %)))
+            :vehicle
+            (first (get vehicles (:vehicle_id %))))
+         orders)))
+
+;; (get-by-courier (db/conn) "lGYvXf9qcRdJHzhAAIbH")
 
 (def keys-for-new-orders
   "A new order should have all these keys, and only these."
@@ -120,15 +157,51 @@
 
 (defn complete
   "Completes order and charges user."
-  [db-conn order-id]
-  (let [o (get-by-id db-conn order-id)]
-    (if o
-      (do (update-status db-conn order-id "completed")
-          (let [charge ((resolve 'purple.users/charge-user)
-                        db-conn (:user_id o) (:total_price o))]
-            (if (:success charge)
-              (stamp-with-charge db-conn order-id charge)
-              charge)))
+  [db-conn o]
+  (do (update-status db-conn (:id o) "complete")
+      (let [charge-result ((resolve 'purple.users/charge-user)
+                           db-conn (:user_id o) (:total_price o))]
+        (if (:success charge-result)
+          (do (stamp-with-charge db-conn (:id o) charge-result)
+              (util/send-push "Your delivery has been completed. Thank you!"))
+          charge-result))))
+
+(defn accept
+  "Accepts order. This is a courier action."
+  [db-conn o]
+  (update-status db-conn (:id o) "accepted"))
+
+(defn begin-route
+  "This is a courier action."
+  [db-conn o]
+  (do (update-status db-conn (:id o) "enroute")
+      (util/send-push "A courier is enroute to your location.")))
+
+(defn service
+  "This is a courier action."
+  [db-conn o]
+  (do (update-status db-conn (:id o) "servicing")
+      (util/send-push "We are currently servicing your vehicle.")))
+
+(defn update-status-by-courier
+  [db-conn user-id order-id status]
+  (let [order (get-by-id db-conn order-id)]
+    (if order
+      ;; make sure the auth'd user is indeed the courier for this order
+      (if (= user-id (:courier_id order))
+        (let [update-result (case status
+                              "accepted" (accept db-conn order)
+                              "enroute" (begin-route db-conn order)
+                              "servicing" (service db-conn order)
+                              "complete" (complete db-conn order)
+                              {:success false
+                               :message "Invalid status."})]
+          ;; send back error message or user details if successful
+          (if (:success update-result)
+            ((resolve 'purple.users/details) db-conn user-id)
+            update-result))
+        {:success false
+         :message "Permission denied."})
       {:success false
        :message "An order with that ID could not be found."})))
 
