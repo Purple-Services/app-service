@@ -44,11 +44,11 @@
 
 (defn match-orders-with-couriers
   [db-conn orders]
-  (map #(->> (couriers-in-range db-conn (:lat %) (:lng %))
-             (apply min-key :disp)
-             :id
-             (orders/assign-to-courier db-conn (:id %)))
-       orders))
+  (doall (map #(->> (couriers-in-range db-conn (:lat %) (:lng %))
+                    (apply min-key :disp)
+                    :id
+                    (orders/assign-to-courier db-conn (:id %)))
+              orders)))
 
 (defn update-courier-state
   [db-conn]
