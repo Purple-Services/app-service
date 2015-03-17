@@ -1,9 +1,33 @@
 (ns purple.util
   (:require [purple.config :as config]
             [clojure.string :as s]
-            [postal.core :as postal]))
+            [postal.core :as postal]
+            [clj-time.core :as time]
+            [clj-time.coerce :as time-coerce]
+            [clj-time.format :as time-format]))
 
 (defn split-on-comma [x] (s/split x #","))
+
+(defn cents->dollars
+  "To display an integer of cents as string in dollars with a decimal."
+  [x]
+  (let [y (str x)]
+    (->> (split-at (- (count y) 2) y)
+         (interpose ".")
+         flatten
+         (apply str))))
+
+
+(def full-formatter (time-format/formatter "M/d K:m a"))
+
+(defn unix->full
+  "Convert integer unix timestamp to formatted date string."
+  [x]
+  (time-format/unparse
+   (time-format/with-zone
+     full-formatter
+     (time/time-zone-for-id "America/Los_Angeles"))
+   (time-coerce/from-long (* 1000 x))))
 
 (defn in? 
   "true if seq contains elm"

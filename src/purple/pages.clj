@@ -1,7 +1,9 @@
 (ns purple.pages
-  (:use net.cgrand.enlive-html)
+  (:use net.cgrand.enlive-html
+        :reload)
   (:require [purple.users :as users]
             [purple.orders :as orders]
+            [purple.util :as util]
             [purple.db :as db]))
 
 (deftemplate index-template "templates/index.html"
@@ -43,10 +45,32 @@
   [x]
   [:title] (content (:title x))
   [:#heading] (content (:heading x))
+  
   ;; [:#table] (content (:table x))
-  [:tr] (clone-for [t (:table x)]
-                   [:td.address_street] (content (:address_street t))
-                   [:td.target_time_start] (content (str (:target_time_start t)))
+  [:tbody :tr] (clone-for [t (:table x)]
+                   [:td.status]
+                   (content (:status t))
+
+                   [:td.target_time_start]
+                   (content (util/unix->full (:target_time_start t)))
+
+                   [:td.target_time_end]
+                   (content (util/unix->full (:target_time_end t)))
+                   
+                   [:td.address_street :a]
+                   (content (:address_street t))
+                   [:td.address_street :a]
+                   (set-attr :href (str "https://maps.google.com/?q="
+                                        (:lat t)
+                                        ","
+                                        (:lng t)))
+                   
+                   [:td.gallons]
+                   (content (str (:gallons t)))
+                   
+                   [:td.total_price]
+                   (content (util/cents->dollars (:total_price t)))
+                   
                    ))
 
 (defn dashboard []

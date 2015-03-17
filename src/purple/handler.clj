@@ -13,7 +13,10 @@
             [compojure.handler :as handler]
             [compojure.route :as route]
             [clojure.string :as s]
-            [ring.middleware.json :as middleware]))
+            [ring.middleware.json :as middleware]
+            [net.cgrand.reload :as enlive-reload]))
+
+(enlive-reload/auto-reload *ns*)
 
 (defn wrap-page [resp]
   (-> resp

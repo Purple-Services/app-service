@@ -14,14 +14,15 @@
                  [gapi "1.0.1"]
                  [enlive "1.1.5"]
                  [overtone/at-at "1.2.0"] ;; scheduled jobs
+                 [clj-time "0.8.0"] ;; date/time utilities
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
   :ring {:handler purple.handler/app
          :auto-reload? true
-         ;; :auto-refresh? true
-         :reload-paths ["src"]}
+         :auto-refresh? true
+         :reload-paths ["src" "resources"]}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring-mock "0.1.5"]]}}
   :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"

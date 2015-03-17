@@ -20,7 +20,8 @@
   (db/select db-conn
              "orders"
              ["*"]
-             {}))
+             {}
+             :append "ORDER BY target_time_start DESC LIMIT 100"))
 
 (defn get-by-id
   "Gets a user from db by user-id."
@@ -210,7 +211,9 @@
           (do (stamp-with-charge db-conn (:id o) charge-result)
               (util/send-push "Your delivery has been completed. Thank you!"))
           charge-result))
-      (advance-courier-queue (:courier_id o))))
+      (advance-courier-queue db-conn (:courier_id o))))
+
+; (complete (db/conn) (get-by-id (db/conn) "wNX9M0oc7wl9nhGea12P"))
 
 (defn begin-route
   "This is a courier action."
@@ -265,7 +268,8 @@
   (if-let [o (get-by-id db-conn order-id)]
     (if (util/in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
-          (advance-courier-queue (:courier_id o))
+          (when (not (s/blank? (:courier_id o)))
+            (advance-courier-queue db-conn (:courier_id o)))
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})
