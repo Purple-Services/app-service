@@ -85,6 +85,18 @@
                        (users/edit db-conn
                                    (:user_id b)
                                    b)))))
+             (POST "/add-sns" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (users/add-sns db-conn
+                                      (:user_id b)
+                                      (:push_platform b)
+                                      (:cred b))))))
              ;; Get info about currently auth'd user
              (POST "/details" {body :body}
                    (response

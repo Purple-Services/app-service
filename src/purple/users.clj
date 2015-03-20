@@ -119,7 +119,8 @@
                 :ip "1.1.1.1"})
     {:success true
      :token token
-     :user (select-keys user safe-authd-user-keys)
+     :user (assoc (select-keys user safe-authd-user-keys)
+             :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
      :orders (into [] (if (:is_courier user)
                         (orders/get-by-courier db-conn (:id user))
@@ -229,7 +230,8 @@
   (let [user (get-user-by-id db-conn user-id)]
   (if (seq user)
     {:success true
-     :user (select-keys user safe-authd-user-keys)
+     :user (assoc (select-keys user safe-authd-user-keys)
+             :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
      :vehicles (into [] (get-users-vehicles db-conn user-id))
      :orders (into [] (if (:is_courier user)
                         (orders/get-by-courier db-conn (:id user))
@@ -346,6 +348,15 @@
       (details db-conn user-id)
       @resp)))
 
+(defn add-sns
+  "cred for APNS (apple) is the device token"
+  [db-conn user-id push-platform cred]
+  (let [arn-endpoint (util/sns-create-endpoint util/sns-client cred user-id)]
+    (db/update db-conn
+               "users"
+               {:arn_endpoint arn-endpoint}
+               {:id user-id})))
+
 (defn forgot-password
   "Only for native accounts; platform-id is email address."
   [db-conn platform-id]
@@ -378,11 +389,17 @@
 (defn change-password
   "Only for native accounts."
   [db-conn reset-key password]
-  (db/update db-conn
-             "users"
-             {:password_hash (bcrypt/encrypt password)
-              :reset_key ""}
-             {:reset_key reset-key}))
+  (if (not (s/blank? reset-key)) ;; <-- very important check for security
+    (if (good-password password)
+      (db/update db-conn
+                 "users"
+                 {:password_hash (bcrypt/encrypt password)
+                  :reset_key ""}
+                 {:reset_key reset-key})
+      {:success false
+       :message "Password must be at least 7 characters and contain a number."})
+    {:success false
+     :message "Error: Reset Key is blank."}))
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
@@ -403,3 +420,12 @@
     (if (s/blank? customer-id)
       {:success false :message "No payment method is set up."}
       (payment/charge-stripe-customer customer-id amount))))
+
+(defn send-push
+  "Sends a push notification."
+  [db-conn user-id message]
+  (let [user (get-user-by-id db-conn user-id)]
+    (util/sns-publish util/sns-client (:arn_endpoint user) message)
+    {:success true}))
+
+;(send-push (db/conn) "vHosDPRLqapDTsU9GrWs" "test message")

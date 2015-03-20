@@ -1,10 +1,18 @@
 (ns purple.util
   (:require [purple.config :as config]
+            [purple.db :as db]
             [clojure.string :as s]
             [postal.core :as postal]
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]
-            [clj-time.format :as time-format]))
+            [clj-time.format :as time-format]
+            [clj-aws.core :as aws]
+            [clj-aws.sns :as sns])
+  (:import [com.amazonaws.services.sns AmazonSNSClient]
+           [com.amazonaws.services.sns.model Topic CreateTopicRequest
+            DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
+            PublishRequest CreatePlatformEndpointRequest
+            CreatePlatformEndpointResult MessageAttributeValue]))
 
 (defn split-on-comma [x] (s/split x #","))
 
@@ -76,7 +84,30 @@
                             text)
                        text)}))
 
-(defn send-push
-  "Sends a push notification."
-  [text]
-  {:success true})
+
+;; Amazon SNS (Push Notifications)
+(when (not *compile-files*)
+  (do
+    (def aws-creds (aws/credentials (System/getProperty "AWS_ACCESS_KEY_ID")
+                                    (System/getProperty "AWS_SECRET_KEY")))
+    (def sns-client (sns/client aws-creds))
+    (.setEndpoint sns-client "https://sns.us-west-2.amazonaws.com")))
+
+;; todo - recreate/update endpoint_arn with new device_token a certain exception is thrown
+
+;; if the user doesn't have an endpoint_arn then we need to create one for them
+(defn sns-create-endpoint
+  [client device-token user-id]
+  (let [req (CreatePlatformEndpointRequest.)]
+    (.setCustomUserData req user-id)
+    (.setToken req device-token)
+    (.setPlatformApplicationArn req config/sns-app-arn)
+    (.getEndpointArn (.createPlatformEndpoint client req))))
+
+(defn sns-publish
+  [client target-arn message]
+  (let [req (PublishRequest.)]
+    (.setMessage req message)
+    (.setTargetArn req target-arn)
+    (.publish client req)))
+

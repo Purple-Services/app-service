@@ -15,6 +15,8 @@
                  [enlive "1.1.5"]
                  [overtone/at-at "1.2.0"] ;; scheduled jobs
                  [clj-time "0.8.0"] ;; date/time utilities
+                 [com.amazonaws/aws-java-sdk "1.9.24"] ;; this will be used by clj-aws below instead of its default aws version
+                 [clj-aws "0.0.1-SNAPSHOT"]
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]

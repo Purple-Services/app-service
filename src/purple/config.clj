@@ -1,15 +1,18 @@
 (ns purple.config)
 
 ;; stub for local testing DEV DB
-(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
-(System/setProperty "DB_NAME" "ebdb")
-(System/setProperty "DB_PORT" "3306")
-(System/setProperty "DB_USER" "purplemaster")
-(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
-(System/setProperty "DB_ENCRYPTION_KEY_HEX" "55555a43376a4b4a44b76b4653")
-(System/setProperty "EMAIL_USER" "purpleservicesfeedback")
-(System/setProperty "EMAIL_PASSWORD" "psFeed877877")
-(System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
+;; (System/setProperty "AWS_ACCESS_KEY_ID" "AKIAJLB35GOFQUJZCX5A")
+;; (System/setProperty "AWS_SECRET_KEY" "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")
+;; (System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
+;; (System/setProperty "DB_NAME" "ebdb")
+;; (System/setProperty "DB_PORT" "3306")
+;; (System/setProperty "DB_USER" "purplemaster")
+;; (System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
+;; (System/setProperty "DB_ENCRYPTION_KEY_HEX" "55555a43376a4b4a44b76b4653")
+;; (System/setProperty "EMAIL_USER" "purpleservicesfeedback")
+;; (System/setProperty "EMAIL_PASSWORD" "psFeed877877")
+;; (System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
+;; (System/setProperty "SNS_APP_ARN" "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
 
 
 ;;
@@ -60,3 +63,4 @@
 (def max-courier-abandon-time (* 60 2))
 
 
+(def sns-app-arn (System/getProperty "SNS_APP_ARN"))

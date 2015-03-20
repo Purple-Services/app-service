@@ -209,7 +209,7 @@
                            db-conn (:user_id o) (:total_price o))]
         (if (:success charge-result)
           (do (stamp-with-charge db-conn (:id o) charge-result)
-              (util/send-push "Your delivery has been completed. Thank you!"))
+              ((resolve 'purple.users/send-push) db-conn (:user_id o) "Your delivery has been completed. Thank you!"))
           charge-result))
       (advance-courier-queue db-conn (:courier_id o))))
 
@@ -219,13 +219,13 @@
   "This is a courier action."
   [db-conn o]
   (do (update-status db-conn (:id o) "enroute")
-      (util/send-push "A courier is enroute to your location.")))
+      ((resolve 'purple.users/send-push) db-conn (:user_id o) "A courier is enroute to your location.")))
 
 (defn service
   "This is a courier action."
   [db-conn o]
   (do (update-status db-conn (:id o) "servicing")
-      (util/send-push "We are currently servicing your vehicle.")))
+      ((resolve 'purple.users/send-push) db-conn (:user_id o) "We are currently servicing your vehicle.")))
 
 (defn update-status-by-courier
   [db-conn user-id order-id status]
