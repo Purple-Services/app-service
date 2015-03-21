@@ -1,4 +1,5 @@
 (ns purple.dispatch
+  (:use clojure.data.priority-map)
   (:require [purple.config :as config]
             [purple.util :as util]
             [purple.db :as db]
@@ -7,71 +8,46 @@
             [overtone.at-at :as at-at]
             [clojure.string :as s]))
 
-(def job-pool (at-at/mk-pool))
+;; When server is booted up, we have to construct 'zones' map; which is a map
+;; of priority-maps of orders in each zone.
+;; (def zq {ZONE-ID-1 (priority-map orders...)
+;;          ZONE-ID-2 (priority-map orders...)})
+;; When a new order is created, we have to add it to the queue (priority map)
+;; of the zone that the destination resides in.
 
-(def process-db-conn (db/conn)) ;; ok to use same conn forever (will have to test)
 
-(defn fetch-orders
+(defn get-all-zones
+  "Get all zones from the database."
   [db-conn]
-  (db/select db-conn
-             "orders"
-             ["*"]
-             {:status "unassigned"}
-             :append "ORDER BY target_time_start DESC"))
+  (db/select db-conn "zones" ["*"] {}))
 
-(defn couriers
-  [db-conn]
-  (db/select db-conn
-             "couriers"
-             ["*"]
-             {:active true
-              :on_duty true
-              :connected true}))
+(def zones (map #(assoc % :zip_codes (util/split-on-comma (:zip_codes %)))
+                (get-all-zones (db/conn))))
 
-(defn square [x] (* x x))
+;; a map of all zones, each with a priority-map to hold their orders
+(def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) zones)))
+       
+(defn order->zone-id
+  "Determine which zone the order is in, and gives the zone id."
+  [order]
+  (let [zip-code (subs (:address_zip order) 0 5)]
+    (:id (first (filter #(util/in? (:zip_codes %) zip-code)
+                        zones)))))
 
-(defn disp-squared
-  "Calculate displacement squared between two coords."
-  [x1 y1 x2 y2]
-  (+ (square (- x2 x1))
-     (square (- y2 y1))))
+(defn priority-score
+  "Compute the priority score (an int) of the order."
+  [order]
+  (:target_time_end order))
 
-(defn couriers-in-range
-  [db-conn lat lng]
-  (->> (map #(assoc % :disp (disp-squared lat lng (:lat %) (:lng %)))
-            (couriers db-conn))
-       (filter (comp (partial > config/max-service-disp-squared) :disp))))
+(defn add-order-to-zq
+  "Adds order to its zone's queue."
+  [order]
+  (swap! (get zq (order->zone-id order))
+         conj [(:id order) (priority-score order)]))
 
-(defn match-orders-with-couriers
-  [db-conn orders]
-  (doall (map #(->> (couriers-in-range db-conn (:lat %) (:lng %))
-                    (apply min-key :disp)
-                    :id
-                    (orders/assign-to-courier db-conn (:id %)))
-              orders)))
-
-(defn update-courier-state
-  [db-conn]
-  (sql/with-connection db-conn
-    (sql/update-values
-     "couriers"
-     [(str "active = 1 AND connected = 1 AND ("
-           (quot (System/currentTimeMillis) 1000)
-           " - last_ping) > "
-           config/max-courier-abandon-time)]
-     {:connected 0})))
-
-(defn process
-  "Does a few periodic tasks."
-  []
-  (do (update-courier-state process-db-conn)
-      (->> (fetch-orders process-db-conn)
-           (match-orders-with-couriers process-db-conn))))
-
-(when (not *compile-files*)
-  (def process-job (at-at/every config/process-interval
-                                process
-                                job-pool)))
+;; on server boot, put any existing unassigned orders into the zq
+(doall (map add-order-to-zq
+            (orders/get-all-unassigned (db/conn))))
 
 ;; Example "courier availability" map
 (comment [{:octane "87"
@@ -84,23 +60,112 @@
            :time [3]
            :price_per_gallon 285}])
 
+;; we currently are only checking zip code
+;; we assume up to 15 gallons available and both time brackets always available
 (defn availability
   "Get courier availability for given constraints."
-  [db-conn lat lng]
-  (let [c (couriers-in-range db-conn lat lng)]
+  [zip-code]
+  (let [any-zones? (not (empty? (filter #(util/in? (:zip_codes %) zip-code)
+                                        zones)))]
     {:success true
      :availability [{:octane "87"
-                     :gallons (if (empty? c)
-                                0
-                                (:gallons_87 (apply max-key :gallons_87 c)))
+                     :gallons (if any-zones?
+                                15
+                                0)
                      :time [1 3]
                      :price_per_gallon 247}
                     {:octane "91"
-                     :gallons (if (empty? c)
-                                0
-                                (:gallons_91 (apply max-key :gallons_91 c)))
+                     :gallons (if any-zones?
+                                15
+                                0)
                      :time [1 3]
                      :price_per_gallon 285}]}))
+
+
+(def job-pool (at-at/mk-pool))
+
+(def process-db-conn (db/conn)) ;; ok to use same conn forever (will have to test)
+
+(defn available-couriers
+  [db-conn]
+  (map #(assoc % :zones (map (fn [x] (Integer. x)) (util/split-on-comma (:zones %))))
+       (db/select db-conn
+                  "couriers"
+                  ["*"]
+                  {:active true
+                   :on_duty true
+                   :connected true
+                   :busy false})))
+
+;; (defn square [x] (* x x))
+
+;; (defn disp-squared
+;;   "Calculate displacement squared between two coords."
+;;   [x1 y1 x2 y2]
+;;   (+ (square (- x2 x1))
+;;      (square (- y2 y1))))
+
+;; (defn couriers-in-range
+;;   [db-conn lat lng]
+;;   (->> (map #(assoc % :disp (disp-squared lat lng (:lat %) (:lng %)))
+;;             (couriers db-conn))
+;;        (filter (comp (partial > config/max-service-disp-squared) :disp))))
+
+;; (defn match-orders-with-couriers-OLD
+;;   [db-conn orders]
+;;   (doall (map #(->> (couriers-in-range db-conn (:lat %) (:lng %))
+;;                     (apply min-key :disp)
+;;                     :id
+;;                     (orders/assign-to-courier db-conn (:id %)))
+;;               orders)))
+
+(defn update-courier-state
+  [db-conn]
+  (sql/with-connection db-conn
+    (sql/update-values
+     "couriers"
+     [(str "active = 1 AND connected = 1 AND ("
+           (quot (System/currentTimeMillis) 1000)
+           " - last_ping) > "
+           config/max-courier-abandon-time)]
+     {:connected 0})))
+
+(defn take-order-from-zone
+  "Tries to take one order from the chosen zone."
+  [zone]
+  (let [pm (get zq zone)]
+    (when-let [o (peek @pm)]
+      (swap! pm pop)
+      o)))
+
+(defn match-order
+  [pm-entry db-conn courier-id] ;; pm-entry: Priority-Map Entry (key-value pair)
+  (when pm-entry
+    (let [order-id (first pm-entry)]
+      (orders/assign-to-courier db-conn order-id courier-id))))
+
+(defn take-order-from-zones
+  "Does take-order-from-zone over multiple zones. Stops after first hit."
+  [db-conn courier-id zones]
+  (doseq [z zones
+          :let [o (take-order-from-zone z)]
+          :while (nil? (doto o (match-order db-conn courier-id)))]))
+
+(defn match-orders-with-couriers
+  [db-conn]
+  (doall (map #(take-order-from-zones db-conn (:id %) (:zones %))
+              (available-couriers db-conn))))
+
+(defn process
+  "Does a few periodic tasks."
+  []
+  (do (update-courier-state process-db-conn)
+      (match-orders-with-couriers process-db-conn)))
+
+(when (not *compile-files*)
+  (def process-job (at-at/every config/process-interval
+                                process
+                                job-pool)))
 
 (defn courier-ping
   [db-conn user-id lat lng gallons]
@@ -113,3 +178,16 @@
               :connected 1
               :last_ping (quot (System/currentTimeMillis) 1000)}
              {:id user-id}))
+
+
+
+
+
+
+
+
+
+
+
+
+

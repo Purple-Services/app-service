@@ -427,5 +427,3 @@
   (let [user (get-user-by-id db-conn user-id)]
     (util/sns-publish util/sns-client (:arn_endpoint user) message)
     {:success true}))
-
-;(send-push (db/conn) "vHosDPRLqapDTsU9GrWs" "test message")

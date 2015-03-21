@@ -25,8 +25,7 @@
          flatten
          (apply str))))
 
-
-(def full-formatter (time-format/formatter "M/d K:m a"))
+(def full-formatter (time-format/formatter "M/d K:mm a"))
 
 (defn unix->full
   "Convert integer unix timestamp to formatted date string."

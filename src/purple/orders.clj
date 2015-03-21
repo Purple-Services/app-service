@@ -21,7 +21,15 @@
              "orders"
              ["*"]
              {}
-             :append "ORDER BY target_time_start DESC LIMIT 100"))
+             :append "ORDER BY target_time_start DESC"))
+
+(defn get-all-unassigned
+  [db-conn]
+  (db/select db-conn
+             "orders"
+             ["*"]
+             {:status "unassigned"}
+             :append "ORDER BY target_time_start DESC"))
 
 (defn get-by-id
   "Gets a user from db by user-id."
@@ -111,12 +119,12 @@
             :gallons (Integer. (:gallons order))
             :lat (Double. (:lat order))
             :lng (Double. (:lng order))
-            )]
-    (db/insert db-conn
-               "orders"
-               (assoc (select-keys o keys-for-new-orders)
-                 :id id
-                 :user_id user-id))
+            )
+        o-to-insert (assoc (select-keys o keys-for-new-orders)
+                      :id id
+                      :user_id user-id)]
+    (db/insert db-conn "orders" o-to-insert)
+    ((resolve 'purple.dispatch/add-order-to-zq) o-to-insert)
     {:success true}))
 
 (defn update-status
@@ -127,35 +135,10 @@
              {:status status}
              {:id order-id}))
 
-(defn courier-queue->push
-  [db-conn courier-id order-id]
-  (sql/with-connection db-conn
-    (sql/do-prepared
-     (str "UPDATE couriers SET queue = CONCAT(queue, '"
-          order-id
-          "', '|') WHERE id = '"
-          courier-id
-          "'"))))
+(def busy-statuses ["assigned" "accepted" "enroute" "servicing"])
 
-(defn courier-queue->pop
-  "Get next order-id from queue and also remove it from queue."
-  [db-conn courier-id]
-  (let [queue (:queue (first (db/select db-conn
-                                        "couriers"
-                                        [:queue]
-                                        {:id courier-id})))
-        parts (filter (comp not s/blank?) (s/split queue #"\|"))]
-    (db/update db-conn
-               "couriers"
-               {:queue (str "|"
-                            (apply str
-                                   (map #(str % "|")
-                                        (rest parts))))}
-               {:id courier-id})
-    (first parts)))
-
-(def busy-statuses ["accepted" "enroute" "servicing"])
-
+;; Not really a useful function anymore since we keep track of busy status in
+;; the couriers table now
 (defn courier-busy?
   "Is courier currently working on an order?"
   [db-conn courier-id]
@@ -165,29 +148,28 @@
                           {:courier_id courier-id})]
     (boolean (some #(util/in? busy-statuses (:status %)) orders))))
 
+(defn set-courier-busy
+  [db-conn courier-id busy]
+  (db/update db-conn
+             "couriers"
+             {:busy busy}
+             {:id courier-id}))
+
 (defn accept
   "There should be exactly one or zero orders in 'accepted' state, per courier."
   [db-conn order-id courier-id]
-  (db/update db-conn
-             "orders"
-             {:status "accepted"
-              :courier_id courier-id}
-             {:id order-id}))
+  (do (db/update db-conn
+                 "orders"
+                 {:status "accepted"
+                  :courier_id courier-id}
+                 {:id order-id})
+      (set-courier-busy db-conn courier-id true)))
 
 (defn assign-to-courier
   [db-conn order-id courier-id]
-  (if (courier-busy? db-conn courier-id)
-    ;; courier is busy with a task, just add order to their queue
-    (do (courier-queue->push db-conn courier-id order-id)
-        (update-status db-conn order-id "assigned"))
-    ;; courier is not busy, begin order immediately
-    (accept db-conn order-id courier-id)))
-
-(defn advance-courier-queue
-  "Move courier onto next order, it there is one in their queue."
-  [db-conn courier-id]
-  (when-let [next-in-queue (courier-queue->pop db-conn courier-id)]
-    (accept db-conn next-in-queue courier-id)))
+  ;; we currently skip over the "assigned" status, since couriers must accept
+  ;; all assignments
+  (accept db-conn order-id courier-id))
 
 (defn stamp-with-charge
   "Give it a charge object from Stripe."
@@ -202,30 +184,31 @@
              {:id order-id}))
 
 (defn complete
-  "Completes order and charges user. Advances courier's queue."
+  "Completes order and charges user."
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
+      (set-courier-busy db-conn (:courier_id o) false)
       (let [charge-result ((resolve 'purple.users/charge-user)
                            db-conn (:user_id o) (:total_price o))]
         (if (:success charge-result)
           (do (stamp-with-charge db-conn (:id o) charge-result)
-              ((resolve 'purple.users/send-push) db-conn (:user_id o) "Your delivery has been completed. Thank you!"))
-          charge-result))
-      (advance-courier-queue db-conn (:courier_id o))))
-
-; (complete (db/conn) (get-by-id (db/conn) "wNX9M0oc7wl9nhGea12P"))
+              ((resolve 'purple.users/send-push) db-conn (:user_id o)
+               "Your delivery has been completed. Thank you!"))
+          charge-result))))
 
 (defn begin-route
   "This is a courier action."
   [db-conn o]
   (do (update-status db-conn (:id o) "enroute")
-      ((resolve 'purple.users/send-push) db-conn (:user_id o) "A courier is enroute to your location.")))
+      ((resolve 'purple.users/send-push) db-conn (:user_id o)
+       "A courier is enroute to your location.")))
 
 (defn service
   "This is a courier action."
   [db-conn o]
   (do (update-status db-conn (:id o) "servicing")
-      ((resolve 'purple.users/send-push) db-conn (:user_id o) "We are currently servicing your vehicle.")))
+      ((resolve 'purple.users/send-push) db-conn (:user_id o)
+       "We are currently servicing your vehicle.")))
 
 (defn update-status-by-courier
   [db-conn user-id order-id status]
@@ -268,8 +251,7 @@
   (if-let [o (get-by-id db-conn order-id)]
     (if (util/in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
-          (when (not (s/blank? (:courier_id o)))
-            (advance-courier-queue db-conn (:courier_id o)))
+          (set-courier-busy db-conn (:courier_id o) false)
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})

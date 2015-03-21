@@ -168,9 +168,7 @@
                        db-conn
                        (:user_id b)
                        (:token b)
-                       (dispatch/availability db-conn
-                                              (Double. (:lat b))
-                                              (Double. (:lng b)))))))))
+                       (dispatch/availability (:zip_code b))))))))
   (context "/courier" []
            (defroutes courier-routes
              (POST "/ping" {body :body}
@@ -223,6 +221,7 @@
   (GET "/dashboard" [] (wrap-page (response (pages/dashboard))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
+  (GET "/zq" [] (response {:zq (str @(resolve 'purple.dispatch/zq))}))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 
