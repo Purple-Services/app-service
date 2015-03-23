@@ -76,7 +76,7 @@
                        (map #(if (contains? decrypt %)
                                (format "AES_DECRYPT(%s, UNHEX(\"%s\")) AS %s"
                                        (sql/as-identifier %)
-                                       config/db-encryption-key-hex
+                                       "0000" ;; config/db-encryption-key-hex
                                        (sql/as-identifier %))
                                (sql/as-identifier %)))
                        (interpose ",")
@@ -105,7 +105,8 @@
   (apply str
          (interpose "," (map #(if (contains? encrypt %)
                                 (format "AES_ENCRYPT(?, UNHEX(\"%s\"))"
-                                        config/db-encryption-key-hex)
+                                        "0000" ;; config/db-encryption-key-hex
+                                        )
                                 "?")
                              columns))))
 
@@ -214,7 +215,8 @@
                   (format (str (sql/as-identifier %)
                                "="
                                "AES_ENCRYPT(?, UNHEX(\"%s\"))")
-                          config/db-encryption-key-hex)
+                          "0000" ;; config/db-encryption-key-hex
+                          )
                   (str (sql/as-identifier %) "=?"))
                columns))))
 

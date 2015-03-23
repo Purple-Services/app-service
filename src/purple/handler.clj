@@ -16,7 +16,7 @@
             [ring.middleware.json :as middleware]
             [net.cgrand.reload :as enlive-reload]))
 
-(enlive-reload/auto-reload *ns*)
+;(enlive-reload/auto-reload *ns*)
 
 (defn wrap-page [resp]
   (-> resp
@@ -218,10 +218,18 @@
                                             :user_id (:user_id b)))
                         (users/send-invite db-conn
                                            (:email b))))))))
-  (GET "/dashboard" [] (wrap-page (response (pages/dashboard))))
+  (context "/dashboard" []
+           (defroutes dashboard-routes
+             (GET "/" [] (wrap-page (response (pages/dashboard))))
+             (POST "/change-gas-price" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)]
+                      (dispatch/change-gas-price (db/conn)
+                                              (:gas-price-87 b)
+                                              (:gas-price-91 b)))))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
-  (GET "/zq" [] (response {:zq (str @(resolve 'purple.dispatch/zq))}))
+  (GET "/zq" [] (response {:zq (str dispatch/zq)}))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 

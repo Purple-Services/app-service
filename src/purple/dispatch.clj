@@ -8,6 +8,15 @@
             [overtone.at-at :as at-at]
             [clojure.string :as s]))
 
+(defn get-all-zones
+  "Get all zones from the database."
+  [db-conn]
+  (db/select db-conn "zones" ["*"] {}))
+
+;; holds all zone definitions in local mem, some parsing in there too
+(def zones (map #(assoc % :zip_codes (util/split-on-comma (:zip_codes %)))
+                (get-all-zones (db/conn))))
+
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
 ;; (def zq {ZONE-ID-1 (priority-map orders...)
@@ -15,20 +24,11 @@
 ;; When a new order is created, we have to add it to the queue (priority map)
 ;; of the zone that the destination resides in.
 
-
-(defn get-all-zones
-  "Get all zones from the database."
-  [db-conn]
-  (db/select db-conn "zones" ["*"] {}))
-
-(def zones (map #(assoc % :zip_codes (util/split-on-comma (:zip_codes %)))
-                (get-all-zones (db/conn))))
-
 ;; a map of all zones, each with a priority-map to hold their orders
 (def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) zones)))
        
 (defn order->zone-id
-  "Determine which zone the order is in, and gives the zone id."
+  "Determine which zone the order is in; gives the zone id."
   [order]
   (let [zip-code (subs (:address_zip order) 0 5)]
     (:id (first (filter #(util/in? (:zip_codes %) zip-code)
@@ -46,8 +46,9 @@
          conj [(:id order) (priority-score order)]))
 
 ;; on server boot, put any existing unassigned orders into the zq
-(doall (map add-order-to-zq
-            (orders/get-all-unassigned (db/conn))))
+(when (not *compile-files*)
+  (doall (map add-order-to-zq
+              (orders/get-all-unassigned (db/conn)))))
 
 ;; Example "courier availability" map
 (comment [{:octane "87"
@@ -73,22 +74,22 @@
                                 15
                                 0)
                      :time [1 3]
-                     :price_per_gallon 247}
+                     :price_per_gallon @config/gas-price-87}
                     {:octane "91"
                      :gallons (if any-zones?
                                 15
                                 0)
                      :time [1 3]
-                     :price_per_gallon 285}]}))
-
+                     :price_per_gallon @config/gas-price-91}]}))
 
 (def job-pool (at-at/mk-pool))
 
-(def process-db-conn (db/conn)) ;; ok to use same conn forever (will have to test)
+(def process-db-conn (db/conn)) ;; ok to use same conn forever? (have to test..)
 
 (defn available-couriers
   [db-conn]
-  (map #(assoc % :zones (map (fn [x] (Integer. x)) (util/split-on-comma (:zones %))))
+  (map #(assoc % :zones (map (fn [x] (Integer. x))
+                             (util/split-on-comma (:zones %))))
        (db/select db-conn
                   "couriers"
                   ["*"]
@@ -96,28 +97,6 @@
                    :on_duty true
                    :connected true
                    :busy false})))
-
-;; (defn square [x] (* x x))
-
-;; (defn disp-squared
-;;   "Calculate displacement squared between two coords."
-;;   [x1 y1 x2 y2]
-;;   (+ (square (- x2 x1))
-;;      (square (- y2 y1))))
-
-;; (defn couriers-in-range
-;;   [db-conn lat lng]
-;;   (->> (map #(assoc % :disp (disp-squared lat lng (:lat %) (:lng %)))
-;;             (couriers db-conn))
-;;        (filter (comp (partial > config/max-service-disp-squared) :disp))))
-
-;; (defn match-orders-with-couriers-OLD
-;;   [db-conn orders]
-;;   (doall (map #(->> (couriers-in-range db-conn (:lat %) (:lng %))
-;;                     (apply min-key :disp)
-;;                     :id
-;;                     (orders/assign-to-courier db-conn (:id %)))
-;;               orders)))
 
 (defn update-courier-state
   [db-conn]
@@ -179,15 +158,34 @@
               :last_ping (quot (System/currentTimeMillis) 1000)}
              {:id user-id}))
 
+;; on server boot, set initial gas prices locally from database
+(when (not *compile-files*)
+  (let [c (first (db/select (db/conn) "config" ["*"] {:id 1}))]
+    (reset! config/gas-price-87 (:gas_price_87 c))
+    (reset! config/gas-price-91 (:gas_price_91 c))))
 
+(defn change-gas-price
+  "Updates gas prices locally and in the database."
+  [db-conn gas-price-87 gas-price-91]
+  (do (reset! config/gas-price-87 gas-price-87)
+      (reset! config/gas-price-91 gas-price-91)
+      (db/update db-conn
+                 "config"
+                 {:gas_price_87 gas-price-87
+                  :gas_price_91 gas-price-91}
+                 {:id 1})
+      {:success true}))
 
+;; (defn square [x] (* x x))
 
+;; (defn disp-squared
+;;   "Calculate displacement squared between two coords."
+;;   [x1 y1 x2 y2]
+;;   (+ (square (- x2 x1))
+;;      (square (- y2 y1))))
 
-
-
-
-
-
-
-
-
+;; (defn couriers-in-range
+;;   [db-conn lat lng]
+;;   (->> (map #(assoc % :disp (disp-squared lat lng (:lat %) (:lng %)))
+;;             (couriers db-conn))
+;;        (filter (comp (partial > config/max-service-disp-squared) :disp))))

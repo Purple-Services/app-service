@@ -8,6 +8,8 @@
   <body>
     <h1 id="heading"></h1>
 
+    <span id="config" data-base-url=""></span>
+    
     <table id="table">
       <thead>
         <tr>
@@ -33,33 +35,41 @@
       </tbody>
     </table>
 
-    <div>
+    <div style="margin-top: 75px;">
       <form id="configForm">
-        Gas Price Per Gallon $<input type="text" id="gasPriceDollars" value="" />
+        <h3>Gas Price Per Gallon</h3>
+        87 Octane (in cents) <input type="text" id="gasPriceDollars87" value="" />
+        <br />
+        91 Octane (in cents) <input type="text" id="gasPriceDollars91" value="" />
         
-        <br /><input type="submit" name="configFormSubmit" value="Update" />
+        <br /><br /><input type="submit" name="configFormSubmit" value="Save Changes" />
       </form>
+      <div id="successMessage" style="display: none">
+        Changed successfully.
+      </div>
     </div>
     
     <script>
      $("#configForm").submit(function(e){
        e.preventDefault();
-       var key = $(this).find("input[name='key']").val();
-       var password = $(this).find("input[name='password']").val();
+       var price87 = $("#gasPriceDollars87").val();
+       var price91 = $("#gasPriceDollars91").val();
+       var priceInCents87 = parseInt(price87.replace('$','').replace('.',''));
+       var priceInCents91 = parseInt(price91.replace('$','').replace('.',''));
        $.ajax({
          type: "POST",
-         url: "http://purple.elasticbeanstalk.com/user/reset-password",
+         url: $("#config").data("base-url") + "dashboard/change-gas-price",
          data: JSON.stringify(
            {
-             "key": key,
-             "password": password
+             "gas-price-87": priceInCents87,
+             "gas-price-91": priceInCents91
            }
          ),
          dataType: "json",
          contentType: 'application/json',
          success: function(response) {
            if (response.success === true) {
-             $("#changePasswordForm").fadeOut(400, function(){
+             $("#configForm").fadeOut(400, function(){
                $("#successMessage").fadeIn(400);
              });
            }

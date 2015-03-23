@@ -4,6 +4,7 @@
   (:require [purple.users :as users]
             [purple.orders :as orders]
             [purple.util :as util]
+            [purple.config :as config]
             [purple.db :as db]))
 
 (deftemplate index-template "templates/index.html"
@@ -45,6 +46,8 @@
   [x]
   [:title] (content (:title x))
   [:#heading] (content (:heading x))
+
+  [:#config] (set-attr :data-base-url (:base-url x))
   
   ;; [:#table] (content (:table x))
   [:tbody :tr] (clone-for [t (:table x)]
@@ -71,9 +74,15 @@
                    [:td.total_price]
                    (content (util/cents->dollars (:total_price t)))
                    
-                   ))
+                   )
+
+  [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
+  [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x)))
 
 (defn dashboard []
   (apply str (dashboard-template {:title "Purple - Dashboard"
                                   :heading "Dashboard"
-                                  :table (orders/get-all (db/conn))})))
+                                  :table (orders/get-all (db/conn))
+                                  :base-url config/base-url
+                                  :gas-price-87 @config/gas-price-87
+                                  :gas-price-91 @config/gas-price-91})))
