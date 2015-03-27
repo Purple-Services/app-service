@@ -407,10 +407,10 @@
                            :to email-address}
                           (if (not (nil? user_id))
                             (let [user (get-user-by-id db-conn user_id)]
-                              {:subject (str (:name user) " Invited You to Purple")
-                               :body "Check out Purple app..."}) ;; TODO
-                            {:subject "Invitation to Purple"
-                             :body "Check out Purple app..."}))))
+                              {:subject (str (:name user) " invites you to try Purple")
+                               :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://itunes.apple.com/us/app/purple-services/id970824802"})
+                            {:subject "Invitation to Try Purple"
+                             :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://itunes.apple.com/us/app/purple-services/id970824802"}))))
 
 (defn charge-user
   "Charges user amount (an int in cents) using default payment method."

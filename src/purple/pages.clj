@@ -54,6 +54,9 @@
                    [:td.status]
                    (content (:status t))
 
+                   [:td.courier_name]
+                   (content (:courier_name t))
+
                    [:td.target_time_start]
                    (content (util/unix->full (:target_time_start t)))
 
@@ -79,10 +82,28 @@
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
   [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x)))
 
-(defn dashboard []
-  (apply str (dashboard-template {:title "Purple - Dashboard"
-                                  :heading "Dashboard"
-                                  :table (orders/get-all (db/conn))
-                                  :base-url config/base-url
-                                  :gas-price-87 @config/gas-price-87
-                                  :gas-price-91 @config/gas-price-91})))
+(defn dashboard [db-conn]
+  (let [couriers (db/select db-conn "couriers" ["*"] {})
+        courier-ids (distinct (map :id couriers))
+        ;; "users" rows for all the couriers, keyed by id
+        users-by-id (group-by :id
+                              (db/select db-conn
+                                         "users"
+                                         [:id :name :phone_number]
+                                         {}
+                                         :custom-where
+                                         (str "id IN (\""
+                                              (apply str
+                                                     (interpose "\",\"" courier-ids))
+                                              "\")")))
+        courier-id->courier-name #(:name (first (get users-by-id %)))]
+    (apply str (dashboard-template {:title "Purple - Dashboard"
+                                    :heading "Dashboard"
+                                    :table (map #(assoc %
+                                                   :courier_name
+                                                   (courier-id->courier-name
+                                                    (:courier_id %)))
+                                                (take 100 (orders/get-all (db/conn))))
+                                    :base-url config/base-url
+                                    :gas-price-87 @config/gas-price-87
+                                    :gas-price-91 @config/gas-price-91}))))

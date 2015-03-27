@@ -6,7 +6,8 @@
             [purple.orders :as orders]
             [clojure.java.jdbc :as sql]
             [overtone.at-at :as at-at]
-            [clojure.string :as s]))
+            [clojure.string :as s])
+  (:import (org.joda.time DateTime DateTimeZone)))
 
 (defn get-all-zones
   "Get all zones from the database."
@@ -14,8 +15,9 @@
   (db/select db-conn "zones" ["*"] {}))
 
 ;; holds all zone definitions in local mem, some parsing in there too
-(def zones (map #(assoc % :zip_codes (util/split-on-comma (:zip_codes %)))
-                (get-all-zones (db/conn))))
+(when (not *compile-files*)
+  (def zones (map #(assoc % :zip_codes (util/split-on-comma (:zip_codes %)))
+                  (get-all-zones (db/conn)))))
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
@@ -25,7 +27,8 @@
 ;; of the zone that the destination resides in.
 
 ;; a map of all zones, each with a priority-map to hold their orders
-(def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) zones)))
+(when (not *compile-files*)
+  (def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) zones))))
        
 (defn order->zone-id
   "Determine which zone the order is in; gives the zone id."
@@ -55,36 +58,46 @@
            :gallons 15
            :time [1 3] ;; i.e., within 1 hour or 3 hours
            :price_per_gallon 247 ;; in cents
+           :service_fee [599 399] ;; in cents, for each time option regardless
+                                  ;; of whether or not it is being offered
            } 
           {:octane "91"
            :gallons 10
            :time [3]
-           :price_per_gallon 285}])
+           :price_per_gallon 285
+           :service_fee [599 399]}])
 
 ;; we currently are only checking zip code
 ;; we assume up to 15 gallons available and both time brackets always available
 (defn availability
   "Get courier availability for given constraints."
   [zip-code]
-  (let [any-zones? (not (empty? (filter #(util/in? (:zip_codes %) zip-code)
-                                        zones)))]
+  (let [any-zones? (and (not (empty? (filter #(util/in? (:zip_codes %) zip-code)
+                                             zones)))
+                        (<= (first config/service-time-bracket)
+                            (.getHourOfDay (DateTime. (DateTimeZone/forID
+                                                       "America/Los_Angeles")))
+                            (last config/service-time-bracket)))]
     {:success true
      :availability [{:octane "87"
                      :gallons (if any-zones?
                                 15
                                 0)
                      :time [1 3]
-                     :price_per_gallon @config/gas-price-87}
+                     :price_per_gallon @config/gas-price-87
+                     :service_fee [599 399]}
                     {:octane "91"
                      :gallons (if any-zones?
                                 15
                                 0)
                      :time [1 3]
-                     :price_per_gallon @config/gas-price-91}]}))
+                     :price_per_gallon @config/gas-price-91
+                     :service_fee [599 399]}]}))
 
 (def job-pool (at-at/mk-pool))
 
-(def process-db-conn (db/conn)) ;; ok to use same conn forever? (have to test..)
+(when (not *compile-files*)
+  (def process-db-conn (db/conn))) ;; ok to use same conn forever? (have to test..)
 
 (defn available-couriers
   [db-conn]
@@ -173,8 +186,7 @@
                  "config"
                  {:gas_price_87 gas-price-87
                   :gas_price_91 gas-price-91}
-                 {:id 1})
-      {:success true}))
+                 {:id 1})))
 
 ;; (defn square [x] (* x x))
 

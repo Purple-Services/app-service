@@ -12,8 +12,13 @@
 (System/setProperty "EMAIL_PASSWORD" "psFeed877877")
 (System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
 (System/setProperty "SNS_APP_ARN" "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
-(System/setProperty "BASE_URL" "http://purple-dev.elasticbeanstalk.com/")
-;(System/setProperty "BASE_URL" "http://localhost:3000/")
+(System/setProperty "BASE_URL" "http://localhost:3000/")
+
+;; need to add these to configuration on aws
+(System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
+(System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
+
+
 
 
 (def base-url (System/getProperty "BASE_URL"))
@@ -30,6 +35,10 @@
    :subname (str "//" db-host ":" db-port "/" db-name)
    :user db-user
    :password db-password})
+
+;; Basic Auth, for Dashboard
+(def basic-auth-username (System/getProperty "BASIC_AUTH_USERNAME"))
+(def basic-auth-password (System/getProperty "BASIC_AUTH_PASSWORD"))
 
 ;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
@@ -52,3 +61,6 @@
 
 (def gas-price-87 (atom 0))
 (def gas-price-91 (atom 0))
+
+;; hour of day, start and end (in PST/PDT)
+(def service-time-bracket [8 20])

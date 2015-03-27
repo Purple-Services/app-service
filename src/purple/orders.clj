@@ -130,10 +130,15 @@
 (defn update-status
   "Assumed to have been auth'd properly already."
   [db-conn order-id status]
-  (db/update db-conn
-             "orders"
-             {:status status}
-             {:id order-id}))
+  (sql/with-connection db-conn
+    (sql/do-prepared
+     (str "UPDATE orders SET "
+          "status = '" status "', "
+          "event_log = CONCAT(event_log, '"
+          status " " (quot (System/currentTimeMillis) 1000)
+          "', '|') WHERE id = '"
+          order-id
+          "'"))))
 
 (def busy-statuses ["assigned" "accepted" "enroute" "servicing"])
 
@@ -158,10 +163,10 @@
 (defn accept
   "There should be exactly one or zero orders in 'accepted' state, per courier."
   [db-conn order-id courier-id]
-  (do (db/update db-conn
+  (do (update-status db-conn order-id "accepted")
+      (db/update db-conn
                  "orders"
-                 {:status "accepted"
-                  :courier_id courier-id}
+                 {:courier_id courier-id}
                  {:id order-id})
       (set-courier-busy db-conn courier-id true)))
 

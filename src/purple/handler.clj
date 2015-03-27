@@ -14,9 +14,15 @@
             [compojure.route :as route]
             [clojure.string :as s]
             [ring.middleware.json :as middleware]
+            [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
             [net.cgrand.reload :as enlive-reload]))
 
 ;(enlive-reload/auto-reload *ns*)
+
+(defn dashboard-auth?
+  [username password]
+  (and (= config/basic-auth-username username)
+       (= config/basic-auth-password password)))
 
 (defn wrap-page [resp]
   (-> resp
@@ -219,14 +225,17 @@
                         (users/send-invite db-conn
                                            (:email b))))))))
   (context "/dashboard" []
-           (defroutes dashboard-routes
-             (GET "/" [] (wrap-page (response (pages/dashboard))))
-             (POST "/change-gas-price" {body :body}
+           (wrap-basic-authentication
+            (defroutes dashboard-routes
+              (GET "/" []
+                   (wrap-page (response (pages/dashboard (db/conn)))))
+              (POST "/change-gas-price" {body :body}
                    (response
                     (let [b (keywordize-keys body)]
                       (dispatch/change-gas-price (db/conn)
-                                              (:gas-price-87 b)
-                                              (:gas-price-91 b)))))))
+                                                 (:gas-price-87 b)
+                                                 (:gas-price-91 b))))))
+            dashboard-auth?))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/zq" [] (response {:zq (str dispatch/zq)}))

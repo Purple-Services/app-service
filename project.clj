@@ -18,6 +18,7 @@
                  [com.amazonaws/aws-java-sdk "1.9.24"] ;; this will be used by clj-aws below instead of its default aws version
                  [clj-aws "0.0.1-SNAPSHOT"]
                  [org.clojure/data.priority-map "0.0.6"]
+                 [ring-basic-authentication "1.0.5"]
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
