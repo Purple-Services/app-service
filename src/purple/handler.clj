@@ -14,10 +14,7 @@
             [compojure.route :as route]
             [clojure.string :as s]
             [ring.middleware.json :as middleware]
-            [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
-            [net.cgrand.reload :as enlive-reload]))
-
-;(enlive-reload/auto-reload *ns*)
+            [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]))
 
 (defn dashboard-auth?
   [username password]
@@ -238,7 +235,6 @@
             dashboard-auth?))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
-  (GET "/zq" [] (response {:zq (str dispatch/zq)}))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 

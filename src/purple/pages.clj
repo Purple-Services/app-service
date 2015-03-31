@@ -45,12 +45,31 @@
 (deftemplate dashboard-template "templates/dashboard.html"
   [x]
   [:title] (content (:title x))
-  [:#heading] (content (:heading x))
 
   [:#config] (set-attr :data-base-url (:base-url x))
+
+  [:#couriers :tbody :tr] (clone-for [t (:couriers x)]
+                   [:td.connected]
+                   (content (if (:connected t) "Yes" "No"))
+
+                   [:td.name]
+                   (content (:name t))
+
+                   [:td.busy]
+                   (content (if (:busy t) "Yes" "No"))
+
+                   [:td.zones]
+                   (content (:zones t))
+                   
+                   [:td.location :a]
+                   (content "View On Map")
+                   [:td.location :a]
+                   (set-attr :href (str "https://maps.google.com/?q="
+                                        (:lat t)
+                                        ","
+                                        (:lng t))))
   
-  ;; [:#table] (content (:table x))
-  [:tbody :tr] (clone-for [t (:table x)]
+  [:#orders :tbody :tr] (clone-for [t (:orders x)]
                    [:td.status]
                    (content (:status t))
 
@@ -75,9 +94,7 @@
                    (content (str (:gallons t)))
                    
                    [:td.total_price]
-                   (content (util/cents->dollars (:total_price t)))
-                   
-                   )
+                   (content (util/cents->dollars (:total_price t))))
 
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
   [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x)))
@@ -98,12 +115,16 @@
                                               "\")")))
         courier-id->courier-name #(:name (first (get users-by-id %)))]
     (apply str (dashboard-template {:title "Purple - Dashboard"
-                                    :heading "Dashboard"
-                                    :table (map #(assoc %
-                                                   :courier_name
-                                                   (courier-id->courier-name
-                                                    (:courier_id %)))
-                                                (take 100 (orders/get-all (db/conn))))
+                                    :couriers (map #(assoc %
+                                                      :name
+                                                      (courier-id->courier-name
+                                                       (:id %)))
+                                                   couriers)
+                                    :orders (map #(assoc %
+                                                    :courier_name
+                                                    (courier-id->courier-name
+                                                     (:courier_id %)))
+                                                 (take 100 (orders/get-all (db/conn))))
                                     :base-url config/base-url
                                     :gas-price-87 @config/gas-price-87
                                     :gas-price-91 @config/gas-price-91}))))

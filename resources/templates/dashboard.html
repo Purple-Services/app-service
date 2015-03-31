@@ -6,11 +6,38 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
   </head>
   <body>
-    <h1 id="heading"></h1>
-
     <span id="config" data-base-url=""></span>
+
+
+    <h2>Couriers</h2>
+
+    <table id="couriers">
+      <thead>
+        <tr>
+          <td>Connected</td>
+          <td>Name</td>
+          <td>Busy?</td>
+          <td>Zones</td>
+          <td>Location</td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="connected"></td>
+          <td class="name"></td>
+          <td class="busy"></td>
+          <td class="zones"></td>
+          <td class="location">
+            <a href="#" target="_blank"></a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+
+    <h2>Orders</h2>
     
-    <table id="table">
+    <table id="orders">
       <thead>
         <tr>
           <td>Status</td>

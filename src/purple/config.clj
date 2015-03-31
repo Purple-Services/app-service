@@ -13,12 +13,8 @@
 (System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
 (System/setProperty "SNS_APP_ARN" "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
 (System/setProperty "BASE_URL" "http://localhost:3000/")
-
-;; need to add these to configuration on aws
 (System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
 (System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
-
-
 
 
 (def base-url (System/getProperty "BASE_URL"))

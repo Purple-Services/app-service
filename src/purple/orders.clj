@@ -125,6 +125,10 @@
                       :user_id user-id)]
     (db/insert db-conn "orders" o-to-insert)
     ((resolve 'purple.dispatch/add-order-to-zq) o-to-insert)
+    (util/send-email {:from "purpleservicesfeedback@gmail.com"
+                      :to "elwell.christopher@gmail.com"
+                      :subject "Purple - New Order"
+                      :body (str o-to-insert)})
     {:success true}))
 
 (defn update-status
@@ -196,7 +200,7 @@
       (let [charge-result ((resolve 'purple.users/charge-user)
                            db-conn (:user_id o) (:total_price o))]
         (if (:success charge-result)
-          (do (stamp-with-charge db-conn (:id o) charge-result)
+          (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
               ((resolve 'purple.users/send-push) db-conn (:user_id o)
                "Your delivery has been completed. Thank you!"))
           charge-result))))

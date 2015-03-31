@@ -1,6 +1,6 @@
-(defproject purple "0.1.0-SNAPSHOT"
+(defproject purple "1.0.0-SNAPSHOT"
   :description "Purple"
-  :url "http://www.purpleapp.com"
+  :url "http://purpledelivery.com"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [compojure "1.1.8"]
                  [ring/ring-json "0.1.2"]
