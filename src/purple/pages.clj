@@ -20,6 +20,7 @@
 (deftemplate reset-password-template "templates/reset-password.html"
   [x]
   [:title] (content (:title x))
+  [:#config] (set-attr :data-base-url (:base-url x))
   [:#heading] (content (:heading x))
   [:#email] (content (:email x))
   [:#key] (set-attr :value (:key x))
@@ -29,6 +30,7 @@
   (let [user (users/get-user-by-reset-key db-conn key)]
     (if user
       (apply str (reset-password-template {:title "Purple - Reset Password"
+                                           :base-url config/base-url
                                            :heading "Reset Password"
                                            :email (:email user)
                                            :key key}))

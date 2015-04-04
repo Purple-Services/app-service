@@ -195,7 +195,7 @@
 (defn good-password
   "Only for native users."
   [password]
-  (boolean (re-matches #"^(?=.*\d).{7,50}$" password)))
+  (boolean (re-matches #"^.{6,100}$" password)))
 
 (defn register
   "Only for native users."
@@ -209,7 +209,7 @@
                :password auth-key)
           (login db-conn "native" platform-id auth-key))
       {:success false
-       :message "Password must be at least 7 characters and contain a number."})
+       :message "Password must be at least 6 characters."})
     {:success false
      :message "Email Address is incorrectly formatted or is already associated with an account."}))
 
