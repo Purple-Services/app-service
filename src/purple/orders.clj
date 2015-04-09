@@ -172,7 +172,9 @@
                  "orders"
                  {:courier_id courier-id}
                  {:id order-id})
-      (set-courier-busy db-conn courier-id true)))
+      (set-courier-busy db-conn courier-id true)
+      ((resolve 'purple.users/send-push) db-conn courier-id
+       "You have been assigned a new order.")))
 
 (defn assign-to-courier
   [db-conn order-id courier-id]
@@ -210,7 +212,7 @@
   [db-conn o]
   (do (update-status db-conn (:id o) "enroute")
       ((resolve 'purple.users/send-push) db-conn (:user_id o)
-       "A courier is enroute to your location.")))
+       "A courier is enroute to your location. Please ensure that your fueling door is open.")))
 
 (defn service
   "This is a courier action."
@@ -261,6 +263,8 @@
     (if (util/in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
           (set-courier-busy db-conn (:courier_id o) false)
+          ((resolve 'purple.users/send-push) db-conn (:courier_id o)
+           "The current order has been cancelled.")
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})

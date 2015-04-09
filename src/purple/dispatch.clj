@@ -67,32 +67,34 @@
            :price_per_gallon 285
            :service_fee [599 399]}])
 
-;; we currently are only checking zip code
-;; we assume up to 15 gallons available and both time brackets always available
 (defn availability
   "Get courier availability for given constraints."
   [zip-code]
-  (let [any-zones? (and (not (empty? (filter #(util/in? (:zip_codes %) zip-code)
-                                             zones)))
-                        (<= (first config/service-time-bracket)
-                            (.getHourOfDay (DateTime. (DateTimeZone/forID
-                                                       "America/Los_Angeles")))
-                            (last config/service-time-bracket)))]
+  (let [good-zip? (not (empty? (filter #(util/in? (:zip_codes %) zip-code)
+                                       zones)))
+        opening-hour (first config/service-time-bracket)
+        closing-hour (last config/service-time-bracket)
+        current-hour (.getHourOfDay
+                      (DateTime. (DateTimeZone/forID "America/Los_Angeles")))
+        good-time? (fn [hours-needed]
+                     (<= opening-hour
+                         current-hour
+                         (- closing-hour hours-needed)))]
     {:success true
      :availability [{:octane "87"
-                     :gallons (if any-zones?
-                                15
-                                0)
-                     :time [1 3]
+                     :gallons (if good-zip? 15 0) ;; just assume 15 gallons
+                     :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-87
                      :service_fee [599 399]}
                     {:octane "91"
-                     :gallons (if any-zones?
-                                15
-                                0)
-                     :time [1 3]
+                     :gallons (if good-zip? 15 0)
+                     :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-91
-                     :service_fee [599 399]}]}))
+                     :service_fee [599 399]}]
+     :unavailable-reason
+     (if good-zip?
+       "Sorry, we are unable to deliver gas to your location at this time."
+       "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")}))
 
 (def job-pool (at-at/mk-pool))
 
@@ -112,6 +114,7 @@
                    :busy false})))
 
 (defn update-courier-state
+  "Marks couriers as disconnected as needed."
   [db-conn]
   (sql/with-connection db-conn
     (sql/update-values
@@ -155,9 +158,17 @@
       (match-orders-with-couriers process-db-conn)))
 
 (when (not *compile-files*)
-  (def process-job (at-at/every config/process-interval
-                                process
-                                job-pool)))
+  (let [out *out*]
+    (def process-job (at-at/every config/process-interval
+                                  #(binding [*out* out]
+                                     (process))
+                                  job-pool))))
+
+;; (let [out *out*]
+;;   (def process-temp (at-at/every 3000
+;;                                #(binding [*out* out]
+;;                                    (println "test"))
+;;                                job-pool)))
 
 (defn courier-ping
   [db-conn user-id lat lng gallons]

@@ -36,10 +36,15 @@
             :pass (System/getProperty "EMAIL_PASSWORD")
             :ssl :yes!!!11})
 
+;; the customer arn is either Sandbox or Live APNS
 (def sns-app-arn (System/getProperty "SNS_APP_ARN"))
+;; the courier arn is always Sandbox
+(def sns-app-arn-courier "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
 
 (def gas-price-87 (atom 0))
 (def gas-price-91 (atom 0))
 
-;; hour of day, start and end (in PST/PDT)
-(def service-time-bracket [8 20])
+;; hour of day, start and end (in PST/PDT), both are inclusive
+;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
+;; the way things are coded, you can't wrap around past midnight
+(def service-time-bracket [8 19])

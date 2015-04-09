@@ -1,0 +1,12 @@
+body {
+    font-family: 'Open Sans', sans-serif;
+    text-align: center;
+    color: #333;
+    padding-top: 40px;
+}
+a {
+    color: #6491d2;
+}
+#intro {
+    padding-top: 30px;
+}

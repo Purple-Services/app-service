@@ -96,11 +96,11 @@
 
 ;; if the user doesn't have an endpoint_arn then we need to create one for them
 (defn sns-create-endpoint
-  [client device-token user-id]
+  [client device-token user-id sns-app-arn]
   (let [req (CreatePlatformEndpointRequest.)]
     (.setCustomUserData req user-id)
     (.setToken req device-token)
-    (.setPlatformApplicationArn req config/sns-app-arn)
+    (.setPlatformApplicationArn req sns-app-arn)
     (.getEndpointArn (.createPlatformEndpoint client req))))
 
 (defn sns-publish

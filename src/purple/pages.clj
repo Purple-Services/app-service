@@ -17,6 +17,13 @@
   (apply str (index-template {:heading "Page Not Found"
                               :intro "Sorry, that page could not be found."})))
 
+(deftemplate home-template "templates/home.html"
+  [x]
+  [:title] (content (:title x)))
+
+(defn home []
+  (apply str (home-template {:title "Purple App"})))
+
 (deftemplate reset-password-template "templates/reset-password.html"
   [x]
   [:title] (content (:title x))

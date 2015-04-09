@@ -235,6 +235,7 @@
             dashboard-auth?))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
+  (GET "/" [] (wrap-page (response (pages/home))))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 

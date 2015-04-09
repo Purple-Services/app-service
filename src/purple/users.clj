@@ -348,10 +348,26 @@
       (details db-conn user-id)
       @resp)))
 
+
+;; This can be simplified to remove the user lookup, once we are using the Live
+;; APNS App ARN for both customer and courier accounts. However, currently the
+;; courier accounts use the Sandbox App ARN since their app is downloaded through
+;; PhoneGap Build, not the App Store.
+;; 
+;; For customers, this is normally called right after their first order is
+;; requested. For couriers, this is called at the first time they log in as a
+;; courier. That means, a new courier should create their account, log out,
+;; have me mark them as courier in the database (is_courier), then log back in.
 (defn add-sns
   "cred for APNS (apple) is the device token"
   [db-conn user-id push-platform cred]
-  (let [arn-endpoint (util/sns-create-endpoint util/sns-client cred user-id)]
+  (let [user (get-user-by-id db-conn user-id)
+        arn-endpoint (util/sns-create-endpoint util/sns-client
+                                               cred
+                                               user-id
+                                               (if (:is_courier user)
+                                                 config/sns-app-arn-courier
+                                                 config/sns-app-arn))]
     (db/update db-conn
                "users"
                {:arn_endpoint arn-endpoint}
@@ -389,7 +405,7 @@
 (defn change-password
   "Only for native accounts."
   [db-conn reset-key password]
-  (if (not (s/blank? reset-key)) ;; <-- very important check for security
+  (if (not (s/blank? reset-key)) ;; <-- very important check, for security
     (if (good-password password)
       (db/update db-conn
                  "users"
