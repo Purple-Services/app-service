@@ -82,12 +82,16 @@
                          (- closing-hour hours-needed)))]
     {:success true
      :availability [{:octane "87"
-                     :gallons (if good-zip? 15 0) ;; just assume 15 gallons
+                     :gallons (if (and good-zip?
+                                       (not (empty? (filter good-time? [1 3]))))
+                                15 0) ;; just assume 15 gallons
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-87
                      :service_fee [599 399]}
                     {:octane "91"
-                     :gallons (if good-zip? 15 0)
+                     :gallons (if (and good-zip?
+                                       (not (empty? (filter good-time? [1 3]))))
+                                15 0)
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-91
                      :service_fee [599 399]}]
@@ -134,7 +138,7 @@
       o)))
 
 (defn match-order
-  [pm-entry db-conn courier-id] ;; pm-entry: Priority-Map Entry (key-value pair)
+  [pm-entry db-conn courier-id] ;; pm-entry = key order-id, value priority score
   (when pm-entry
     (let [order-id (first pm-entry)]
       (orders/assign-to-courier db-conn order-id courier-id))))
