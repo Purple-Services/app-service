@@ -162,8 +162,7 @@
                                    :gender (:gender fb-user)
                                    :type "facebook"}
                                   (do (util/send-email
-                                       {:from "purpleservicesfeedback@gmail.com"
-                                        :to "elwell.christopher@gmail.com"
+                                       {:to "elwell.christopher@gmail.com"
                                         :subject "Purple - Error"
                                         :body (str "User did not provide email: "
                                                    (str "fb" (:id fb-user)))})
@@ -383,8 +382,7 @@
                    "users"
                    {:reset_key reset-key}
                    {:id (:id user)})
-        (util/send-email {:from "purpleservicesfeedback@gmail.com" ;; TODO noreply@purple.com
-                          :to platform-id
+        (util/send-email {:to platform-id
                           :subject "Purple Account - Reset Password"
                           :body (str "Hello " (:name user) ","
                                      "\n\nPlease click the link below to reset "
@@ -419,14 +417,13 @@
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
-  (util/send-email (merge {:from "purpleservicesfeedback@gmail.com"
-                           :to email-address}
+  (util/send-email (merge {:to email-address}
                           (if (not (nil? user_id))
                             (let [user (get-user-by-id db-conn user_id)]
                               {:subject (str (:name user) " invites you to try Purple")
-                               :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://itunes.apple.com/us/app/purple-services/id970824802"})
+                               :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
                             {:subject "Invitation to Try Purple"
-                             :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://itunes.apple.com/us/app/purple-services/id970824802"}))))
+                             :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
 
 (defn charge-user
   "Charges user amount (an int in cents) using default payment method."

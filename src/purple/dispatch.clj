@@ -53,19 +53,22 @@
   (doall (map add-order-to-zq
               (orders/get-all-unassigned (db/conn)))))
 
-;; Example "courier availability" map
-(comment [{:octane "87"
-           :gallons 15
-           :time [1 3] ;; i.e., within 1 hour or 3 hours
-           :price_per_gallon 247 ;; in cents
-           :service_fee [599 399] ;; in cents, for each time option regardless
-                                  ;; of whether or not it is being offered
-           } 
-          {:octane "91"
-           :gallons 10
-           :time [3]
-           :price_per_gallon 285
-           :service_fee [599 399]}])
+
+(defn octane->gas-price
+  "Accepts octane as string. Returns gas price per gallon in cents as integer."
+  [octane]
+  (case octane
+    "87" @config/gas-price-87
+    "91" @config/gas-price-91))
+
+(defn available
+  [good-zip? good-time? octane]
+  (let [good-times (filter #(and good-zip? (good-time? (/ % 60)))
+                           (keys config/delivery-times))]
+    {:octane octane
+     :gallons 15 ;; for now, we always assume 15 is available
+     :price_per_gallon (octane->gas-price octane)
+     :times (into {} (map (juxt identity config/delivery-times) good-times))}))
 
 (defn availability
   "Get courier availability for given constraints."
@@ -79,8 +82,18 @@
         good-time? (fn [hours-needed]
                      (<= opening-hour
                          current-hour
-                         (- closing-hour hours-needed)))]
+                         ;;(- closing-hour hours-needed)
+                         ;; removed the check for enough time
+                         closing-hour))]
     {:success true
+     :availabilities (map (partial available good-zip? good-time?) ["87" "91"])
+     ;; if unavailable, this is the explanation:
+     :unavailable-reason
+     (if good-zip?
+       "Sorry, we are unable to deliver gas to your location at this time."
+       "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")
+
+     ;; we're still sending this for old versions of the app
      :availability [{:octane "87"
                      :gallons (if (and good-zip?
                                        (not (empty? (filter good-time? [1 3]))))
@@ -95,10 +108,7 @@
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-91
                      :service_fee [599 399]}]
-     :unavailable-reason
-     (if good-zip?
-       "Sorry, we are unable to deliver gas to your location at this time."
-       "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")}))
+     }))
 
 (def job-pool (at-at/mk-pool))
 
@@ -162,11 +172,9 @@
       (match-orders-with-couriers process-db-conn)))
 
 (when (not *compile-files*)
-  (let [out *out*]
-    (def process-job (at-at/every config/process-interval
-                                  #(binding [*out* out]
-                                     (process))
-                                  job-pool))))
+  (def process-job (at-at/every config/process-interval
+                                process
+                                job-pool)))
 
 ;; (let [out *out*]
 ;;   (def process-temp (at-at/every 3000

@@ -125,8 +125,7 @@
                       :user_id user-id)]
     (db/insert db-conn "orders" o-to-insert)
     ((resolve 'purple.dispatch/add-order-to-zq) o-to-insert)
-    (util/send-email {:from "purpleservicesfeedback@gmail.com"
-                      :to "elwell.christopher@gmail.com"
+    (util/send-email {:to "elwell.christopher@gmail.com"
                       :subject "Purple - New Order"
                       :body (str o-to-insert)})
     {:success true}))
@@ -262,9 +261,10 @@
   (if-let [o (get-by-id db-conn order-id)]
     (if (util/in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
-          (set-courier-busy db-conn (:courier_id o) false)
-          ((resolve 'purple.users/send-push) db-conn (:courier_id o)
-           "The current order has been cancelled.")
+          (when (not (s/blank? (:courier_id o)))
+            (set-courier-busy db-conn (:courier_id o) false)
+            ((resolve 'purple.users/send-push) db-conn (:courier_id o)
+             "The current order has been cancelled."))
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})

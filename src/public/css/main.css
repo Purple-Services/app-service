@@ -8,7 +8,7 @@ a {
     color: #6491d2;
 }
 table {
-    margin: 0px auto 30px auto;
+    margin: 0px auto 65px auto;
 }
 table thead {
     font-weight: bold;
@@ -17,8 +17,12 @@ table tbody tr:hover {
     background: #ddd;
 }
 table td {
-    padding: 5px 10px;
+    padding: 0px 10px 5px 10px;
 }
 #configForm {
     margin: 20px 0px 40px 0px;
+}
+
+.count {
+    font-size: 16px;
 }

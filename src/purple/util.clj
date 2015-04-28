@@ -26,7 +26,6 @@
          (apply str))))
 
 (def full-formatter (time-format/formatter "M/d K:mm a"))
-
 (defn unix->full
   "Convert integer unix timestamp to formatted date string."
   [x]
@@ -66,15 +65,17 @@
 
 (defn send-email [message-map]
   (try (postal/send-message config/email
-                            message-map)
+                            (assoc message-map
+                              :from (str "Purple Services Inc <"
+                                         config/email-from-address
+                                         ">")))
        {:success true}
        (catch Exception e {:success false
                            :message "Message could not be sent to that address."})))
 
 (defn send-feedback
   [text & {:keys [user_id]}]
-  (send-email {:from "purpleservicesfeedback@gmail.com"
-               :to "elwell.christopher@gmail.com"
+  (send-email {:to "elwell.christopher@gmail.com"
                :subject "Purple Feedback Form Response"
                :body (if (not (nil? user_id))
                        (str "From User ID: "
@@ -92,7 +93,7 @@
     (def sns-client (sns/client aws-creds))
     (.setEndpoint sns-client "https://sns.us-west-2.amazonaws.com")))
 
-;; todo - recreate/update endpoint_arn with new device_token a certain exception is thrown
+;; todo - recreate/update endpoint_arn with new device_token if a certain exception is thrown
 
 ;; if the user doesn't have an endpoint_arn then we need to create one for them
 (defn sns-create-endpoint

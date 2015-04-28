@@ -31,8 +31,9 @@
 ;; them to be disconnected. (seconds)
 (def max-courier-abandon-time (* 60 2))
 
+(def email-from-address (System/getProperty "EMAIL_USER"))
 (def email {:host "smtp.gmail.com"
-            :user (System/getProperty "EMAIL_USER") 
+            :user (System/getProperty "EMAIL_USER")
             :pass (System/getProperty "EMAIL_PASSWORD")
             :ssl :yes!!!11})
 
@@ -47,4 +48,14 @@
 ;; hour of day, start and end (in PST/PDT), both are inclusive
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
 ;; the way things are coded, you can't wrap around past midnight
-(def service-time-bracket [8 19])
+;; We accept orders from 8am (inclusive) - 9pm (exclusive),
+;; and can be 1 hour or 3 hour order (or 20 minutes order)
+(def service-time-bracket [8 20])
+
+;; key is number of minutes till deadline
+(def delivery-times {20  {:service_fee 0
+                          :text "within 20 mins (free)"}
+                     60  {:service_fee 0
+                          :text "within 1 hour (free)"}
+                     180 {:service_fee 0
+                          :text "within 3 hours (free)"}})

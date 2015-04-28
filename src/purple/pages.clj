@@ -90,6 +90,9 @@
 
                    [:td.target_time_end]
                    (content (util/unix->full (:target_time_end t)))
+
+                   [:td.customer_name]
+                   (content (:customer_name t))
                    
                    [:td.address_street :a]
                    (content (:address_street t))
@@ -105,35 +108,64 @@
                    [:td.total_price]
                    (content (util/cents->dollars (:total_price t))))
 
+  
+  [:#users :tbody :tr] (clone-for [t (:users x)]
+                   [:td.name]
+                   (content (:name t))
+
+                   [:td.email]
+                   (content (:email t))
+
+                   [:td.phone_number]
+                   (content (:phone_number t))
+
+                   [:td.has_added_card]
+                   (content (if (:stripe_default_card t) "Yes" "No"))
+
+                   [:td.timestamp_created]
+                   (content (util/unix->full
+                             (/ (.getTime (:timestamp_created t))
+                                1000))) ;; i think this is wrong timezone, idk
+                   )
+
+  [:#users-count] (content (str "("
+                                (:users-count x)
+                                ")"))
+
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
   [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x)))
 
 (defn dashboard [db-conn]
   (let [couriers (db/select db-conn "couriers" ["*"] {})
         courier-ids (distinct (map :id couriers))
-        ;; "users" rows for all the couriers, keyed by id
         users-by-id (group-by :id
                               (db/select db-conn
                                          "users"
-                                         [:id :name :phone_number]
-                                         {}
-                                         :custom-where
-                                         (str "id IN (\""
-                                              (apply str
-                                                     (interpose "\",\"" courier-ids))
-                                              "\")")))
-        courier-id->courier-name #(:name (first (get users-by-id %)))]
+                                         [:id
+                                          :name
+                                          :email
+                                          :phone_number
+                                          :stripe_default_card
+                                          :timestamp_created]
+                                         {}))
+        id->name #(:name (first (get users-by-id %)))]
     (apply str (dashboard-template {:title "Purple - Dashboard"
                                     :couriers (map #(assoc %
                                                       :name
-                                                      (courier-id->courier-name
+                                                      (id->name
                                                        (:id %)))
                                                    couriers)
                                     :orders (map #(assoc %
                                                     :courier_name
-                                                    (courier-id->courier-name
-                                                     (:courier_id %)))
+                                                    (id->name (:courier_id %))
+                                                    :customer_name
+                                                    (id->name (:user_id %)))
                                                  (take 100 (orders/get-all (db/conn))))
+                                    :users (sort-by
+                                            #(.getTime (:timestamp_created %))
+                                            >
+                                            (map (comp first val) users-by-id))
+                                    :users-count (count users-by-id)
                                     :base-url config/base-url
                                     :gas-price-87 @config/gas-price-87
                                     :gas-price-91 @config/gas-price-91}))))

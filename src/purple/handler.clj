@@ -233,6 +233,7 @@
                                                  (:gas-price-87 b)
                                                  (:gas-price-91 b))))))
             dashboard-auth?))
+  (GET "/download" [] (redirect "https://itunes.apple.com/us/app/purple-services/id970824802"))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))
