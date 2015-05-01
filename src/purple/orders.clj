@@ -112,10 +112,13 @@
             :status "unassigned"
             :target_time_start (quot (System/currentTimeMillis) 1000)
             :target_time_end (+ (quot (System/currentTimeMillis) 1000)
-                                (* 3600
-                                   (case (:time order)
-                                     "< 1 hr" 1
-                                     "< 3 hr" 3)))
+                                (case (:time order)
+                                  ;; these are under the old system
+                                  "< 1 hr" 3600
+                                  "< 3 hr" 10800
+                                  ;; the rest are handled as new system
+                                  ;; which means it is given in minutes
+                                  (* 60 (Integer. (:time order)))))
             :gallons (Integer. (:gallons order))
             :lat (Double. (:lat order))
             :lng (Double. (:lng order))

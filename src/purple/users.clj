@@ -358,15 +358,17 @@
 ;; courier. That means, a new courier should create their account, log out,
 ;; have me mark them as courier in the database (is_courier), then log back in.
 (defn add-sns
-  "cred for APNS (apple) is the device token"
+  "cred for APNS (apple) is the device token, for GCM (android) it is regid"
   [db-conn user-id push-platform cred]
   (let [user (get-user-by-id db-conn user-id)
         arn-endpoint (util/sns-create-endpoint util/sns-client
                                                cred
                                                user-id
-                                               (if (:is_courier user)
-                                                 config/sns-app-arn-courier
-                                                 config/sns-app-arn))]
+                                               (case push-platform
+                                                 "apns" (if (:is_courier user)
+                                                          config/sns-app-arn-apns-courier
+                                                          config/sns-app-arn-apns)
+                                                 "gcm" config/sns-app-arn-gcm))]
     (db/update db-conn
                "users"
                {:arn_endpoint arn-endpoint}

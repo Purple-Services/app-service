@@ -37,10 +37,11 @@
             :pass (System/getProperty "EMAIL_PASSWORD")
             :ssl :yes!!!11})
 
-;; the customer arn is either Sandbox or Live APNS
-(def sns-app-arn (System/getProperty "SNS_APP_ARN"))
+;; the customer apns arn is either Sandbox or Live APNS
+(def sns-app-arn-apns (System/getProperty "SNS_APP_ARN_APNS"))
 ;; the courier arn is always Sandbox
-(def sns-app-arn-courier "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
+(def sns-app-arn-apns-courier "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
+(def sns-app-arn-gcm (System/getProperty "SNS_APP_ARN_GCM"))
 
 (def gas-price-87 (atom 0))
 (def gas-price-91 (atom 0))

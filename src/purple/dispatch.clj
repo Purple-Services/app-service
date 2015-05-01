@@ -100,14 +100,14 @@
                                 15 0) ;; just assume 15 gallons
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-87
-                     :service_fee [599 399]}
+                     :service_fee [0 0]}
                     {:octane "91"
                      :gallons (if (and good-zip?
                                        (not (empty? (filter good-time? [1 3]))))
                                 15 0)
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-91
-                     :service_fee [599 399]}]
+                     :service_fee [0 0]}]
      }))
 
 (def job-pool (at-at/mk-pool))

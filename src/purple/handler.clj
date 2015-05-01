@@ -30,7 +30,7 @@
   `(if (users/valid-session? ~db-conn ~user-id ~token)
      (do ~@body)
      {:success false
-      :message "Bad user auth."}))
+      :message "Something's wrong. Please log out and log back in."}))
 
 (defroutes app-routes
   (context "/user" []
