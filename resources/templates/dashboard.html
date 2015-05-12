@@ -67,7 +67,9 @@
     </table>
 
     
-    <h2>Users <span class="count" id="users-count"></span></h2>
+    <h2>Users <span class="count" id="users-count"></span> <span class="count" id="users-emails">[get list of emails]</span></h2>
+
+    <span id="emails-list" style="display: none;"></span>
     
     <table id="users">
       <thead>
@@ -129,6 +131,12 @@
              });
            }
          }
+       });
+     });
+
+     $(document).ready(function(){
+       $('#users-emails').click(function(){
+         document.write("<textarea rows='15' cols='100'>" + $('#emails-list').text() + "</textarea>");
        });
      });
     </script>

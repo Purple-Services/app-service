@@ -1,4 +1,4 @@
-(defproject purple "1.0.0-SNAPSHOT"
+(defproject purple "1.0.1-SNAPSHOT"
   :description "Purple"
   :url "http://purpledelivery.com"
   :dependencies [[org.clojure/clojure "1.6.0"]
@@ -19,6 +19,7 @@
                  [clj-aws "0.0.1-SNAPSHOT"]
                  [org.clojure/data.priority-map "0.0.6"]
                  [ring-basic-authentication "1.0.5"]
+                 [com.twilio.sdk/twilio-java-sdk "4.2.0"]
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]

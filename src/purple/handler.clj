@@ -25,6 +25,10 @@
   (-> resp
       (header "Content-Type" "text/html; charset=utf-8")))
 
+(defn wrap-xml [resp]
+  (-> resp
+      (header "Content-Type" "text/xml; charset=utf-8")))
+
 (defmacro demand-user-auth
   [db-conn user-id token & body]
   `(if (users/valid-session? ~db-conn ~user-id ~token)
@@ -52,7 +56,15 @@
                                    ;; this will be their password. For Facebook
                                    ;; and Google users, this will be their
                                    ;; auth token from that platform.
-                                   (:auth_key b)))))
+                                   (:auth_key b)
+                                   ;; email-override isn't checked for
+                                   ;; security; could be spoofed.
+                                   ;; but, currently, it's the only way we can
+                                   ;; get it for Google logins on Android devices
+                                   ;; because the plugin we are using doesn't allow
+                                   ;; to modify scope of auth_key, but it does
+                                   ;; give the email address in the JS object
+                                   :email-override (:email_override b)))))
              (POST "/register" {body :body} ;; only for native users
                    (response
                     (let [b (keywordize-keys body)]
@@ -233,7 +245,15 @@
                                                  (:gas-price-87 b)
                                                  (:gas-price-91 b))))))
             dashboard-auth?))
-  (GET "/download" [] (redirect "https://itunes.apple.com/us/app/purple-services/id970824802"))
+  (context "/twiml" []
+           (defroutes twiml-routes
+             (POST "/courier-new-order" []
+                   (wrap-xml (response (pages/twiml-simple "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you."))))))
+  (GET "/download" {headers :headers}
+       (redirect
+        (if (.contains (str (get headers "user-agent")) "Android")
+          "https://play.google.com/store/apps/details?id=com.purple.app"
+          "https://itunes.apple.com/us/app/purple-services/id970824802")))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))

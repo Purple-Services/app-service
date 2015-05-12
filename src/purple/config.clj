@@ -26,10 +26,14 @@
 
 ;; Dispatch 
 ;; how often to process the zone order queues (i.e., dispatch/zq) (millis)
+;; MUST BE multiple of 1000 (because of dispatch/remind-courier)
 (def process-interval (* 1000 5))
 ;; how long of courier app not responding that we consider
 ;; them to be disconnected. (seconds)
 (def max-courier-abandon-time (* 60 2))
+;; how many long after a new order has been accepted to a courier but they
+;; have not begun the route; to then send them a reminder (seconds)
+(def courier-reminder-time (* 60 5))
 
 (def email-from-address (System/getProperty "EMAIL_USER"))
 (def email {:host "smtp.gmail.com"
@@ -43,15 +47,20 @@
 (def sns-app-arn-apns-courier "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
 (def sns-app-arn-gcm (System/getProperty "SNS_APP_ARN_GCM"))
 
+
+;; Twilio, for sending SMS and phone calls
+(def twilio-account-sid (System/getProperty "TWILIO_ACCOUNT_SID"))
+(def twilio-auth-token (System/getProperty "TWILIO_AUTH_TOKEN"))
+(def twilio-from-number (System/getProperty "TWILIO_FROM_NUMBER"))
+
+
 (def gas-price-87 (atom 0))
 (def gas-price-91 (atom 0))
 
 ;; hour of day, start and end (in PST/PDT), both are inclusive
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
 ;; the way things are coded, you can't wrap around past midnight
-;; We accept orders from 8am (inclusive) - 9pm (exclusive),
-;; and can be 1 hour or 3 hour order (or 20 minutes order)
-(def service-time-bracket [8 20])
+(def service-time-bracket [10 20])
 
 ;; key is number of minutes till deadline
 (def delivery-times {20  {:service_fee 0

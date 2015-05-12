@@ -12,7 +12,13 @@
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
             PublishRequest CreatePlatformEndpointRequest
-            CreatePlatformEndpointResult MessageAttributeValue]))
+            CreatePlatformEndpointResult MessageAttributeValue]
+           [com.twilio.sdk TwilioRestClient TwilioRestException]
+           [com.twilio.sdk.resource.factory MessageFactory CallFactory]
+           [com.twilio.sdk.resource.instance Message Call]
+           [org.apache.http NameValuePair]
+           [org.apache.http.message BasicNameValuePair]
+           [java.util List ArrayList]))
 
 (defn split-on-comma [x] (s/split x #","))
 
@@ -106,8 +112,39 @@
 
 (defn sns-publish
   [client target-arn message]
-  (let [req (PublishRequest.)]
-    (.setMessage req message)
+  (let [req (PublishRequest.)
+        is-gcm? (.contains target-arn "GCM/Purple")]
+    (.setMessage req (if is-gcm?
+                       (str "{\"GCM\": \"{ "
+                            "\\\"data\\\": { \\\"message\\\": \\\""
+                            message
+                            "\\\" } }\"}")
+                       message))
+    (when is-gcm? (.setMessageStructure req "json"))
     (.setTargetArn req target-arn)
     (.publish client req)))
 
+
+;; Twilio (SMS & Phone Calls)
+(when (not *compile-files*)
+  (do
+    (def twilio-client (TwilioRestClient. config/twilio-account-sid
+                                          config/twilio-auth-token))
+    (def twilio-sms-factory (.getMessageFactory (.getAccount twilio-client)))
+    (def twilio-call-factory (.getCallFactory (.getAccount twilio-client)))))
+
+;; doesn't handle TwilioRestException properly
+(defn send-sms
+  [to-number message]
+  (.create twilio-sms-factory
+           (ArrayList. [(BasicNameValuePair. "Body" message)
+                        (BasicNameValuePair. "To" to-number)
+                        (BasicNameValuePair. "From" config/twilio-from-number)])))
+
+;; doesn't handle TwilioRestException properly
+(defn make-call
+  [to-number call-url]
+  (.create twilio-call-factory
+           (ArrayList. [(BasicNameValuePair. "Url" call-url)
+                        (BasicNameValuePair. "To" to-number)
+                        (BasicNameValuePair. "From" config/twilio-from-number)])))

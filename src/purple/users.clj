@@ -140,7 +140,7 @@
 
 (defn login
   "Logs in user depeding on 'type' of user."
-  [db-conn type platform-id auth-key]
+  [db-conn type platform-id auth-key & {:keys [email-override]}]
   (let [user (get-user db-conn type platform-id)]
     (try
       (if user
@@ -164,17 +164,27 @@
                                   (do (util/send-email
                                        {:to "elwell.christopher@gmail.com"
                                         :subject "Purple - Error"
-                                        :body (str "User did not provide email: "
+                                        :body (str "Facebook user didn't provide email: "
                                                    (str "fb" (:id fb-user)))})
                                       (throw (Exception. "No email.")))))
-                   "google" (let [google-user (get-user-from-google auth-key)]
-                              {:id (str "g" (:id google-user))
-                               :email (-> (:emails google-user)
-                                          first
-                                          :value)
-                               :name (:displayName google-user)
-                               :gender (:gender google-user)
-                               :type "google"})
+                   "google" (let [google-user (get-user-from-google auth-key)
+                                  authd-email (-> (:emails google-user)
+                                                  first
+                                                  :value)
+                                  email (or authd-email
+                                            email-override)]
+                              (if email
+                                {:id (str "g" (:id google-user))
+                                 :email email
+                                 :name (:displayName google-user)
+                                 :gender (:gender google-user)
+                                 :type "google"}
+                                (do (util/send-email
+                                     {:to "elwell.christopher@gmail.com"
+                                      :subject "Purple - Error"
+                                      :body (str "Google user didn't provide email: "
+                                                 (str "g" (:id google-user)))})
+                                    (throw (Exception. "No email.")))))
                    (throw (Exception. "Invalid login."))))
             (login db-conn type platform-id auth-key)))
       (catch Exception e (case (.getMessage e)
@@ -437,8 +447,26 @@
       (payment/charge-stripe-customer customer-id amount))))
 
 (defn send-push
-  "Sends a push notification."
+  "Sends a push notification to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (util/sns-publish util/sns-client (:arn_endpoint user) message)
+    (util/sns-publish util/sns-client
+                      (:arn_endpoint user)
+                      message)
+    {:success true}))
+
+(defn send-sms
+  "Sends an SMS message to user."
+  [db-conn user-id message]
+  (let [user (get-user-by-id db-conn user-id)]
+    (util/send-sms (:phone_number user)
+                   message)
+    {:success true}))
+
+(defn call-user
+  "Calls user with automated message."
+  [db-conn user-id call-url]
+  (let [user (get-user-by-id db-conn user-id)]
+    (util/make-call (:phone_number user)
+                    call-url)
     {:success true}))

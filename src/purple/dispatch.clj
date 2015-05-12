@@ -165,11 +165,44 @@
   (doall (map #(take-order-from-zones db-conn (:id %) (:zones %))
               (available-couriers db-conn))))
 
+(defn remind-couriers
+  "Notifies couriers if they have not responded to new orders assigned to them."
+  [db-conn]
+  (let [accepted-orders (db/select db-conn
+                                   "orders"
+                                   ["*"]
+                                   ;; currently, "accepted" is a misnomer,
+                                   ;; because it's forced. It does not mean the
+                                   ;; courier is aware of the order for sure.
+                                   {:status "accepted"})]
+    (doall
+     (map #(let [time-accepted (-> (:event_log %)
+                                   (s/split #"\||\s")
+                                   (->> (apply hash-map))
+                                   (get "accepted")
+                                   (Integer.))
+                 ;; this bracket should ensure that the reminder call is only
+                 ;; made once.
+                 reminder-time-bracket [(+ time-accepted
+                                           config/courier-reminder-time)
+                                        (+ time-accepted
+                                           config/courier-reminder-time
+                                           (- (quot config/process-interval 1000)
+                                              1))]
+                 current-time (quot (System/currentTimeMillis) 1000)]
+             (when (<= (first reminder-time-bracket)
+                       current-time
+                       (last reminder-time-bracket))
+               ((resolve 'purple.users/call-user) db-conn (:courier_id %)
+                (str config/base-url "twiml/courier-new-order"))))
+          accepted-orders))))
+
 (defn process
   "Does a few periodic tasks."
   []
   (do (update-courier-state process-db-conn)
-      (match-orders-with-couriers process-db-conn)))
+      (match-orders-with-couriers process-db-conn)
+      (remind-couriers process-db-conn)))
 
 (when (not *compile-files*)
   (def process-job (at-at/every config/process-interval

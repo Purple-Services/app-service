@@ -10,3 +10,13 @@ a {
 #intro {
     padding-top: 30px;
 }
+#download-links {
+    padding-top: 20px;    
+}
+#download-links a {
+    display: inline-block;
+    margin-left: 25px;
+}
+#download-links a:first-child {
+    margin-left: 0px;
+}

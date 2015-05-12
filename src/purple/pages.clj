@@ -128,6 +128,10 @@
                                 1000))) ;; i think this is wrong timezone, idk
                    )
 
+  [:#emails-list] (content (->> (:users x)
+                                (map :email)
+                                (interpose ",")))
+
   [:#users-count] (content (str "("
                                 (:users-count x)
                                 ")"))
@@ -169,3 +173,13 @@
                                     :base-url config/base-url
                                     :gas-price-87 @config/gas-price-87
                                     :gas-price-91 @config/gas-price-91}))))
+
+(defn twiml-simple
+  [message]
+  (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+         "<Response>"
+           "<Pause length=\"1\"/>"
+           "<Say voice=\"woman\" loop=\"1\">"
+             message
+           "</Say>"
+         "</Response>"))
