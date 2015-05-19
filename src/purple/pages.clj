@@ -130,7 +130,7 @@
 
   [:#emails-list] (content (->> (:users x)
                                 (map :email)
-                                (interpose ",")))
+                                (interpose "; ")))
 
   [:#users-count] (content (str "("
                                 (:users-count x)

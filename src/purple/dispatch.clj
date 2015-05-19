@@ -197,12 +197,34 @@
                 (str config/base-url "twiml/courier-new-order"))))
           accepted-orders))))
 
+
+(def last-orphan-warning (atom 0))
+
+(defn warn-orphaned-order
+  "If there are no couriers connected, but there are orders, then warn all."
+  [db-conn]
+  (if (and (seq (filter #(seq @(val %)) zq))
+           (empty? (available-couriers db-conn))
+           (< (* 60 5) ;; only warn every 5 minutes
+              (- (quot (System/currentTimeMillis) 1000)
+                 @last-orphan-warning)))
+    (do (doall (map #(util/send-sms (:phone_number %)
+                                    "There are orders, but no couriers online. If you are supposed to be on duty, please log into the app. If you have the app open already, try restarting it.")
+                    (db/select db-conn
+                               "users"
+                               [:id
+                                :phone_number]
+                               {:is_courier 1})))
+        (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000)))))
+
+  
 (defn process
   "Does a few periodic tasks."
   []
   (do (update-courier-state process-db-conn)
       (match-orders-with-couriers process-db-conn)
-      (remind-couriers process-db-conn)))
+      (remind-couriers process-db-conn)
+      (warn-orphaned-order process-db-conn)))
 
 (when (not *compile-files*)
   (def process-job (at-at/every config/process-interval
@@ -243,17 +265,3 @@
                  {:gas_price_87 gas-price-87
                   :gas_price_91 gas-price-91}
                  {:id 1})))
-
-;; (defn square [x] (* x x))
-
-;; (defn disp-squared
-;;   "Calculate displacement squared between two coords."
-;;   [x1 y1 x2 y2]
-;;   (+ (square (- x2 x1))
-;;      (square (- y2 y1))))
-
-;; (defn couriers-in-range
-;;   [db-conn lat lng]
-;;   (->> (map #(assoc % :disp (disp-squared lat lng (:lat %) (:lng %)))
-;;             (couriers db-conn))
-;;        (filter (comp (partial > config/max-service-disp-squared) :disp))))
