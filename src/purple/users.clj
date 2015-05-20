@@ -450,9 +450,10 @@
   "Sends a push notification to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (util/sns-publish util/sns-client
-                      (:arn_endpoint user)
-                      message)
+    (when (not (s/blank? (:arn_endpoint user)))
+      (util/sns-publish util/sns-client
+                        (:arn_endpoint user)
+                        message))
     {:success true}))
 
 (defn send-sms

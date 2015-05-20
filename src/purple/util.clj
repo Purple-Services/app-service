@@ -112,17 +112,28 @@
 
 (defn sns-publish
   [client target-arn message]
-  (let [req (PublishRequest.)
-        is-gcm? (.contains target-arn "GCM/Purple")]
-    (.setMessage req (if is-gcm?
-                       (str "{\"GCM\": \"{ "
-                            "\\\"data\\\": { \\\"message\\\": \\\""
-                            message
-                            "\\\" } }\"}")
-                       message))
-    (when is-gcm? (.setMessageStructure req "json"))
-    (.setTargetArn req target-arn)
-    (.publish client req)))
+  (try
+    (let [req (PublishRequest.)
+          is-gcm? (.contains target-arn "GCM/Purple")]
+      (.setMessage req (if is-gcm?
+                         (str "{\"GCM\": \"{ "
+                              "\\\"data\\\": { \\\"message\\\": \\\""
+                              message
+                              "\\\" } }\"}")
+                         message))
+      (when is-gcm? (.setMessageStructure req "json"))
+      (.setTargetArn req target-arn)
+      (.publish client req))
+    (catch Exception e
+      (send-email {:to "elwell.christopher@gmail.com"
+                   :subject "Purple - Error"
+                   :body (str "AWS SNS Publish Exception: "
+                              (.getMessage e)
+                              "\n\n"
+                              "target-arn: "
+                              target-arn
+                              "\nmessage: "
+                              message)}))))
 
 
 ;; Twilio (SMS & Phone Calls)
