@@ -162,7 +162,7 @@
                                    :gender (:gender fb-user)
                                    :type "facebook"}
                                   (do (util/send-email
-                                       {:to "elwell.christopher@gmail.com"
+                                       {:to "chris@purpledelivery.com"
                                         :subject "Purple - Error"
                                         :body (str "Facebook user didn't provide email: "
                                                    (str "fb" (:id fb-user)))})
@@ -180,7 +180,7 @@
                                  :gender (:gender google-user)
                                  :type "google"}
                                 (do (util/send-email
-                                     {:to "elwell.christopher@gmail.com"
+                                     {:to "chris@purpledelivery.com"
                                       :subject "Purple - Error"
                                       :body (str "Google user didn't provide email: "
                                                  (str "g" (:id google-user)))})
@@ -439,12 +439,19 @@
 
 (defn charge-user
   "Charges user amount (an int in cents) using default payment method."
-  [db-conn user-id amount]
+  [db-conn user-id amount description]
   (let [u (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
-      {:success false :message "No payment method is set up."}
-      (payment/charge-stripe-customer customer-id amount))))
+      (do (util/send-email
+           {:to "chris@purpledelivery.com"
+            :subject "Purple - Error"
+            :body (str "Error charging user, no payment method is set up.")})
+          {:success true})
+      (payment/charge-stripe-customer customer-id
+                                      amount
+                                      description
+                                      (:email u)))))
 
 (defn send-push
   "Sends a push notification to user."

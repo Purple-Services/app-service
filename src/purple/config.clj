@@ -63,8 +63,8 @@
 (def service-time-bracket [10 20])
 
 ;; key is number of minutes till deadline
-(def delivery-times {20  {:service_fee 0
-                          :text "within 20 mins (free)"}
+(def delivery-times {;; 20  {:service_fee 0
+                     ;;      :text "within 20 mins (free)"}
                      60  {:service_fee 0
                           :text "within 1 hour (free)"}
                      180 {:service_fee 0

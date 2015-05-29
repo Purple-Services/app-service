@@ -128,7 +128,7 @@
                       :user_id user-id)]
     (db/insert db-conn "orders" o-to-insert)
     ((resolve 'purple.dispatch/add-order-to-zq) o-to-insert)
-    (util/send-email {:to "elwell.christopher@gmail.com"
+    (util/send-email {:to "chris@purpledelivery.com"
                       :subject "Purple - New Order"
                       :body (str o-to-insert)})
     {:success true}))
@@ -201,8 +201,21 @@
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
       (set-courier-busy db-conn (:courier_id o) false)
-      (let [charge-result ((resolve 'purple.users/charge-user)
-                           db-conn (:user_id o) (:total_price o))]
+      (let [charge-description (str "Delivery of "
+                                    (:gallons o) " Gallons of Gasoline ("
+                                    (->> (db/select db-conn
+                                                    "vehicles"
+                                                    [:gas_type]
+                                                    {:id (:vehicle_id o)})
+                                         first
+                                         :gas_type)
+                                    " Octane)\n" "Where: "
+                                    (:address_street o)
+                                    "\n" "When: "
+                                    (util/unix->fuller
+                                     (quot (System/currentTimeMillis) 1000)))
+            charge-result ((resolve 'purple.users/charge-user) db-conn
+                           (:user_id o) (:total_price o) charge-description)]
         (if (:success charge-result)
           (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
               ((resolve 'purple.users/send-push) db-conn (:user_id o)

@@ -46,19 +46,40 @@
           (merge common-opts
                  {:form-params {:default_card card-id}}))))
 
+(defn update-stripe-charge-description
+  [charge-id description]
+  (:body (client/post
+          (str config/stripe-api-url "charges/" charge-id)
+          (merge common-opts
+                 {:form-params {:description description}}))))
+
+;; warning - using this function cause receipt email to be sent as well
+(defn update-stripe-charge-receipt-email
+  [charge-id receipt-email]
+  (:body (client/post
+          (str config/stripe-api-url "charges/" charge-id)
+          (merge common-opts
+                 {:form-params {:receipt_email receipt-email}}))))
+
 (defn charge-stripe-customer
   "Amount is an integer of cents to charge. Semi-sensitive info returned!"
-  [customer-id amount]
+  [customer-id amount description receipt-email]
   (try (let [resp (:body (client/post
                           (str config/stripe-api-url "charges")
                           (merge common-opts
                                  {:form-params {:customer customer-id
                                                 :amount amount
-                                                :currency config/default-currency}})))]
+                                                :currency config/default-currency
+                                                :description description
+                                                :receipt_email receipt-email}})))]
          (if (:paid resp)
            {:success true
             :charge resp}
            {:success false
             :message (:failure_message resp)}))
        (catch Exception e ;; not ideal, it assumes any bad status code is this
-         {:success false :message "No payment method is set up."})))
+         (util/send-email
+          {:to "chris@purpledelivery.com"
+           :subject "Purple - Error"
+           :body (str "Stripe Exception: " (.getMessage e))})
+         {:success true})))

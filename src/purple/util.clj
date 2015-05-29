@@ -31,13 +31,23 @@
          flatten
          (apply str))))
 
-(def full-formatter (time-format/formatter "M/d K:mm a"))
+(def full-formatter (time-format/formatter "M/d h:mm a"))
 (defn unix->full
   "Convert integer unix timestamp to formatted date string."
   [x]
   (time-format/unparse
    (time-format/with-zone
      full-formatter
+     (time/time-zone-for-id "America/Los_Angeles"))
+   (time-coerce/from-long (* 1000 x))))
+
+(def fuller-formatter (time-format/formatter "M/d/y h:mm a"))
+(defn unix->fuller
+  "Convert integer unix timestamp to formatted date string."
+  [x]
+  (time-format/unparse
+   (time-format/with-zone
+     fuller-formatter
      (time/time-zone-for-id "America/Los_Angeles"))
    (time-coerce/from-long (* 1000 x))))
 
@@ -81,7 +91,7 @@
 
 (defn send-feedback
   [text & {:keys [user_id]}]
-  (send-email {:to "elwell.christopher@gmail.com"
+  (send-email {:to "chris@purpledelivery.com"
                :subject "Purple Feedback Form Response"
                :body (if (not (nil? user_id))
                        (str "From User ID: "
@@ -125,7 +135,7 @@
       (.setTargetArn req target-arn)
       (.publish client req))
     (catch Exception e
-      (send-email {:to "elwell.christopher@gmail.com"
+      (send-email {:to "chris@purpledelivery.com"
                    :subject "Purple - Error"
                    :body (str "AWS SNS Publish Exception: "
                               (.getMessage e)

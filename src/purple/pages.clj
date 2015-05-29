@@ -5,7 +5,8 @@
             [purple.orders :as orders]
             [purple.util :as util]
             [purple.config :as config]
-            [purple.db :as db]))
+            [purple.db :as db]
+            [clojure.string :as s]))
 
 (deftemplate index-template "templates/index.html"
   [x]
@@ -57,56 +58,78 @@
 
   [:#config] (set-attr :data-base-url (:base-url x))
 
-  [:#couriers :tbody :tr] (clone-for [t (:couriers x)]
-                   [:td.connected]
-                   (content (if (:connected t) "Yes" "No"))
+  [:#couriers :tbody :tr]
+  (clone-for [t (:couriers x)]
+             [:td.connected]
+             (content (if (:connected t) "Yes" "No"))
 
-                   [:td.name]
-                   (content (:name t))
+             [:td.name]
+             (content (:name t))
 
-                   [:td.busy]
-                   (content (if (:busy t) "Yes" "No"))
+             [:td.busy]
+             (content (if (:busy t) "Yes" "No"))
 
-                   [:td.zones]
-                   (content (:zones t))
-                   
-                   [:td.location :a]
-                   (content "View On Map")
-                   [:td.location :a]
-                   (set-attr :href (str "https://maps.google.com/?q="
-                                        (:lat t)
-                                        ","
-                                        (:lng t))))
+             [:td.lateness]
+             (content (let [orders (filter #(and (= (:courier_id %)
+                                                    (:id t))
+                                                 (= (:status %)
+                                                    "complete"))
+                                           (:orders x))
+                            total (count orders)
+                            late (count (filter :was-late orders))]
+                        (if (> total 0)
+                          (str (format "%.0f"
+                                       (float (- 100
+                                                 (* (/ late
+                                                       total)
+                                                    100))))
+                               "%")
+                          "No orders.")))
+             
+             [:td.zones]
+             (content (:zones t))
+             
+             [:td.location :a]
+             (content "View On Map")
+             [:td.location :a]
+             (set-attr :href (str "https://maps.google.com/?q="
+                                  (:lat t)
+                                  ","
+                                  (:lng t))))
   
-  [:#orders :tbody :tr] (clone-for [t (:orders x)]
-                   [:td.status]
-                   (content (:status t))
+  [:#orders :tbody :tr]
+  (clone-for [t (:orders x)]
+             [:td.status]
+             (do-> (if (:was-late t)
+                     (add-class "late")
+                     (add-class "not-late"))
+                   (content (:status t)))
 
-                   [:td.courier_name]
-                   (content (:courier_name t))
+             [:td.courier_name]
+             (content (:courier_name t))
 
-                   [:td.target_time_start]
-                   (content (util/unix->full (:target_time_start t)))
+             [:td.target_time_start]
+             (content (util/unix->full (:target_time_start t)))
 
-                   [:td.target_time_end]
-                   (content (util/unix->full (:target_time_end t)))
+             [:td.target_time_end]
+             (content (util/unix->full (:target_time_end t)))
 
-                   [:td.customer_name]
-                   (content (:customer_name t))
-                   
-                   [:td.address_street :a]
-                   (content (:address_street t))
-                   [:td.address_street :a]
-                   (set-attr :href (str "https://maps.google.com/?q="
-                                        (:lat t)
-                                        ","
-                                        (:lng t)))
-                   
-                   [:td.gallons]
-                   (content (str (:gallons t)))
-                   
-                   [:td.total_price]
-                   (content (util/cents->dollars (:total_price t))))
+             [:td.customer_name]
+             (content (:customer_name t))
+             
+             [:td.address_street :a]
+             (content (:address_street t))
+             [:td.address_street :a]
+             (set-attr :href (str "https://maps.google.com/?q="
+                                  (:lat t)
+                                  ","
+                                  (:lng t)))
+             
+             [:td.gallons]
+             (content (str (:gallons t)))
+             
+             [:td.total_price]
+             (content (util/cents->dollars (:total_price t))))
 
   
   [:#users :tbody :tr] (clone-for [t (:users x)]
@@ -153,26 +176,39 @@
                                           :timestamp_created]
                                          {}))
         id->name #(:name (first (get users-by-id %)))]
-    (apply str (dashboard-template {:title "Purple - Dashboard"
-                                    :couriers (map #(assoc %
-                                                      :name
-                                                      (id->name
-                                                       (:id %)))
-                                                   couriers)
-                                    :orders (map #(assoc %
-                                                    :courier_name
-                                                    (id->name (:courier_id %))
-                                                    :customer_name
-                                                    (id->name (:user_id %)))
-                                                 (take 100 (orders/get-all (db/conn))))
-                                    :users (sort-by
-                                            #(.getTime (:timestamp_created %))
-                                            >
-                                            (map (comp first val) users-by-id))
-                                    :users-count (count users-by-id)
-                                    :base-url config/base-url
-                                    :gas-price-87 @config/gas-price-87
-                                    :gas-price-91 @config/gas-price-91}))))
+    (apply str
+           (dashboard-template
+            {:title "Purple - Dashboard"
+             :couriers (map #(assoc %
+                               :name
+                               (id->name
+                                (:id %)))
+                            couriers)
+             :orders (map #(assoc %
+                             
+                             :courier_name
+                             (id->name (:courier_id %))
+                             
+                             :customer_name
+                             (id->name (:user_id %))
+
+                             :was-late
+                             (let [completion-time (-> (str "kludgeFixLater 1|" (:event_log %))
+                                                       (s/split #"\||\s")
+                                                       (->> (apply hash-map))
+                                                       (get "complete"))]
+                               (and completion-time
+                                    (> (Integer. completion-time)
+                                       (:target_time_end %)))))
+                          (take 100 (orders/get-all (db/conn))))
+             :users (sort-by
+                     #(.getTime (:timestamp_created %))
+                     >
+                     (map (comp first val) users-by-id))
+             :users-count (count users-by-id)
+             :base-url config/base-url
+             :gas-price-87 @config/gas-price-87
+             :gas-price-91 @config/gas-price-91}))))
 
 (defn twiml-simple
   [message]

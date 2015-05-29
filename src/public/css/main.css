@@ -25,6 +25,9 @@ table.showing-all tbody tr:nth-child(n+8) {
 table td {
     padding: 0px 10px 5px 10px;
 }
+td.late {
+    color: #cc0000;
+}
 #configForm {
     margin: 20px 0px 40px 0px;
 }
