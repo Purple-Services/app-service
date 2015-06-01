@@ -205,7 +205,7 @@
   [db-conn]
   (if (and (seq (filter #(seq @(val %)) zq))
            (empty? (available-couriers db-conn))
-           (< (* 60 5) ;; only warn every 5 minutes
+           (< (* 60 10) ;; only warn every 10 minutes
               (- (quot (System/currentTimeMillis) 1000)
                  @last-orphan-warning)))
     (do (doall (map #(util/send-sms (:phone_number %)
