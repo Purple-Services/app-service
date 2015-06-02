@@ -127,6 +127,12 @@
              
              [:td.gallons]
              (content (str (:gallons t)))
+
+             [:td.octane]
+             (content (str (:gas_type (:vehicle t))))
+
+             [:td.license_plate]
+             (content (str (:license_plate (:vehicle t))))
              
              [:td.total_price]
              (content (util/cents->dollars (:total_price t))))
@@ -175,7 +181,19 @@
                                           :stripe_default_card
                                           :timestamp_created]
                                          {}))
-        id->name #(:name (first (get users-by-id %)))]
+        id->name #(:name (first (get users-by-id %)))
+        vehicles-by-id (group-by :id
+                                 (db/select db-conn
+                                            "vehicles"
+                                            [:id
+                                             :year
+                                             :make
+                                             :model
+                                             :color
+                                             :gas_type
+                                             :license_plate]
+                                            {}))
+        id->vehicle #(first (get vehicles-by-id %))]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
@@ -199,7 +217,10 @@
                                                        (get "complete"))]
                                (and completion-time
                                     (> (Integer. completion-time)
-                                       (:target_time_end %)))))
+                                       (:target_time_end %))))
+
+                             :vehicle
+                             (id->vehicle (:vehicle_id %)))
                           (take 100 (orders/get-all (db/conn))))
              :users (sort-by
                      #(.getTime (:timestamp_created %))

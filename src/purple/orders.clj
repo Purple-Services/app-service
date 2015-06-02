@@ -131,14 +131,15 @@
     (future (util/send-email {:to "chris@purpledelivery.com"
                               :subject "Purple - New Order"
                               :body (str o-to-insert)})
-            (doall (util/send-sms %
-                                  (str "New order:\n"
-                                       "Due: " (util/unix->full (:target_time_end o))
-                                       "\n" (:address_street o)
-                                       ", " (:address_zip o)))
-                   ["3235782263" ;; Bruno
-                    "3106919061" ;; JP
-                    ]))
+            (doall (map #(util/send-sms %
+                                        (str "New order:\n"
+                                             "Due: " (util/unix->full
+                                                      (:target_time_end o))
+                                             "\n" (:address_street o)
+                                             ", " (:address_zip o)))
+                        ["3235782263" ;; Bruno
+                         "3106919061" ;; JP
+                         ])))
     {:success true}))
 
 (defn update-status
