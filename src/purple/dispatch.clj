@@ -53,21 +53,13 @@
   (doall (map add-order-to-zq
               (orders/get-all-unassigned (db/conn)))))
 
-
-(defn octane->gas-price
-  "Accepts octane as string. Returns gas price per gallon in cents as integer."
-  [octane]
-  (case octane
-    "87" @config/gas-price-87
-    "91" @config/gas-price-91))
-
 (defn available
   [good-zip? good-time? octane]
   (let [good-times (filter #(and good-zip? (good-time? (/ % 60)))
                            (keys config/delivery-times))]
     {:octane octane
      :gallons 15 ;; for now, we always assume 15 is available
-     :price_per_gallon (octane->gas-price octane)
+     :price_per_gallon (util/octane->gas-price octane)
      :times (into {} (map (juxt identity config/delivery-times) good-times))}))
 
 (defn availability
@@ -130,14 +122,38 @@
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
   [db-conn]
-  (sql/with-connection db-conn
-    (sql/update-values
-     "couriers"
-     [(str "active = 1 AND connected = 1 AND ("
-           (quot (System/currentTimeMillis) 1000)
-           " - last_ping) > "
-           config/max-courier-abandon-time)]
-     {:connected 0})))
+  (let [expired-courier-ids (map :id
+                                 (db/select db-conn
+                                            "couriers"
+                                            ["*"]
+                                            {}
+                                            :custom-where
+                                            (str "active = 1 AND connected = 1 AND ("
+                                                 (quot (System/currentTimeMillis) 1000)
+                                                 " - last_ping) > "
+                                                 config/max-courier-abandon-time)))
+        ;; as user rows
+        expired-couriers (db/select db-conn
+                                    "users"
+                                    [:id :name :phone_number]
+                                    {}
+                                    :custom-where
+                                    (str "id IN (\""
+                                         (apply str
+                                                (interpose "\",\"" expired-courier-ids))
+                                         "\")"))]
+    (when (not (empty? expired-couriers))
+      (do (doall (map #(util/send-sms (:phone_number %)
+                                      "You have just disconnected from the Purple Courier App.")
+                      expired-couriers))
+          (sql/with-connection db-conn
+            (sql/update-values
+             "couriers"
+             [(str "id IN (\""
+                   (apply str
+                          (interpose "\",\"" expired-courier-ids))
+                   "\")")]
+             {:connected 0}))))))
 
 (defn take-order-from-zone
   "Tries to take one order from the chosen zone."

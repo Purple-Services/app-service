@@ -478,3 +478,14 @@
     (util/make-call (:phone_number user)
                     call-url)
     {:success true}))
+
+(defn code->value
+  "Get the value for a coupon code."
+  [db-conn user-id code]
+  {:success true
+   :value 1500}
+  ;; {:success false
+  ;;  :message "Sorry, that code is invalid."}
+  ;; {:success false
+  ;;  :message "Sorry, you have already used that code."}
+  )

@@ -166,9 +166,13 @@
                                 ")"))
 
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
-  [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x)))
+  [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x))
+  
+  [:#configFormSubmit] (set-attr :style (if (:read-only x)
+                                          "display: none;"
+                                          "display: block; margin: 0px auto;")))
 
-(defn dashboard [db-conn]
+(defn dashboard [db-conn & {:keys [read-only]}]
   (let [couriers (db/select db-conn "couriers" ["*"] {})
         courier-ids (distinct (map :id couriers))
         users-by-id (group-by :id
@@ -221,7 +225,7 @@
 
                              :vehicle
                              (id->vehicle (:vehicle_id %)))
-                          (take 100 (orders/get-all (db/conn))))
+                          (take 500 (orders/get-all (db/conn))))
              :users (sort-by
                      #(.getTime (:timestamp_created %))
                      >
@@ -229,7 +233,8 @@
              :users-count (count users-by-id)
              :base-url config/base-url
              :gas-price-87 @config/gas-price-87
-             :gas-price-91 @config/gas-price-91}))))
+             :gas-price-91 @config/gas-price-91
+             :read-only read-only}))))
 
 (defn twiml-simple
   [message]

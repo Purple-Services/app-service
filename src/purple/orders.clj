@@ -86,61 +86,85 @@
             (first (get vehicles (:vehicle_id %))))
          orders)))
 
-(def keys-for-new-orders
-  "A new order should have all these keys, and only these."
-  [:vehicle_id
-   :status
-   :target_time_start
-   :target_time_end
-   :gallons
-   :special_instructions
-   :lat
-   :lng
-   :address_street
-   :address_city
-   :address_state
-   :address_zip
-   :gas_price
-   :service_fee
-   :total_price])
+(defn calculate-cost
+  "Calculate cost of order based on current prices."
+  [octane  ;; String
+   gallons ;; Integer
+   time    ;; Integer, minutes
+   ]
+  (+ (* (util/octane->gas-price octane)
+        gallons)
+     (:service_fee (get config/delivery-times time))))
+
+(defn valid-order?
+  [o]
+  (= (:total_price o)
+     (calculate-cost (:gas_type o) (:gallons o) (:time-in-minutes o))))
+
+(defn infer-gas-type-by-price
+  "This is only for backwards compatiblity."
+  [gas-price]
+  (if (= gas-price (util/octane->gas-price "87"))
+    "87"
+    (if (= gas-price (util/octane->gas-price "91"))
+      "91"
+      "87" ;; if we can't find it then assume 87
+      )))
 
 (defn add
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id order]
-  (let [id (util/rand-str-alpha-num 20)
-        o (assoc order
+  (let [time-in-minutes (case (:time order)
+                          ;; these are under the old system
+                          "< 1 hr" 60
+                          "< 3 hr" 180
+                          ;; the rest are handled as new system
+                          ;; which means it is given in minutes
+                          (Integer. (:time order)))
+        o (assoc (select-keys order [:vehicle_id :special_instructions
+                                     :address_street :address_city
+                                     :address_state :address_zip :gas_price
+                                     :service_fee :total_price])
+            :id (util/rand-str-alpha-num 20)
+            :user_id user-id
             :status "unassigned"
             :target_time_start (quot (System/currentTimeMillis) 1000)
             :target_time_end (+ (quot (System/currentTimeMillis) 1000)
-                                (case (:time order)
-                                  ;; these are under the old system
-                                  "< 1 hr" 3600
-                                  "< 3 hr" 10800
-                                  ;; the rest are handled as new system
-                                  ;; which means it is given in minutes
-                                  (* 60 (Integer. (:time order)))))
+                                (* 60 time-in-minutes))
+            :time-in-minutes time-in-minutes
             :gallons (Integer. (:gallons order))
+            :gas_type (if (nil? (:gas_type order))
+                        (infer-gas-type-by-price (:gas_price order))
+                        (:gas_type order))
             :lat (Double. (:lat order))
-            :lng (Double. (:lng order))
-            )
-        o-to-insert (assoc (select-keys o keys-for-new-orders)
-                      :id id
-                      :user_id user-id)]
-    (db/insert db-conn "orders" o-to-insert)
-    ((resolve 'purple.dispatch/add-order-to-zq) o-to-insert)
-    (future (util/send-email {:to "chris@purpledelivery.com"
-                              :subject "Purple - New Order"
-                              :body (str o-to-insert)})
-            (doall (map #(util/send-sms %
-                                        (str "New order:\n"
-                                             "Due: " (util/unix->full
-                                                      (:target_time_end o))
-                                             "\n" (:address_street o)
-                                             ", " (:address_zip o)))
-                        ["3235782263" ;; Bruno
-                         "3106919061" ;; JP
-                         ])))
-    {:success true}))
+            :lng (Double. (:lng order)))]
+    (if (valid-order? o)
+      (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
+                                                      :status :target_time_start
+                                                      :target_time_end
+                                                      :gallons :gas_type
+                                                      :special_instructions
+                                                      :lat :lng :address_street
+                                                      :address_city :address_state
+                                                      :address_zip :gas_price
+                                                      :service_fee :total_price]))
+          ((resolve 'purple.dispatch/add-order-to-zq) o)
+          (future (util/send-email {:to "chris@purpledelivery.com"
+                                    :subject "Purple - New Order"
+                                    :body (str o)})
+                  (when (= config/db-user "purplemasterprod") ;; only in production
+                    (doall (map #(util/send-sms %
+                                                (str "New order:\n"
+                                                     "Due: " (util/unix->full
+                                                              (:target_time_end o))
+                                                     "\n" (:address_street o)
+                                                     ", " (:address_zip o)))
+                                ["3235782263" ;; Bruno
+                                 "3106919061" ;; JP
+                                 ]))))
+          {:success true})
+      {:success false
+       :message "Sorry, the price changed while you were creating your order. Please press the back button to go back to the map and start over."})))
 
 (defn update-status
   "Assumed to have been auth'd properly already."
@@ -248,18 +272,20 @@
 (defn update-status-by-courier
   [db-conn user-id order-id status]
   (if-let [order (get-by-id db-conn order-id)]
-    ;; make sure the auth'd user is indeed the courier for this order
-    (if (= user-id (:courier_id order))
-      (let [update-result (case status
-                            "enroute" (begin-route db-conn order)
-                            "servicing" (service db-conn order)
-                            "complete" (complete db-conn order)
-                            {:success false
-                             :message "Invalid status."})]
-        ;; send back error message or user details if successful
-        (if (:success update-result)
-          ((resolve 'purple.users/details) db-conn user-id)
-          update-result))
+    (if (= user-id (:courier_id order)) ;; auth'd user is courier for this order
+      (if (= status (:status order)) ;; no change is being made to status
+        {:success false
+         :message "Your app seems to be out of sync. Try closing the app completely and restarting it."}
+        (let [update-result (case status
+                              "enroute" (begin-route db-conn order)
+                              "servicing" (service db-conn order)
+                              "complete" (complete db-conn order)
+                              {:success false
+                               :message "Invalid status."})]
+          ;; send back error message or user details if successful
+          (if (:success update-result)
+            ((resolve 'purple.users/details) db-conn user-id)
+            update-result)))
       {:success false
        :message "Permission denied."})
     {:success false

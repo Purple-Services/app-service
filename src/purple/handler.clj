@@ -13,6 +13,7 @@
             [compojure.handler :as handler]
             [compojure.route :as route]
             [clojure.string :as s]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :as middleware]
             [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]))
 
@@ -20,6 +21,11 @@
   [username password]
   (and (= config/basic-auth-username username)
        (= config/basic-auth-password password)))
+
+(defn stats-auth?
+  [username password]
+  (and (= config/basic-auth-read-only-username username)
+       (= config/basic-auth-read-only-password password)))
 
 (defn wrap-page [resp]
   (-> resp
@@ -112,6 +118,17 @@
                                       (:user_id b)
                                       (:push_platform b)
                                       (:cred b))))))
+             (POST "/code" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (db/conn)]
+                      (demand-user-auth
+                       db-conn
+                       (:user_id b)
+                       (:token b)
+                       (users/code->value db-conn
+                                          (:user_id b)
+                                          (:code b))))))
              ;; Get info about currently auth'd user
              (POST "/details" {body :body}
                    (response
@@ -245,6 +262,13 @@
                                                  (:gas-price-87 b)
                                                  (:gas-price-91 b))))))
             dashboard-auth?))
+  (context "/stats" []
+           (wrap-basic-authentication
+            (defroutes stats-routes
+              (GET "/" []
+                   (wrap-page (response (pages/dashboard (db/conn)
+                                                         :read-only true)))))
+            stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []
@@ -262,5 +286,7 @@
 
 (def app
   (-> (handler/site app-routes)
+      (wrap-cors :access-control-allow-origin [#".*"]
+                 :access-control-allow-methods [:get :put :post :delete])
       (middleware/wrap-json-body)
       (middleware/wrap-json-response)))

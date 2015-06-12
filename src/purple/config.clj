@@ -16,8 +16,12 @@
    :password db-password})
 
 ;; Basic Auth, for Dashboard
+;; with edit privileges
 (def basic-auth-username (System/getProperty "BASIC_AUTH_USERNAME"))
 (def basic-auth-password (System/getProperty "BASIC_AUTH_PASSWORD"))
+;; with read-only privileges (the page is /stats instead of /dashboard)
+(def basic-auth-read-only-username (System/getProperty "BASIC_AUTH_READ_ONLY_USERNAME"))
+(def basic-auth-read-only-password (System/getProperty "BASIC_AUTH_READ_ONLY_PASSWORD"))
 
 ;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
@@ -63,6 +67,8 @@
 (def service-time-bracket [10 20])
 
 ;; key is number of minutes till deadline
+;; if changing service fee, also change in dispatch.clj where the hardcoded
+;; service fee is being used for old versions of the app
 (def delivery-times {;; 20  {:service_fee 0
                      ;;      :text "within 20 mins (free)"}
                      60  {:service_fee 0

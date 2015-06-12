@@ -169,3 +169,11 @@
            (ArrayList. [(BasicNameValuePair. "Url" call-url)
                         (BasicNameValuePair. "To" to-number)
                         (BasicNameValuePair. "From" config/twilio-from-number)])))
+
+
+(defn octane->gas-price
+  "Accepts octane as string. Returns gas price per gallon in cents as integer."
+  [octane]
+  (case octane
+    "87" @config/gas-price-87
+    "91" @config/gas-price-91))
