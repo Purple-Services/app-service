@@ -48,6 +48,12 @@
   (swap! (get zq (order->zone-id order))
          conj [(:id order) (priority-score order)]))
 
+(defn remove-order-from-zq
+  "Removes and order from its zone's queue. Usually for cancelled orders."
+  [order]
+  (swap! (get zq (order->zone-id order))
+         dissoc (:id order)))
+
 ;; on server boot, put any existing unassigned orders into the zq
 (when (not *compile-files*)
   (doall (map add-order-to-zq

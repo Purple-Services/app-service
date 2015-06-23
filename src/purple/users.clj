@@ -6,6 +6,7 @@
             [purple.util :as util]
             [purple.db :as db]
             [purple.orders :as orders]
+            [purple.coupons :as coupons]
             [purple.payment :as payment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
@@ -13,7 +14,7 @@
 
 (def safe-authd-user-keys
   "Keys of a user map that are safe to send out to auth'd user."
-  [:id :type :email :name :phone_number :is_courier])
+  [:id :type :email :name :phone_number :referral_code :referral_gallons :is_courier])
 
 (defn get-user
   "Gets a user from db by type and platform-id. Some fields unsafe for output."
@@ -134,9 +135,10 @@
   [db-conn user & {:keys [password]}]
   (db/insert db-conn
              "users"
-             (if (= "native" (:type user))
-               (assoc user :password_hash (bcrypt/encrypt password))
-               user)))
+             (assoc (if (= "native" (:type user))
+                      (assoc user :password_hash (bcrypt/encrypt password))
+                      user)
+               :referral_code (coupons/create-referral-coupon db-conn))))
 
 (defn login
   "Logs in user depeding on 'type' of user."
@@ -245,7 +247,9 @@
      :orders (into [] (if (:is_courier user)
                         (orders/get-by-courier db-conn (:id user))
                         (orders/get-by-user db-conn (:id user))))
-     :cards (into [] (get-users-cards user))}
+     :cards (into [] (get-users-cards user))
+     :system {:referral_referred_value config/referral-referred-value
+              :referral_referrer_gallons config/referral-referrer-gallons}}
     {:success false
      :message "User could not be found."})))
 
@@ -267,17 +271,30 @@
 (def required-vehicle-fields
   [:year :make :model :color :gas_type :license_plate])
 
+(defn valid-license-plate?
+  [x]
+  (boolean (re-find #"^[a-zA-Z\d\-\s]+$" x)))
+
+(defn clean-up-license-plate
+  [x]
+  (s/upper-case (s/replace x #"[\-\s]" "")))
+
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
-    (db/insert db-conn
-               "vehicles"
-               (assoc record-map
-                 :id (util/rand-str-alpha-num 20)
-                 :user_id user-id
-                 :active 1))
+    (if (valid-license-plate? (:license_plate record-map))
+      (db/insert db-conn
+                 "vehicles"
+                 (assoc record-map
+                   :id (util/rand-str-alpha-num 20)
+                   :user_id user-id
+                   :license_plate (clean-up-license-plate
+                                   (:license_plate record-map))
+                   :active 1))
+      {:success false
+       :message "Please enter a valid license plate."})
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -286,11 +303,16 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
-    (db/update db-conn
-               "vehicles"
-               record-map
-               {:id (:id record-map)
-                :user_id user-id})
+    (if (valid-license-plate? (:license_plate record-map))
+      (db/update db-conn
+                 "vehicles"
+                 (assoc record-map
+                   :license_plate (clean-up-license-plate
+                                   (:license_plate record-map)))
+                 {:id (:id record-map)
+                  :user_id user-id})
+      {:success false
+       :message "Please enter a valid license plate."})
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -478,14 +500,3 @@
     (util/make-call (:phone_number user)
                     call-url)
     {:success true}))
-
-(defn code->value
-  "Get the value for a coupon code."
-  [db-conn user-id code]
-  {:success true
-   :value 1500}
-  ;; {:success false
-  ;;  :message "Sorry, that code is invalid."}
-  ;; {:success false
-  ;;  :message "Sorry, you have already used that code."}
-  )

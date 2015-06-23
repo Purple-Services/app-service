@@ -133,6 +133,9 @@
 
              [:td.license_plate]
              (content (str (:license_plate (:vehicle t))))
+
+             [:td.coupon_code]
+             (content (str (:coupon_code t)))
              
              [:td.total_price]
              (content (util/cents->dollars (:total_price t))))

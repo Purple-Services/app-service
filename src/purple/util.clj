@@ -73,6 +73,13 @@
                     )
             length))
 
+(defn rand-str-alpha-num-only-upper
+  [length]
+  (rand-str (concat (range 48 58)  ;; 0-9
+                    (range 65 91)  ;; A-Z
+                    )
+            length))
+
 (defn new-session-id []
   (rand-str-alpha-num 64))
 
@@ -114,11 +121,21 @@
 ;; if the user doesn't have an endpoint_arn then we need to create one for them
 (defn sns-create-endpoint
   [client device-token user-id sns-app-arn]
-  (let [req (CreatePlatformEndpointRequest.)]
-    (.setCustomUserData req user-id)
-    (.setToken req device-token)
-    (.setPlatformApplicationArn req sns-app-arn)
-    (.getEndpointArn (.createPlatformEndpoint client req))))
+  (try
+    (let [req (CreatePlatformEndpointRequest.)]
+      (.setCustomUserData req user-id)
+      (.setToken req device-token)
+      (.setPlatformApplicationArn req sns-app-arn)
+      (.getEndpointArn (.createPlatformEndpoint client req)))
+    (catch Exception e
+      (send-email {:to "chris@purpledelivery.com"
+                   :subject "Purple - Error"
+                   :body (str "AWS SNS Create Endpoint Exception: "
+                              (.getMessage e)
+                              "\n\n"
+                              "user-id: "
+                              user-id)})
+      "")))
 
 (defn sns-publish
   [client target-arn message]

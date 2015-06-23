@@ -3,6 +3,7 @@
             [purple.util :as util]
             [purple.db :as db]
             [purple.payment :as payment]
+            [purple.coupons :as coupons]
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
 
@@ -88,18 +89,27 @@
 
 (defn calculate-cost
   "Calculate cost of order based on current prices."
-  [octane  ;; String
-   gallons ;; Integer
-   time    ;; Integer, minutes
-   ]
-  (+ (* (util/octane->gas-price octane)
-        gallons)
-     (:service_fee (get config/delivery-times time))))
+  [db-conn
+   octane       ;; String
+   gallons      ;; Integer
+   time         ;; Integer, minutes
+   coupon-code  ;; String
+   vehicle-id]  ;; String
+  (+ (* (util/octane->gas-price octane) gallons)
+     (:service_fee (get config/delivery-times time))
+     (when coupon-code
+       (:value (coupons/code->value db-conn coupon-code vehicle-id)))))
 
 (defn valid-order?
-  [o]
+  "Is the stated 'total_price' accurate?"
+  [db-conn o]
   (= (:total_price o)
-     (calculate-cost (:gas_type o) (:gallons o) (:time-in-minutes o))))
+     (calculate-cost db-conn
+                     (:gas_type o)
+                     (:gallons o)
+                     (:time-in-minutes o)
+                     (:coupon_code o)
+                     (:vehicle_id o))))
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
@@ -108,8 +118,7 @@
     "87"
     (if (= gas-price (util/octane->gas-price "91"))
       "91"
-      "87" ;; if we can't find it then assume 87
-      )))
+      "87"))) ;; if we can't find it then assume 87
 
 (defn add
   "The user-id given is assumed to have been auth'd already."
@@ -121,6 +130,12 @@
                           ;; the rest are handled as new system
                           ;; which means it is given in minutes
                           (Integer. (:time order)))
+        license-plate (some-> (db/select db-conn
+                                         "vehicles"
+                                         ["license_plate"]
+                                         {:id (:vehicle_id order)})
+                              first
+                              :license_plate)
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -137,8 +152,10 @@
                         (infer-gas-type-by-price (:gas_price order))
                         (:gas_type order))
             :lat (Double. (:lat order))
-            :lng (Double. (:lng order)))]
-    (if (valid-order? o)
+            :lng (Double. (:lng order))
+            :license_plate license-plate
+            :coupon_code (s/upper-case (:coupon_code order)))]
+    (if (valid-order? db-conn o)
       (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
                                                       :status :target_time_start
                                                       :target_time_end
@@ -147,8 +164,11 @@
                                                       :lat :lng :address_street
                                                       :address_city :address_state
                                                       :address_zip :gas_price
-                                                      :service_fee :total_price]))
+                                                      :service_fee :total_price
+                                                      :license_plate :coupon_code]))
           ((resolve 'purple.dispatch/add-order-to-zq) o)
+          (when (not (s/blank? (:coupon_code o)))
+            (coupons/mark-code-as-used db-conn (:coupon_code o) (:vehicle_id o)))
           (future (util/send-email {:to "chris@purpledelivery.com"
                                     :subject "Purple - New Order"
                                     :body (str o)})
@@ -161,6 +181,7 @@
                                                      ", " (:address_zip o)))
                                 ["3235782263" ;; Bruno
                                  "3106919061" ;; JP
+                                 "8589228571" ;; Lee
                                  ]))))
           {:success true})
       {:success false
@@ -251,6 +272,7 @@
                            (:user_id o) (:total_price o) charge-description)]
         (if (:success charge-result)
           (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
+              (coupons/apply-referral-bonus db-conn (:coupon_code o))
               ((resolve 'purple.users/send-push) db-conn (:user_id o)
                "Your delivery has been completed. Thank you!"))
           charge-result))))
@@ -312,6 +334,14 @@
   (if-let [o (get-by-id db-conn order-id)]
     (if (util/in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
+          ((resolve 'purple.dispatch/remove-order-from-zq) o)
+          ;; free up that coupon code for that vehicle
+          (when (not (s/blank? (:coupon_code o)))
+            (coupons/mark-code-as-unused db-conn (:coupon_code o) (:vehicle_id o))
+            (db/update db-conn
+                       "orders"
+                       {:coupon_code ""}
+                       {:id order-id}))
           (when (not (s/blank? (:courier_id o)))
             (set-courier-busy db-conn (:courier_id o) false)
             ((resolve 'purple.users/send-push) db-conn (:courier_id o)

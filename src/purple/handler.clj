@@ -8,6 +8,7 @@
             [purple.users :as users]
             [purple.orders :as orders]
             [purple.dispatch :as dispatch]
+            [purple.coupons :as coupons]
             [purple.pages :as pages]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
@@ -126,9 +127,9 @@
                        db-conn
                        (:user_id b)
                        (:token b)
-                       (users/code->value db-conn
-                                          (:user_id b)
-                                          (:code b))))))
+                       (coupons/code->value db-conn
+                                            (s/upper-case (:code b))
+                                            (:vehicle_id b))))))
              ;; Get info about currently auth'd user
              (POST "/details" {body :body}
                    (response
