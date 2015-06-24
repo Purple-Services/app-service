@@ -94,11 +94,17 @@
    gallons      ;; Integer
    time         ;; Integer, minutes
    coupon-code  ;; String
-   vehicle-id]  ;; String
-  (+ (* (util/octane->gas-price octane) gallons)
-     (:service_fee (get config/delivery-times time))
-     (when coupon-code
-       (:value (coupons/code->value db-conn coupon-code vehicle-id)))))
+   vehicle-id   ;; String
+   user-id
+   referral-gallons-used]
+  (max 0
+       (+ (* (util/octane->gas-price octane)
+             (- gallons
+                (min gallons
+                     referral-gallons-used)))
+          (:service_fee (get config/delivery-times time))
+          (when coupon-code
+            (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))))))
 
 (defn valid-order?
   "Is the stated 'total_price' accurate?"
@@ -109,7 +115,9 @@
                      (:gallons o)
                      (:time-in-minutes o)
                      (:coupon_code o)
-                     (:vehicle_id o))))
+                     (:vehicle_id o)
+                     (:user_id o)
+                     (:referral-gallons-used o))))
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
@@ -130,12 +138,17 @@
                           ;; the rest are handled as new system
                           ;; which means it is given in minutes
                           (Integer. (:time order)))
+
         license-plate (some-> (db/select db-conn
                                          "vehicles"
                                          ["license_plate"]
                                          {:id (:vehicle_id order)})
                               first
                               :license_plate)
+
+        referral-gallons-available
+        (:referral_gallons ((resolve 'purple.users/get-user-by-id) db-conn user-id))
+        
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -154,6 +167,8 @@
             :lat (Double. (:lat order))
             :lng (Double. (:lng order))
             :license_plate license-plate
+            :referral_gallons_used (min (Integer. (:gallons order))
+                                        referral-gallons-available)
             :coupon_code (s/upper-case (:coupon_code order)))]
     (if (valid-order? db-conn o)
       (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
@@ -167,8 +182,15 @@
                                                       :service_fee :total_price
                                                       :license_plate :coupon_code]))
           ((resolve 'purple.dispatch/add-order-to-zq) o)
+          (when (not (= 0 (:referral_gallons_used o)))
+            (coupons/mark-gallons-as-used db-conn
+                                          (:user_id o)
+                                          (:referral_gallons_used o)))
           (when (not (s/blank? (:coupon_code o)))
-            (coupons/mark-code-as-used db-conn (:coupon_code o) (:vehicle_id o)))
+            (coupons/mark-code-as-used db-conn
+                                       (:coupon_code o)
+                                       (:license_plate o)
+                                       (:user_id o)))
           (future (util/send-email {:to "chris@purpledelivery.com"
                                     :subject "Purple - New Order"
                                     :body (str o)})
@@ -255,27 +277,31 @@
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
       (set-courier-busy db-conn (:courier_id o) false)
-      (let [charge-description (str "Delivery of "
-                                    (:gallons o) " Gallons of Gasoline ("
-                                    (->> (db/select db-conn
-                                                    "vehicles"
-                                                    [:gas_type]
-                                                    {:id (:vehicle_id o)})
-                                         first
-                                         :gas_type)
-                                    " Octane)\n" "Where: "
-                                    (:address_street o)
-                                    "\n" "When: "
-                                    (util/unix->fuller
-                                     (quot (System/currentTimeMillis) 1000)))
-            charge-result ((resolve 'purple.users/charge-user) db-conn
-                           (:user_id o) (:total_price o) charge-description)]
-        (if (:success charge-result)
-          (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
-              (coupons/apply-referral-bonus db-conn (:coupon_code o))
-              ((resolve 'purple.users/send-push) db-conn (:user_id o)
-               "Your delivery has been completed. Thank you!"))
-          charge-result))))
+      (if (= 0 (:total_price o))
+        (do (coupons/apply-referral-bonus db-conn (:coupon_code o))
+            ((resolve 'purple.users/send-push) db-conn (:user_id o)
+             "Your delivery has been completed. Thank you!"))
+        (let [charge-description (str "Delivery of "
+                                      (:gallons o) " Gallons of Gasoline ("
+                                      (->> (db/select db-conn
+                                                      "vehicles"
+                                                      [:gas_type]
+                                                      {:id (:vehicle_id o)})
+                                           first
+                                           :gas_type)
+                                      " Octane)\n" "Where: "
+                                      (:address_street o)
+                                      "\n" "When: "
+                                      (util/unix->fuller
+                                       (quot (System/currentTimeMillis) 1000)))
+              charge-result ((resolve 'purple.users/charge-user) db-conn
+                             (:user_id o) (:total_price o) charge-description)]
+          (if (:success charge-result)
+            (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
+                (coupons/apply-referral-bonus db-conn (:coupon_code o))
+                ((resolve 'purple.users/send-push) db-conn (:user_id o)
+                 "Your delivery has been completed. Thank you!"))
+            charge-result)))))
 
 (defn begin-route
   "This is a courier action."
@@ -335,9 +361,21 @@
     (if (util/in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
           ((resolve 'purple.dispatch/remove-order-from-zq) o)
+          ;; return any free gallons that may have been used
+          (when (not (= 0 (:referral_gallons_used o)))
+            (coupons/mark-gallons-as-unused db-conn
+                                            (:user_id o)
+                                            (:referral_gallons_used o))
+            (db/update db-conn
+                       "orders"
+                       {:referral_gallons_used 0}
+                       {:id order-id}))
           ;; free up that coupon code for that vehicle
           (when (not (s/blank? (:coupon_code o)))
-            (coupons/mark-code-as-unused db-conn (:coupon_code o) (:vehicle_id o))
+            (coupons/mark-code-as-unused db-conn
+                                         (:coupon_code o)
+                                         (:vehicle_id o)
+                                         (:user_id o))
             (db/update db-conn
                        "orders"
                        {:coupon_code ""}

@@ -73,12 +73,14 @@
                     )
             length))
 
-(defn rand-str-alpha-num-only-upper
-  [length]
-  (rand-str (concat (range 48 58)  ;; 0-9
-                    (range 65 91)  ;; A-Z
-                    )
-            length))
+(defn gen-coupon-code []
+  (rand-str (remove #{48  ;; 0  - removing nums that look like chars
+                      49  ;; 1
+                      79  ;; O  - removing chars that look like nums
+                      73} ;; I
+                    (concat (range 48 58)  ;; 0-9
+                            (range 65 91)))  ;; A-Z
+            5))
 
 (defn new-session-id []
   (rand-str-alpha-num 64))

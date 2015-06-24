@@ -70,7 +70,7 @@
 
 (defn availability
   "Get courier availability for given constraints."
-  [zip-code]
+  [db-conn zip-code user-id]
   (let [good-zip? (not (empty? (filter #(util/in? (:zip_codes %) zip-code)
                                        zones)))
         opening-hour (first config/service-time-bracket)
@@ -82,7 +82,8 @@
                          current-hour
                          ;;(- closing-hour hours-needed)
                          ;; removed the check for enough time
-                         closing-hour))]
+                         closing-hour))
+        user ((resolve 'purple.users/get-user-by-id) db-conn user-id)]
     {:success true
      :availabilities (map (partial available good-zip? good-time?) ["87" "91"])
      ;; if unavailable, this is the explanation:
@@ -90,7 +91,8 @@
      (if good-zip?
        "Sorry, we are unable to deliver gas to your location at this time."
        "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")
-
+     :user (select-keys user [:referral_gallons :referral_code])
+     
      ;; we're still sending this for old versions of the app
      :availability [{:octane "87"
                      :gallons (if (and good-zip?

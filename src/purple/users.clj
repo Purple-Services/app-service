@@ -138,7 +138,8 @@
              (assoc (if (= "native" (:type user))
                       (assoc user :password_hash (bcrypt/encrypt password))
                       user)
-               :referral_code (coupons/create-referral-coupon db-conn))))
+               :referral_code (coupons/create-referral-coupon db-conn
+                                                              (:id user)))))
 
 (defn login
   "Logs in user depeding on 'type' of user."
@@ -303,12 +304,15 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
-    (if (valid-license-plate? (:license_plate record-map))
+    (if (or (nil? (:license_plate record-map))
+            (valid-license-plate? (:license_plate record-map)))
       (db/update db-conn
                  "vehicles"
-                 (assoc record-map
-                   :license_plate (clean-up-license-plate
-                                   (:license_plate record-map)))
+                 (if (nil? (:license_plate record-map))
+                   record-map
+                   (assoc record-map
+                     :license_plate (clean-up-license-plate
+                                     (:license_plate record-map))))
                  {:id (:id record-map)
                   :user_id user-id})
       {:success false

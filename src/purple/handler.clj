@@ -129,7 +129,8 @@
                        (:token b)
                        (coupons/code->value db-conn
                                             (s/upper-case (:code b))
-                                            (:vehicle_id b))))))
+                                            (:vehicle_id b)
+                                            (:user_id b))))))
              ;; Get info about currently auth'd user
              (POST "/details" {body :body}
                    (response
@@ -201,7 +202,7 @@
                        db-conn
                        (:user_id b)
                        (:token b)
-                       (dispatch/availability (:zip_code b))))))))
+                       (dispatch/availability db-conn (:zip_code b) (:user_id b))))))))
   (context "/courier" []
            (defroutes courier-routes
              (POST "/ping" {body :body}
@@ -275,6 +276,11 @@
              (POST "/courier-new-order" []
                    (wrap-xml (response (pages/twiml-simple "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you."))))))
   (GET "/download" {headers :headers}
+       (redirect
+        (if (.contains (str (get headers "user-agent")) "Android")
+          "https://play.google.com/store/apps/details?id=com.purple.app"
+          "https://itunes.apple.com/us/app/purple-services/id970824802")))
+  (GET "/app" {headers :headers}
        (redirect
         (if (.contains (str (get headers "user-agent")) "Android")
           "https://play.google.com/store/apps/details?id=com.purple.app"
