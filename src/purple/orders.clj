@@ -117,7 +117,7 @@
                      (:coupon_code o)
                      (:vehicle_id o)
                      (:user_id o)
-                     (:referral-gallons-used o))))
+                     (:referral_gallons_used o))))
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
@@ -180,7 +180,8 @@
                                                       :address_city :address_state
                                                       :address_zip :gas_price
                                                       :service_fee :total_price
-                                                      :license_plate :coupon_code]))
+                                                      :license_plate :coupon_code
+                                                      :referral_gallons_used]))
           ((resolve 'purple.dispatch/add-order-to-zq) o)
           (when (not (= 0 (:referral_gallons_used o)))
             (coupons/mark-gallons-as-used db-conn

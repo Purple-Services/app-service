@@ -215,9 +215,9 @@
                        (:token b)
                        (dispatch/courier-ping db-conn
                                               (:user_id b)
-                                              (Double. (:lat b))
-                                              (Double. (:lng b))
-                                              (:gallons b))))))))
+                                              (or (Double. (:lat b)) 0)
+                                              (or (Double. (:lng b)) 0)
+                                              (or (:gallons b) 0))))))))
   (context "/feedback" []
            (defroutes feedback-routes
              (POST "/send" {body :body}
