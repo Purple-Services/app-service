@@ -5,144 +5,148 @@
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
 
+(defn get-coupon-by-code
+  [db-conn code]
+  (first (db/select db-conn
+                    "coupons"
+                    ["*"]
+                    {:code code})))
+
+(defn get-license-plate-by-vehicle-id
+  [db-conn vehicle-id]
+  (some-> (db/select db-conn
+                     "vehicles"
+                     ["license_plate"]
+                     {:id vehicle-id})
+          first
+          :license_plate))
+
 (defn code->value
   "Get the value for a coupon code."
   [db-conn code vehicle-id user-id]
-  (let [coupon (first (db/select db-conn
-                                 "coupons"
-                                 ["*"]
-                                 {:code code}))
-
-        license-plate (some-> (db/select db-conn
-                                         "vehicles"
-                                         ["license_plate"]
-                                         {:id vehicle-id})
-                              first
-                              :license_plate)
+  (let [coupon (get-coupon-by-code db-conn code)
+        license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)
 
         is-owner?
         (fn [coupon user-id]
           (= (:owner_user_id coupon)
              user-id))
         
-        never-used-on-license-plate?
+        used-by-license-plate?
         (fn [coupon license-plate]
-          (not (util/in? (util/split-on-comma
-                          (:used_by_license_plates coupon))
-                         license-plate)))
+          (-> (:used_by_license_plates coupon)
+              util/split-on-comma
+              (util/in? license-plate)))
 
-        never-used-by-user-id?
+        used-by-user-id?
         (fn [coupon user-id]
-          (not (util/in? (util/split-on-comma
-                          (:used_by_user_ids coupon))
-                         user-id)))
+          (-> (:used_by_user_ids coupon)
+              util/split-on-comma
+              (util/in? user-id)))
 
-        never-ordered? ;; neither license plate nor user id is associated with an order
+        has-ordered? ;; license-plate nor user-id is associated with an order
         (fn [db-conn license-plate user-id]
-          (empty? (db/select db-conn
-                             "orders"
-                             [:id]
-                             {}
-                             :custom-where
-                             (str "(license_plate = \""
-                                  license-plate
-                                  "\" OR user_id = \""
-                                  user-id
-                                  "\") AND status != \"cancelled\""))))]
-    (if (and coupon license-plate)
-      (if (> (:expiration_time coupon)
-             (quot (System/currentTimeMillis) 1000))
-        (if (not (is-owner? coupon user-id))
-          (if (and (never-used-on-license-plate? coupon license-plate)
-                   (never-used-by-user-id? coupon user-id))
-            (if (or (not (:only_for_first_orders coupon))
-                    (never-ordered? db-conn license-plate user-id))
-              (case (:type coupon)
-                "standard" {:success true
-                            :value (:value coupon)}
-                "referral" {:success true
-                            :value config/referral-referred-value})
-              {:success false
-               :message "Sorry, that code is only for a first-time order."
-               :value 0})
-            {:success false
-             :message "Sorry, you have already used that code."
-             :value 0})
-          {:success false
-           :message "Sorry, you cannot use your own coupon code. Send it to your friends to earn free gallons!"
-           :value 0})
-        {:success false
-         :message "Sorry, that code is expired."
-         :value 0})
-      {:success false
-       :message "Sorry, that code is invalid."
-       :value 0})))
+          (seq (db/select db-conn "orders" [:id] {}
+                          :custom-where
+                          (str "(license_plate = \""
+                               (db/mysql-escape-str license-plate)
+                               "\" OR user_id = \""
+                               (db/mysql-escape-str user-id)
+                               "\") AND status != \"cancelled\""))))]
+    (cond
+     (not (and coupon license-plate))
+     {:success false
+      :message "Sorry, that code is invalid."
+      :value 0}
+
+     (< (:expiration_time coupon) (quot (System/currentTimeMillis) 1000))
+     {:success false
+      :message "Sorry, that code is expired."
+      :value 0}
+
+     (is-owner? coupon user-id)
+     {:success false
+      :message "Sorry, you cannot use your own coupon code. Send it to your friends to earn free gallons!"
+      :value 0}
+
+     (or (used-by-license-plate? coupon license-plate)
+         (used-by-user-id? coupon user-id))
+     {:success false
+      :message "Sorry, you have already used that code."
+      :value 0}
+
+     (and (:only_for_first_orders coupon)
+          (has-ordered? db-conn license-plate user-id))
+     {:success false
+      :message "Sorry, that code is only for a first-time order."
+      :value 0}
+
+     :else
+     (case (:type coupon)
+       "standard" {:success true
+                   :value (:value coupon)}
+       "referral" {:success true
+                   :value config/referral-referred-value}))))
 
 (defn mark-code-as-used
   [db-conn code license-plate user-id]
-    (sql/with-connection db-conn
-      (sql/do-prepared
-       (str "UPDATE coupons SET "
-            "used_by_license_plates = CONCAT(used_by_license_plates, '"
-            license-plate "', ','), "
-            "used_by_user_ids = CONCAT(used_by_user_ids, '"
-            user-id "', ',') "
-            " WHERE code = '" code "'"))))
+  (sql/with-connection db-conn
+    (sql/do-prepared
+     (str "UPDATE coupons SET "
+          "used_by_license_plates = CONCAT(used_by_license_plates, \""
+          (db/mysql-escape-str license-plate) "\", ','), "
+          "used_by_user_ids = CONCAT(used_by_user_ids, \""
+          (db/mysql-escape-str user-id) "\", ',') "
+          " WHERE code = \"" (db/mysql-escape-str code) "\""))))
 
 (defn mark-code-as-unused
   [db-conn code vehicle-id user-id]
-  (let [license-plate (some-> (db/select db-conn
-                                         "vehicles"
-                                         ["license_plate"]
-                                         {:id vehicle-id})
-                              first
-                              :license_plate)
-        coupon (first (db/select db-conn
-                                 "coupons"
-                                 ["*"]
-                                 {:code code}))
-        used-by-license-plates (set (util/split-on-comma
-                                     (:used_by_license_plates coupon)))
-        used-by-user-ids (set (util/split-on-comma
-                               (:used_by_user_ids coupon)))]
+  (let [coupon (get-coupon-by-code db-conn code)
+        license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)
+        used-by-license-plates (-> (:used_by_license_plates coupon)
+                                   util/split-on-comma
+                                   set)
+        used-by-user-ids (-> (:used_by_user_ids coupon)
+                             util/split-on-comma
+                             set)]
     (sql/with-connection db-conn
       (sql/do-prepared
        (str "UPDATE coupons SET "
-            "used_by_license_plates = '"
-            (s/join "," (disj used-by-license-plates license-plate))
-            "', used_by_user_ids = '"
-            (s/join "," (disj used-by-user-ids user-id))
-            "' WHERE code = '" code "'")))))
+            "used_by_license_plates = \""
+            (s/join "," (disj used-by-license-plates
+                              (db/mysql-escape-str license-plate)))
+            "\", used_by_user_ids = \""
+            (s/join "," (disj used-by-user-ids
+                              (db/mysql-escape-str user-id)))
+            "\" WHERE code = \"" (db/mysql-escape-str code) "\"")))))
 
 (defn mark-gallons-as-used
   [db-conn user-id gallons]
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE users SET referral_gallons = referral_gallons - "
-          gallons
-          " WHERE id = '" user-id "'"))))
+          (Integer. gallons)
+          " WHERE id = \"" (db/mysql-escape-str user-id) "\""))))
 
 (defn mark-gallons-as-unused
   [db-conn user-id gallons]
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE users SET referral_gallons = referral_gallons + "
-          gallons
-          " WHERE id = '" user-id "'"))))
+          (Integer. gallons)
+          " WHERE id = \"" (db/mysql-escape-str user-id) "\""))))
 
 (defn apply-referral-bonus
   [db-conn code]
   (when (not (s/blank? code))
-    (let [user (first (db/select db-conn
-                                 "users"
-                                 [:id]
-                                 {:referral_code code}))
-          user-id (:id user)]
+    (let [user-id (-> (db/select db-conn "users" [:id] {:referral_code code})
+                      first
+                      :id)]
       (sql/with-connection db-conn
         (sql/do-prepared
          (str "UPDATE users SET referral_gallons = referral_gallons + "
-              config/referral-referrer-gallons
-              " WHERE id = '" user-id "'")))
+              (Integer. config/referral-referrer-gallons)
+              " WHERE id = \"" (db/mysql-escape-str user-id) "\"")))
       ((resolve 'purple.users/send-push) db-conn user-id
        (str "Thanks for sharing Purple with your friend! We've gone ahead and added "
             config/referral-referrer-gallons
@@ -150,10 +154,7 @@
 
 (defn is-code-available?
   [db-conn code]
-  (empty? (db/select db-conn
-                     "coupons"
-                     ["*"]
-                     {:code code})))
+  (empty? (db/select db-conn "coupons" [:id] {:code code})))
 
 (defn create-standard-coupon
   [db-conn code value expiration-time]
@@ -180,36 +181,3 @@
                                           :expiration_time 1999999999})
             code)
         (recur)))))
-
-
-
-
-
-;; Run this to set up license plate for all existing orders
-(#_(let [orders (db/select (db/conn)
-                           "orders"
-                           ["*"]
-                           {})]
-     (doseq [o orders]
-       (let [license-plate (:license_plate (first (db/select (db/conn)
-                                                             "vehicles"
-                                                             ["license_plate"]
-                                                             {:id (:vehicle_id o)})))]
-         (db/update (db/conn)
-                    "orders"
-                    {:license_plate license-plate}
-                    {:id (:id o)})))))
-
-;; Run this to set up all existing users with a new referral code
-(#_(let [users (db/select (db/conn)
-                          "users"
-                          ["*"]
-                          {})]
-     (doseq [u users]
-       (let [code (create-referral-coupon (db/conn) (:id u))]
-         (db/update (db/conn)
-                    "users"
-                    {:referral_code code}
-                    {:id (:id u)})))))
-
-;(create-referral-coupon (db/conn))

@@ -1,0 +1,20 @@
+#slideshow { 
+    margin: 50px auto; 
+    position: relative; 
+    text-align: center;
+    margin-left: 35%!important;
+    /*background-image: url("img/iphone5ARDX.png");*/
+}
+
+#slideshow > div { 
+    position: absolute; 
+    top: 10px; 
+    left: 10px; 
+    right: 10px; 
+    bottom: 10px; 
+}
+
+#slideshow > div img { 
+   width: 16.5%!important;
+   padding-top: 5%;
+}

@@ -89,7 +89,7 @@
      ;; if unavailable, this is the explanation:
      :unavailable-reason
      (if good-zip?
-       "Sorry, we are unable to deliver gas to your location at this time."
+       "Sorry, our service hours are 10am to 9pm every day."
        "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")
      :user (select-keys user [:referral_gallons :referral_code])
      

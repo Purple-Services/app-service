@@ -53,6 +53,10 @@
                   (String. v)
                   v)])))
 
+(defn mysql-escape-str
+  [x]
+  (s/escape x {\" "\\\""}))
+
 ;; Find out if an SQLException is for a duplicate entry for a key
 (defn duplicate-entry-exception? [e]
   (not (empty? (re-seq #"Duplicate entry.*for key" (.getMessage e)))))

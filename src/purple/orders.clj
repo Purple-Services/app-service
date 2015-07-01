@@ -103,8 +103,9 @@
                 (min gallons
                      referral-gallons-used)))
           (:service_fee (get config/delivery-times time))
-          (when coupon-code
-            (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))))))
+          (if (not (s/blank? coupon-code))
+            (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))
+            0))))
 
 (defn valid-order?
   "Is the stated 'total_price' accurate?"
@@ -169,7 +170,7 @@
             :license_plate license-plate
             :referral_gallons_used (min (Integer. (:gallons order))
                                         referral-gallons-available)
-            :coupon_code (s/upper-case (:coupon_code order)))]
+            :coupon_code (s/upper-case (or (:coupon_code order) "")))]
     (if (valid-order? db-conn o)
       (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
                                                       :status :target_time_start
@@ -216,12 +217,12 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE orders SET "
-          "status = '" status "', "
-          "event_log = CONCAT(event_log, '"
-          status " " (quot (System/currentTimeMillis) 1000)
-          "', '|') WHERE id = '"
-          order-id
-          "'"))))
+          "status = \"" (db/mysql-escape-str status) "\", "
+          "event_log = CONCAT(event_log, \""
+          (db/mysql-escape-str status) " " (quot (System/currentTimeMillis) 1000)
+          "\", '|') WHERE id = \""
+          (db/mysql-escape-str order-id)
+          "\""))))
 
 (def busy-statuses ["assigned" "accepted" "enroute" "servicing"])
 

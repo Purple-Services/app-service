@@ -1,40 +1,613 @@
-<html>
-  <head>
-    <title>Purple</title>
+<!DOCTYPE html>
+<!--[if IE 8]>			<html class="ie ie8"> <![endif]-->
+<!--[if IE 9]>			<html class="ie ie9"> <![endif]-->
+<!--[if gt IE 9]><!-->	<html> <!--<![endif]-->
+<head>
 
-    <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
-    <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
-    <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
-    <meta name="theme-color" content="#ffffff">
-    
-    <link href='//fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
-    <link href='css/home.css' rel='stylesheet' type='text/css' />
+  <!-- Meta -->
+  <meta charset="utf-8">
+  <meta name="keywords" content="HTML5 Template" />
+  <meta name="description" content="">
+  <meta name="author" content="">
 
-    <meta name="google-site-verification" content="p8p8lk2voaATGPvTE-JVEaZzRP0-PJ3xwfSnrd-ZJj4" />
-    
-  </head>
-  <body>
-    <img src="images/purple-logo-dark.png" width="350" />
-    <p id="intro">
-      <em style="font-size: 1.2em;">On-demand gas delivery right to your car.</em>
-      <br /><br />Simply choose your location, enter vehicle and payment information, and press "Request Gas".
-    </p>
-    <div id="download-links">
-      <a href="https://itunes.apple.com/us/app/purple-services/id970824802"><img src="images/app-store.png" height="67" /></a>
-      <a href="https://play.google.com/store/apps/details?id=com.purple.app"><img src="images/google-play-store.png" height="67" /></a>
-    </p>
-  </body>
+  <title>Purple</title>
+
+  <!-- Mobile Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="msapplication-TileColor" content="#ffffff">
+  <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- Google Webfont -->
+  <link href='//fonts.googleapis.com/css?family=Open+Sans:400,300,300italic,400italic,600,700,800' rel='stylesheet' type='text/css'>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/sliderApp.css">
+  <link rel="stylesheet" href="css/bootstrap.css">
+  <link rel="stylesheet" href="css/accordion.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/normalize.css" />
+  <link rel="stylesheet" href="css/component.css" />
+
+  <!-- SKIN -->
+  <link rel="stylesheet" title="blue" href="css/colors/skin-blue.css"/>
+
+  <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+  <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+  <![endif]-->
+  
+  <!-- MODERNIZR -->
+  <script src="js/modernizr.custom.js"></script>
+  
+  <meta name="google-site-verification" content="p8p8lk2voaATGPvTE-JVEaZzRP0-PJ3xwfSnrd-ZJj4" />
+
+</head>
+<body id="page-top">
+  
+  <div style="display:none;">
+    <img src="css/social/fbover.svg"/>
+    <img src="css/social/twover.svg"/>
+  </div>  
+  
+  <div id="body">
+
+	<!-- HEADER -->
+	<header>
+	  <!-- Navigation -->
+	  <nav class="navbar navbar-default navbar-top">
+		<div class="container">
+		  <div class="col-md-12">
+			<!-- Brand and toggle get grouped for better mobile display -->
+			<div class="navbar-header page-scroll">
+			  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			  </button>
+			  <a class="navbar-brand" href="http://purpledelivery.com" style="font-family : Circe-regular"><img src="images/purple_logoWh.png" id="logo-purple" alt="PURPLE"></a>
+			</div>
+			<!-- Collect the nav links, forms, and other content for toggling -->
+			<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+			  <ul class="nav navbar-nav navbar-right">
+				<li><a class="page-scroll" style="color: white !important;" href="#dual-info">The Mobile App</a></li>
+				<li><a class="page-scroll" href="#features" style="color: white !important;">Area of Service</a></li>
+                <!-- 							<li><a class="page-scroll" href="#purple" style="color:white!important">Contact</a></li> -->
+				<li><a class="page-scroll" href="#faq" style="color: white !important;">FAQ</a></li>
+			  </ul>
+			</div>
+			<!-- /.navbar-collapse -->
+		  </div>
+		</div>
+	  </nav>
+	</header>
+
+	<!-- INTRO -->
+	<section id="intro" class="intro2">
+	  <div class="overlay">
+	    <video id="bgVid" autoplay loop width="100%">
+	  	  <source src="https://s3-us-west-1.amazonaws.com/purple-services/bg1.mp4" type="video/mp4" />
+	  	  <source src="https://s3-us-west-1.amazonaws.com/purple-services/bg1.m4v" type="video/m4v" />
+	  	  <source src="https://s3-us-west-1.amazonaws.com/purple-services/bg1.webm" type="video/webm" />
+	  	  <source src="https://s3-us-west-1.amazonaws.com/purple-services/bg1.ogg" type="video/ogv" />
+	    </video>
+	  </div>
+	  <div class="container">
+		<div class="row">
+		  <div class="col-md-12">
+			<div class="row">
+			  <div id="responsform">
+				<!-- <div><img src="images/purple_logoWh.png" id="logo-purple"></div> -->
+				<div>
+                  <p id="headerp">
+					<span class="purple-punchline">Your own personal mobile gas station</span>
+					<br/>
+                    <br/>
+					<span class="purple-punchline">We fuel your car wherever you are</span>
+                  </p>
+                </div>
+                <!-- <div id="contact-us"> -->
+                <!--h2 id="punchContact" style="font-family : Circe-light; font-size : 40px; color : white; float : left; background-color : grey; opacity : 0.9; margin-bottom : 17%; margin-right : -10%; padding : 5px; border-radius :5px;">CONTACT US</h2-->
+                <!--                               <form class="subscribe" action="php/subscribe.php" id="invite" method="POST">
+                <input type="email" class="e-mail" placeholder="Email Address here..." name="email" id="address" data-validate="validate(required, email)">
+                <button type="submit" id="contactsubmit"><i class="fa fa-dashboard"></i></button>
+                </form> -->
+                <!-- </div> --> 
+
+
+
+
+                <!-- Begin MailChimp Signup Form -->
+				<!-- <link href="//cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css"> -->
+				<style type="text/css">
+				 #mc_embed_signup{clear:left; font:14px Helvetica,Arial,sans-serif; }
+				</style>
+				<div id="mc_embed_signup">
+				  <form action="//purpledelivery.us11.list-manage.com/subscribe/post?u=bd397467dc0f43fb593302330&amp;id=0efd097c85" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate>
+					<div id="mc_embed_signup_scroll">
+					  
+					  <input type="email" value="" name="EMAIL" class="email" id="mce-EMAIL" placeholder="EMAIL ADDRESS" required style="width: 25%;padding: 9px;border-radius: 5px;border: none;font-size: 110%;display: inline!important;font-weight: 100;"><input type="submit" value="JOIN OUR NEWSLETTER" name="subscribe" id="mc-embedded-subscribe" class="button" style="margin-left: 10px;display: inline!important;border-radius: 7px;background-color: #B91B8D;border: none;color: white;font-weight: 400;font-size: 110%;margin-bottom: 1%;padding: 9px;">
+					  <div style="position: absolute; left: -5000px;"><input type="text" name="b_bd397467dc0f43fb593302330_0efd097c85" tabindex="-1" value=""></div>
+					  <div class="clear"></div>
+					</div>
+				  </form>
+				</div>
+                
+                <!--End mc_embed_signup-->                      
+				<a href="https://play.google.com/store/apps/details?id=com.purple.app" target="blank"><img id="googleplay" src="images/google-play-store.png" style="width: 15%;margin-right: 8%;margin-top: 4%;"></a>
+				<a href="https://itunes.apple.com/us/app/purple-services/id970824802" target="blank"><img id="appstore" src="images/app-store.png" style="width: 17%;margin-top: 4.3%;"></a>
+			  </div>
+			</div>
+		  </div>
+		</div>
+		<a class="chevron page-scroll" href="#dual-info"><span class="fa fa-chevron-down"></span></a>
+	  </div>
+	</section>	
+	<!-- INTRO -->
+	<section id="dual-info" style="padding-top : 10%">
+	  <div class="container" style="padding-bottom : 5%">
+		<div class="col-md-6">
+		  <div id="slideshow" style= "width : 160%;">
+			<img id="iphoneheader" style="width : 40%; float: left;margin-bottom: 3%" src="images/iphone5_white.png">
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image.png">
+			</div>
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_1.png">
+			</div>
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_2.png">
+			</div>
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_3.png">
+			</div>
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_4.png">
+			</div> 
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_5.png">
+			</div> 
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_6.png">
+			</div> 
+			<div>
+			  <img style="width : 40%; float: left; margin-left : 11.3%" src="images/image_7.png">
+			</div> 
+		  </div>
+		</div>
+		<div class="col-md-6" style="padding-left : 9%">
+		  <div class="col-md-11" style="padding-top : 10%;   margin-left: -15%;">
+			<h4 id="starterpack">THE MOBILE APP</h4>
+			<span style="  color: white; font-size: 20px;">
+			  <p style="text-align :justify">You love your car, but hate going to the gas station. Purple is for you! Wherever you are, Purple is committed to filling up your tank at unbeatable prices. Whether you are at home watching TV, at your office stranded in meetings, at a local restaurant on a date, or at a basketball game supporting your favorite team, you can take advantage of our gas delivery service by simply placing an order from your smartphone via the Purple App. From now on, don’t waste time filling up your gas tank. Just fill up with Purple!</p>
+			</span>
+		  </div>
+		</div>
+	</section>
+	<!-- STATS -->
+	<section id="features" class="map" style="padding-top : 14%;">
+	  <div class="container">
+		<div class="row">
+		  <!--<div class="col-md-3">
+		  <!-- Download App Section -->
+          <!-- 				<div class="app-info">
+		  <h3>Download App</h3>
+		  <p>Morbi laoreet scelerisque orci finibus ullam corper quam semper utac aliquam magna quis</p>
+		  <div class="app-btns">
+		  <a href="#" class="fa fa-mobile" title="Download for Iphone"></a>
+		  <a href="#" class="fa fa-android" title="Download for Android"></a>
+		  <a href="#" class="fa fa-windows" title="Download for Windows"></a>
+		  </div>
+		  </div> 
+		  </div> -->
+		  <h2 id="punchline-area" style="font-size: 30px;color: white;float: left;background-color: rgba(214,146,196,0.6);margin-bottom: 23%;margin-left: 3%;margin-top: 0px;padding: 10px 18px 10px 18px;">AREA OF SERVICE</h2>
+		  <div id="statinfo" class="col-md-6" style="clear: both">
+            <!-- 					<div class="feature-content" style="margin-bottom : 20px; margin-left : 14%">
+			<p id="infomap" style="font-size : 1.35em;background-color: grey;opacity: 0.9;border-radius: 5px;padding: 3px; margin-left: 16%">Purple is currently ONLY available in the Los Angeles Metro Area. For more information on our delivery routes contact …….</p>
+			</div> -->
+			<div class="feature-content">
+			</div>
+		  </div>
+		</div>
+	  </div>
+	</section>
+	<!-- STATS -->
+    <section id="faq" style="background-color :#752B90!important;padding-top : 50px;">
+      <div class="containerfaq">
+        <h1 class="heading-primary">Frequently Asked Questions</h1>
+        <div class="accordion">
+          <dl>
+            <dt>
+              <a href="#accordion1" aria-expanded="false" aria-controls="accordion1" class="accordion-title accordionTitle js-accordionTrigger">What is Purple?</a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion1" aria-hidden="true">
+              <p>Purple is a gas delivery service. Simply request gas and we will come to your vehicle and fill it up.</p>
+            </dd>
+            <dt>
+              <a href="#accordion2" aria-expanded="false" aria-controls="accordion2" class="accordion-title accordionTitle js-accordionTrigger">
+                What is the area of service covered by Purple?</a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion2" aria-hidden="true">
+              <p>Purple is only available in the Los Angeles Metro area for now. We deliver gas to vehicles located in Westside. Please take a look at the map showing where Purple is operating. <a class="page-scroll" href="#features" target="blank">Go to the map</a></p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                What is the average gas price offered by Purple?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Purple will always charge competitive gas prices available within the area we offer our service.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                Do I need to be in my car when Purple is delivering gas?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              No. All you need to do is make sure that the gas tank door is open before the Purple courier fills up your tank.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                Is there a charge for the delivery service?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>For now, delivery fees are complementary since Purple wants to encourage new users to discover and enjoy Purple. Purple delivery fee increase to about $3.99 in a few months for a delivery done within 3 hours and $5.99 for delivery within an hour.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                How long does it take to get my tank filled up?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Deliveries can be scheduled within 1 or 3 hours.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                How do I know when the courier is on route? Or when my car has been serviced?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>The Purple app will send you several notifications and alerts to inform you about the progress of the delivery. A final message is sent to your phone to let you know that the delivery is completed and your gas tank has been filled up.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                What type of gas can I order?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>You can choose from 2 different types of gas quality. We deliver Unleaded 87 Octane and Unleaded 91 Octane.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                How much gas can I get delivered?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Orders can be placed for a 10 gallons or 15 gallons delivery ONLY.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                Is my payment secure when I order with my credit card ?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>A secure method of payment enables you to pay by credit card. The data and transaction is encrypted with SSL and credit card numbers are not stored in our database.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                Should I be worried about my car's security during the delivery?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Purple is in compliance with all safety and quality control measures from the Department of Transportation, Environmental Protection Agency, and local municipalities. All of our drivers will take a particular care to your vehicle and are fully insured, so you can have peace of mind that your vehicle is in the best hands possible.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                What are your hours of operation?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Purple delivers gas from 10am to 9pm (PST)</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                Can I cancel my order if I change my mind?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Orders can be canceled anytime at no charge.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                What is the quality of the gas you sell?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>We only provide top tier gas. You can choose from Octane 87 and Octane 91
+				<a href="http://www.toptiergas.com/" target="blank">www.toptiergas.com</a></p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                What happens if the driver doesn’t find my car?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>Cars are located by the app and our drivers through your phone’s GPS when you place the order. In case the address on file is different from the delivery site, the driver calls the user for more information. In case the driver cannot find your car, the delivery is cancelled at no charge.</p>
+            </dd>
+            <dt>
+              <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
+                What happens if the delivery is not done on-time?
+              </a>
+            </dt>
+            <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
+              <p>If we are not able to deliver within the time slot that we have committed to, our driver will contact you to reschedule within your schedule or simply cancel the order.</p>
+            </dd>
+          </dl>
+        </div>
+      </div>
+	</section>
+	
+	<!-- FOOTER / COPYRIGHT -->
+	<div style="background-color : #000; border-top-width: 0px" class="footer-copy">
+	  <div class="container" style="text-align : center">
+		<div style="text-align : center; display: block">
+		  <a href="https://www.facebook.com/PurpleServices" target="blank" id="fb" style="margin-right : 10px;"><img src="css/social/fb.svg" onmouseover="this.src='css/social/fbover.svg'" onmouseout="this.src='css/social/fb.svg'"></a>
+		  <a href="https://twitter.com/PurpleGasApp" target="blank" id="tw" style="margin-right : 10px;"><img src="css/social/tw.svg" onmouseover="this.src='css/social/twover.svg'" onmouseout="this.src='css/social/tw.svg'"></a>
+		  <a href="https://instagram.com/purpleservices" target="blank" id="tw" style="margin-right : 10px;"><img src="css/social/insta.svg" onmouseover="this.src='css/social/instaover.svg'" onmouseout="this.src='css/social/insta.svg'"></a>
+          <a href="mailto:info@purpledelivery.com" target="_top" id="tw" style="margin-right : 10px;"><img src="css/social/mail.svg" onmouseover="this.src='css/social/mailover.svg'" onmouseout="this.src='css/social/mail.svg'"></a>
+		</div>
+		<div class="row" style="margin: 50px 50px 10px 50px;">
+		  <div class="col-md-7">
+			<p id="copy" style="float : left">&copy;2015 Purple Services Inc</p>
+		  </div>
+		  <div class="col-md-5">
+			<a class="backtotop page-scroll" href="#page-top">Back to top &Delta;</a>
+		  </div>
+		</div>
+	  </div>
+	</div> 
+	<!-- FOOTER / COPYRIGHT -->
+    <!-- </div> -->
+
+    <!-- Javascript -->
+    <script src="js/jquery-2.1.3.js"></script><!--script src="js/jquery.js"></script-->
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/jquery.easing.min.js"></script>
+    <script src="js/jquery.countdown.min.js"></script>
+    <script src="js/main.js"></script>
+
+    <!--script src="js/stepform/classie.js"></script>
+    <script src="js/stepform/stepsForm.js"></script-->
+
+	<script>
+     //uses classList, setAttribute, and querySelectorAll
+     //if you want this to work in IE8/9 youll need to polyfill these
+     (function(){
+       var d = document,
+       accordionToggles = d.querySelectorAll('.js-accordionTrigger'),
+       setAria,
+       setAccordionAria,
+       switchAccordion,
+       touchSupported = ('onclick' in window),
+       pointerSupported = ('pointerdown' in window);
+       
+       skipClickDelay = function(e){
+         e.preventDefault();
+         e.target.click();
+       }
+
+       setAriaAttr = function(el, ariaType, newProperty){
+         el.setAttribute(ariaType, newProperty);
+       };
+       setAccordionAria = function(el1, el2, expanded){
+         switch(expanded) {
+           case "true":
+             setAriaAttr(el1, 'aria-expanded', 'true');
+             setAriaAttr(el2, 'aria-hidden', 'false');
+             break;
+           case "false":
+             setAriaAttr(el1, 'aria-expanded', 'false');
+             setAriaAttr(el2, 'aria-hidden', 'true');
+             break;
+           default:
+             break;
+         }
+       };
+       //function
+       switchAccordion = function(e) {
+         e.preventDefault();
+         var thisAnswer = e.target.parentNode.nextElementSibling;
+         var thisQuestion = e.target;
+         if(thisAnswer.classList.contains('is-collapsed')) {
+           setAccordionAria(thisQuestion, thisAnswer, 'true');
+         } else {
+           setAccordionAria(thisQuestion, thisAnswer, 'false');
+         }
+         thisQuestion.classList.toggle('is-collapsed');
+         thisQuestion.classList.toggle('is-expanded');
+         thisAnswer.classList.toggle('is-collapsed');
+         thisAnswer.classList.toggle('is-expanded');
+         
+         thisAnswer.classList.toggle('animateIn');
+       };
+       for (var i=0,len=accordionToggles.length; i<len; i++) {
+         if(touchSupported) {
+           accordionToggles[i].addEventListener('onclick', skipClickDelay, false);
+                                                        }
+                                                        if(pointerSupported){
+                                                        accordionToggles[i].addEventListener('pointerdown', skipClickDelay, false);
+                                                        }
+                                                        accordionToggles[i].addEventListener('click', switchAccordion, false);
+                                                        }
+                                                        })();
+    </script>
+
+    <script>$("#slideshow > div:gt(0)").hide();
+     setInterval(function() { 
+       $('#slideshow > div:first')
+    .fadeOut(1000)
+    .next()
+    .fadeIn(1000)
+    .end()
+    .appendTo('#slideshow');
+     },  3000);
+    </script>
+	<script>
+	 var theForm = document.getElementById( 'theForm' );
+	 var sendEmail = function(data) {
+       $.ajax({
+         url: window.location.href,
+         dataType: "json",
+         method: 'POST',
+         data: data,
+         processData: false,
+         beforeSend: function(){
+           alert('envoie en cours');
+         },success: function (msg) {
+           alert(msg);
+         },error: function(request, status, error){
+		   alert(request.responseText);
+         }
+
+       })
+     };
+
+	 /*new stepsForm( theForm, {
+		onSubmit : function( form ) {
+		// hide form
+		classie.addClass( theForm.querySelector( '.simform-inner' ), 'hide' );
+		var data = new FormData(this);
+   		sendEmail(data);
+   		return false;
+
+		
+		
+		//or
+		//AJAX request (maybe show loading indicator while we don't have an answer..)
+        
+
+		// let's just simulate something...
+		var messageEl = theForm.querySelector( '.final-message' );
+		messageEl.innerHTML = 'Merci beaucoup, notre équipe vous contactera dans les plus brefs délais';
+		classie.addClass( messageEl, 'show' );
+		}
+		} );*/
+	</script>
+
+	<script type="text/javascript">
+
+	 $(function() {
+       $("img")
+    .mouseover(function() { 
+         var src = $(this).attr("src").match(/[^\.]+/) + "over.gif";
+         $(this).attr("src", src);
+     })
+    .mouseout(function() {
+       var src = $(this).attr("src").replace("over", "");
+       $(this).attr("src", src);
+     });
+     });
+
+     //uses classList, setAttribute, and querySelectorAll
+     //if you want this to work in IE8/9 youll need to polyfill these
+     (function(){
+	   var d = document,
+	   accordionToggles = d.querySelectorAll('.js-accordionTrigger'),
+	   setAria,
+	   setAccordionAria,
+	   switchAccordion,
+       touchSupported = ('ontouchstart' in window),
+       pointerSupported = ('pointerdown' in window);
+       
+       skipClickDelay = function(e){
+         e.preventDefault();
+         e.target.click();
+       }
+
+	   setAriaAttr = function(el, ariaType, newProperty){
+		 el.setAttribute(ariaType, newProperty);
+	   };
+	   setAccordionAria = function(el1, el2, expanded){
+		 switch(expanded) {
+           case "true":
+      	     setAriaAttr(el1, 'aria-expanded', 'true');
+      	     setAriaAttr(el2, 'aria-hidden', 'false');
+      	     break;
+           case "false":
+      	     setAriaAttr(el1, 'aria-expanded', 'false');
+      	     setAriaAttr(el2, 'aria-hidden', 'true');
+      	     break;
+           default:
+			 break;
+		 }
+	   };
+       //function
+       switchAccordion = function(e) {
+	     e.preventDefault();
+	     var thisAnswer = e.target.parentNode.nextElementSibling;
+	     var thisQuestion = e.target;
+	     if(thisAnswer.classList.contains('is-collapsed')) {
+		   setAccordionAria(thisQuestion, thisAnswer, 'true');
+	     } else {
+		   setAccordionAria(thisQuestion, thisAnswer, 'false');
+	     }
+  	     thisQuestion.classList.toggle('is-collapsed');
+  	     thisQuestion.classList.toggle('is-expanded');
+		 thisAnswer.classList.toggle('is-collapsed');
+		 thisAnswer.classList.toggle('is-expanded');
+ 	     
+  	     thisAnswer.classList.toggle('animateIn');
+	   };
+	   for (var i=0,len=accordionToggles.length; i<len; i++) {
+		 if(touchSupported) {
+           accordionToggles[i].addEventListener('touchstart', skipClickDelay, false);
+                                                        }
+                                                        if(pointerSupported){
+                                                        accordionToggles[i].addEventListener('pointerdown', skipClickDelay, false);
+                                                        }
+                                                        accordionToggles[i].addEventListener('click', switchAccordion, false);
+                                                        }
+                                                        })();
+    </script>
+
+    <script>
+     $(document).ready(function () {
+       $(".navbar-nav li a").click(function(event) {
+         $(".navbar-collapse").collapse('hide');
+       });
+     });
+    </script>
+
+    <script>
+     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+       (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+                              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+     })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+     ga('create', 'UA-61762011-2', 'auto');
+     ga('send', 'pageview');
+
+    </script>
+
+</body>
 </html>
