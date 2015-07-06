@@ -10,7 +10,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>Purple</title>
+  <title></title>
 
   <!-- Mobile Metas -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -263,7 +263,7 @@
               </a>
             </dt>
             <dd class="accordion-content accordionItem is-collapsed" id="accordion3" aria-hidden="true">
-              No. All you need to do is make sure that the gas tank door is open before the Purple courier fills up your tank.</p>
+              <p>No. All you need to do is make sure that the gas tank door is open before the Purple courier fills up your tank.</p>
             </dd>
             <dt>
               <a href="#accordion3" aria-expanded="false" aria-controls="accordion3" class="accordion-title accordionTitle js-accordionTrigger">
@@ -389,225 +389,121 @@
 	<!-- FOOTER / COPYRIGHT -->
     <!-- </div> -->
 
-    <!-- Javascript -->
-    <script src="js/jquery-2.1.3.js"></script><!--script src="js/jquery.js"></script-->
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/jquery.easing.min.js"></script>
-    <script src="js/jquery.countdown.min.js"></script>
-    <script src="js/main.js"></script>
+<!-- Javascript -->
+<script src="js/jquery-2.1.3.js"></script><!--script src="js/jquery.js"></script-->
+<script src="js/bootstrap.min.js"></script>
+<script src="js/jquery.easing.min.js"></script>
+<script src="js/jquery.countdown.min.js"></script>
+<script src="js/main.js"></script>
 
-    <!--script src="js/stepform/classie.js"></script>
-    <script src="js/stepform/stepsForm.js"></script-->
+<!--script src="js/stepform/classie.js"></script>
+<script src="js/stepform/stepsForm.js"></script-->
 
 	<script>
-     //uses classList, setAttribute, and querySelectorAll
-     //if you want this to work in IE8/9 youll need to polyfill these
-     (function(){
-       var d = document,
-       accordionToggles = d.querySelectorAll('.js-accordionTrigger'),
-       setAria,
-       setAccordionAria,
-       switchAccordion,
-       touchSupported = ('onclick' in window),
-       pointerSupported = ('pointerdown' in window);
-       
-       skipClickDelay = function(e){
-         e.preventDefault();
-         e.target.click();
-       }
+//uses classList, setAttribute, and querySelectorAll
+//if you want this to work in IE8/9 youll need to polyfill these
+(function(){
+  var d = document,
+  accordionToggles = d.querySelectorAll('.js-accordionTrigger'),
+  setAria,
+  setAccordionAria,
+  switchAccordion,
+  touchSupported = ('onclick' in window),
+  pointerSupported = ('pointerdown' in window);
+  
+  skipClickDelay = function(e){
+    e.preventDefault();
+    e.target.click();
+  }
 
-       setAriaAttr = function(el, ariaType, newProperty){
-         el.setAttribute(ariaType, newProperty);
-       };
-       setAccordionAria = function(el1, el2, expanded){
-         switch(expanded) {
-           case "true":
-             setAriaAttr(el1, 'aria-expanded', 'true');
-             setAriaAttr(el2, 'aria-hidden', 'false');
-             break;
-           case "false":
-             setAriaAttr(el1, 'aria-expanded', 'false');
-             setAriaAttr(el2, 'aria-hidden', 'true');
-             break;
-           default:
-             break;
-         }
-       };
-       //function
-       switchAccordion = function(e) {
-         e.preventDefault();
-         var thisAnswer = e.target.parentNode.nextElementSibling;
-         var thisQuestion = e.target;
-         if(thisAnswer.classList.contains('is-collapsed')) {
-           setAccordionAria(thisQuestion, thisAnswer, 'true');
-         } else {
-           setAccordionAria(thisQuestion, thisAnswer, 'false');
-         }
-         thisQuestion.classList.toggle('is-collapsed');
-         thisQuestion.classList.toggle('is-expanded');
-         thisAnswer.classList.toggle('is-collapsed');
-         thisAnswer.classList.toggle('is-expanded');
-         
-         thisAnswer.classList.toggle('animateIn');
-       };
-       for (var i=0,len=accordionToggles.length; i<len; i++) {
-         if(touchSupported) {
-           accordionToggles[i].addEventListener('onclick', skipClickDelay, false);
-                                                        }
-                                                        if(pointerSupported){
-                                                        accordionToggles[i].addEventListener('pointerdown', skipClickDelay, false);
-                                                        }
-                                                        accordionToggles[i].addEventListener('click', switchAccordion, false);
-                                                        }
-                                                        })();
-    </script>
+    setAriaAttr = function(el, ariaType, newProperty){
+    el.setAttribute(ariaType, newProperty);
+  };
+  setAccordionAria = function(el1, el2, expanded){
+    switch(expanded) {
+      case "true":
+        setAriaAttr(el1, 'aria-expanded', 'true');
+        setAriaAttr(el2, 'aria-hidden', 'false');
+        break;
+      case "false":
+        setAriaAttr(el1, 'aria-expanded', 'false');
+        setAriaAttr(el2, 'aria-hidden', 'true');
+        break;
+      default:
+        break;
+    }
+  };
+//function
+switchAccordion = function(e) {
+  e.preventDefault();
+  var thisAnswer = e.target.parentNode.nextElementSibling;
+  var thisQuestion = e.target;
+  if(thisAnswer.classList.contains('is-collapsed')) {
+    setAccordionAria(thisQuestion, thisAnswer, 'true');
+  } else {
+    setAccordionAria(thisQuestion, thisAnswer, 'false');
+  }
+    thisQuestion.classList.toggle('is-collapsed');
+    thisQuestion.classList.toggle('is-expanded');
+    thisAnswer.classList.toggle('is-collapsed');
+    thisAnswer.classList.toggle('is-expanded');
+  
+    thisAnswer.classList.toggle('animateIn');
+  };
+  for (var i=0,len=accordionToggles.length; i<len; i++) {
+    if(touchSupported) {
+      accordionToggles[i].addEventListener('onclick', skipClickDelay, false);
+    }
+    if(pointerSupported){
+      accordionToggles[i].addEventListener('pointerdown', skipClickDelay, false);
+    }
+    accordionToggles[i].addEventListener('click', switchAccordion, false);
+  }
+})();
+</script>
 
-    <script>$("#slideshow > div:gt(0)").hide();
-     setInterval(function() { 
-       $('#slideshow > div:first')
+<script>$("#slideshow > div:gt(0)").hide();
+setInterval(function() { 
+  $('#slideshow > div:first')
     .fadeOut(1000)
     .next()
     .fadeIn(1000)
     .end()
     .appendTo('#slideshow');
-     },  3000);
-    </script>
-	<script>
-	 var theForm = document.getElementById( 'theForm' );
-	 var sendEmail = function(data) {
-       $.ajax({
-         url: window.location.href,
-         dataType: "json",
-         method: 'POST',
-         data: data,
-         processData: false,
-         beforeSend: function(){
-           alert('envoie en cours');
-         },success: function (msg) {
-           alert(msg);
-         },error: function(request, status, error){
-		   alert(request.responseText);
-         }
+},  3000);
+</script>
+	   <script>
+			var theForm = document.getElementById( 'theForm' );
+			var sendEmail = function(data) {
+        $.ajax({
+            url: window.location.href,
+            dataType: "json",
+            method: 'POST',
+            data: data,
+            processData: false,
+            beforeSend: function(){
+             alert('envoie en cours');
+            },success: function (msg) {
+             alert(msg);
+            },error: function(request, status, error){
+				alert(request.responseText);
+            }
 
-       })
-     };
+        })
+    };
 
-	 /*new stepsForm( theForm, {
-		onSubmit : function( form ) {
-		// hide form
-		classie.addClass( theForm.querySelector( '.simform-inner' ), 'hide' );
-		var data = new FormData(this);
-   		sendEmail(data);
-   		return false;
+		</script>
 
-		
-		
-		//or
-		//AJAX request (maybe show loading indicator while we don't have an answer..)
-        
+        <script>
+         (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+           (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+                                  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+         })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-		// let's just simulate something...
-		var messageEl = theForm.querySelector( '.final-message' );
-		messageEl.innerHTML = 'Merci beaucoup, notre équipe vous contactera dans les plus brefs délais';
-		classie.addClass( messageEl, 'show' );
-		}
-		} );*/
-	</script>
+         ga('create', 'UA-61762011-2', 'auto');
+         ga('send', 'pageview');
 
-	<script type="text/javascript">
-
-	 $(function() {
-       $("img")
-    .mouseover(function() { 
-         var src = $(this).attr("src").match(/[^\.]+/) + "over.gif";
-         $(this).attr("src", src);
-     })
-    .mouseout(function() {
-       var src = $(this).attr("src").replace("over", "");
-       $(this).attr("src", src);
-     });
-     });
-
-     //uses classList, setAttribute, and querySelectorAll
-     //if you want this to work in IE8/9 youll need to polyfill these
-     (function(){
-	   var d = document,
-	   accordionToggles = d.querySelectorAll('.js-accordionTrigger'),
-	   setAria,
-	   setAccordionAria,
-	   switchAccordion,
-       touchSupported = ('ontouchstart' in window),
-       pointerSupported = ('pointerdown' in window);
-       
-       skipClickDelay = function(e){
-         e.preventDefault();
-         e.target.click();
-       }
-
-	   setAriaAttr = function(el, ariaType, newProperty){
-		 el.setAttribute(ariaType, newProperty);
-	   };
-	   setAccordionAria = function(el1, el2, expanded){
-		 switch(expanded) {
-           case "true":
-      	     setAriaAttr(el1, 'aria-expanded', 'true');
-      	     setAriaAttr(el2, 'aria-hidden', 'false');
-      	     break;
-           case "false":
-      	     setAriaAttr(el1, 'aria-expanded', 'false');
-      	     setAriaAttr(el2, 'aria-hidden', 'true');
-      	     break;
-           default:
-			 break;
-		 }
-	   };
-       //function
-       switchAccordion = function(e) {
-	     e.preventDefault();
-	     var thisAnswer = e.target.parentNode.nextElementSibling;
-	     var thisQuestion = e.target;
-	     if(thisAnswer.classList.contains('is-collapsed')) {
-		   setAccordionAria(thisQuestion, thisAnswer, 'true');
-	     } else {
-		   setAccordionAria(thisQuestion, thisAnswer, 'false');
-	     }
-  	     thisQuestion.classList.toggle('is-collapsed');
-  	     thisQuestion.classList.toggle('is-expanded');
-		 thisAnswer.classList.toggle('is-collapsed');
-		 thisAnswer.classList.toggle('is-expanded');
- 	     
-  	     thisAnswer.classList.toggle('animateIn');
-	   };
-	   for (var i=0,len=accordionToggles.length; i<len; i++) {
-		 if(touchSupported) {
-           accordionToggles[i].addEventListener('touchstart', skipClickDelay, false);
-                                                        }
-                                                        if(pointerSupported){
-                                                        accordionToggles[i].addEventListener('pointerdown', skipClickDelay, false);
-                                                        }
-                                                        accordionToggles[i].addEventListener('click', switchAccordion, false);
-                                                        }
-                                                        })();
-    </script>
-
-    <script>
-     $(document).ready(function () {
-       $(".navbar-nav li a").click(function(event) {
-         $(".navbar-collapse").collapse('hide');
-       });
-     });
-    </script>
-
-    <script>
-     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-       (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-                              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-     })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-     ga('create', 'UA-61762011-2', 'auto');
-     ga('send', 'pageview');
-
-    </script>
+        </script>
 
 </body>
 </html>

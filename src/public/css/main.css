@@ -16,10 +16,10 @@ table thead {
 table tbody tr:hover {
     background: #ddd;
 }
-table tbody tr:nth-child(n+8) {
+table.hide-extra tbody tr:nth-child(n+8) {
     display: none;
 }
-table.showing-all tbody tr:nth-child(n+8) {
+table.hide-extra.showing-all tbody tr:nth-child(n+8) {
     display: table-row;
 }
 table td {

@@ -23,7 +23,7 @@
   [:title] (content (:title x)))
 
 (defn home []
-  (apply str (home-template {:title "Purple App"})))
+  (apply str (home-template {:title "Purple App - On-Demand Gas Delivery"})))
 
 (deftemplate reset-password-template "templates/reset-password.html"
   [x]
