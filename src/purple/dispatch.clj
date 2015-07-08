@@ -21,7 +21,7 @@
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
-;; (def zq {ZONE-ID-1 (priority-map orders...)
+;; (def zq {ZONE-ID-1 (priority-map orders...) ;; as an atom
 ;;          ZONE-ID-2 (priority-map orders...)})
 ;; When a new order is created, we have to add it to the queue (priority map)
 ;; of the zone that the destination resides in.

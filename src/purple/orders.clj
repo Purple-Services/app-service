@@ -107,7 +107,7 @@
             (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))
             0))))
 
-(defn valid-order?
+(defn valid-price?
   "Is the stated 'total_price' accurate?"
   [db-conn o]
   (= (:total_price o)
@@ -119,6 +119,30 @@
                      (:vehicle_id o)
                      (:user_id o)
                      (:referral_gallons_used o))))
+
+(defn connected-couriers
+  [db-conn]
+  (map #(assoc % :zones (map (fn [x] (Integer. x))
+                             (util/split-on-comma (:zones %))))
+       (db/select db-conn
+                  "couriers"
+                  ["*"]
+                  {:active true
+                   :on_duty true
+                   :connected true})))
+
+(defn valid-time?
+  [db-conn o]
+  (if (< (:time-in-minutes o) 180)
+    (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
+          pm (get purple.dispatch/zq zone-id)
+          num-orders-in-queue (count @pm)
+          num-couriers (min 1
+                            (count (filter #(util/in? (:zones %) zone-id)
+                                           (connected-couriers db-conn))))]
+      (< num-orders-in-queue
+         (* 2 num-couriers)))
+    true))
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
@@ -171,43 +195,46 @@
             :referral_gallons_used (min (Integer. (:gallons order))
                                         referral-gallons-available)
             :coupon_code (s/upper-case (or (:coupon_code order) "")))]
-    (if (valid-order? db-conn o)
-      (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
-                                                      :status :target_time_start
-                                                      :target_time_end
-                                                      :gallons :gas_type
-                                                      :special_instructions
-                                                      :lat :lng :address_street
-                                                      :address_city :address_state
-                                                      :address_zip :gas_price
-                                                      :service_fee :total_price
-                                                      :license_plate :coupon_code
-                                                      :referral_gallons_used]))
-          ((resolve 'purple.dispatch/add-order-to-zq) o)
-          (when (not (= 0 (:referral_gallons_used o)))
-            (coupons/mark-gallons-as-used db-conn
-                                          (:user_id o)
-                                          (:referral_gallons_used o)))
-          (when (not (s/blank? (:coupon_code o)))
-            (coupons/mark-code-as-used db-conn
-                                       (:coupon_code o)
-                                       (:license_plate o)
-                                       (:user_id o)))
-          (future (util/send-email {:to "chris@purpledelivery.com"
-                                    :subject "Purple - New Order"
-                                    :body (str o)})
-                  (when (= config/db-user "purplemasterprod") ;; only in production
-                    (doall (map #(util/send-sms %
-                                                (str "New order:\n"
-                                                     "Due: " (util/unix->full
-                                                              (:target_time_end o))
-                                                     "\n" (:address_street o)
-                                                     ", " (:address_zip o)))
-                                ["3235782263" ;; Bruno
-                                 "3106919061" ;; JP
-                                 "8589228571" ;; Lee
-                                 ]))))
-          {:success true})
+    (if (valid-price? db-conn o)
+      (if (valid-time? db-conn o)
+        (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
+                                                        :status :target_time_start
+                                                        :target_time_end
+                                                        :gallons :gas_type
+                                                        :special_instructions
+                                                        :lat :lng :address_street
+                                                        :address_city :address_state
+                                                        :address_zip :gas_price
+                                                        :service_fee :total_price
+                                                        :license_plate :coupon_code
+                                                        :referral_gallons_used]))
+            ((resolve 'purple.dispatch/add-order-to-zq) o)
+            (when (not (= 0 (:referral_gallons_used o)))
+              (coupons/mark-gallons-as-used db-conn
+                                            (:user_id o)
+                                            (:referral_gallons_used o)))
+            (when (not (s/blank? (:coupon_code o)))
+              (coupons/mark-code-as-used db-conn
+                                         (:coupon_code o)
+                                         (:license_plate o)
+                                         (:user_id o)))
+            (future (util/send-email {:to "chris@purpledelivery.com"
+                                      :subject "Purple - New Order"
+                                      :body (str o)})
+                    (when (= config/db-user "purplemasterprod") ;; only in production
+                      (doall (map #(util/send-sms %
+                                                  (str "New order:\n"
+                                                       "Due: " (util/unix->full
+                                                                (:target_time_end o))
+                                                       "\n" (:address_street o)
+                                                       ", " (:address_zip o)))
+                                  ["3235782263" ;; Bruno
+                                   "3106919061" ;; JP
+                                   "8589228571" ;; Lee
+                                   ]))))
+            {:success true})
+        {:success false
+         :message "Sorry, we currently are experiencing high volume and can't promise a delivery within that time limit. Please go back and choose the \"within 3 hours\" option."})
       {:success false
        :message "Sorry, the price changed while you were creating your order. Please press the back button to go back to the map and start over."})))
 
