@@ -176,7 +176,10 @@
                                           "display: block; margin: 0px auto;")))
 
 (defn dashboard [db-conn & {:keys [read-only]}]
-  (let [couriers (db/select db-conn "couriers" ["*"] {})
+  (let [couriers (remove #(util/in? ["9eadx6i2wCCjUI1leBBr" ;; remove JP, Bruno, & Chris
+                                     "O5Lgnj2nq16GmDvcYNeO"
+                                     "VUtTv9w1NL7Iim3LS7D7"] (:id %))
+                         (db/select db-conn "couriers" ["*"] {}))
         courier-ids (distinct (map :id couriers))
         users-by-id (group-by :id
                               (db/select db-conn
