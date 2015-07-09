@@ -138,7 +138,7 @@
              (content (str (:coupon_code t)))
              
              [:td.total_price]
-             (content (util/cents->dollars (:total_price t))))
+             (content (str "$" (util/cents->dollars (:total_price t)))))
 
   
   [:#users :tbody :tr] (clone-for [t (:users x)]
@@ -167,6 +167,24 @@
   [:#users-count] (content (str "("
                                 (:users-count x)
                                 ")"))
+
+  [:#coupons :tbody :tr]
+  (clone-for [t (:coupons x)]
+             
+             [:td.code]
+             (content (:code t))
+
+             [:td.value]
+             (content (str "$" (util/cents->dollars (Math/abs (:value t)))))
+
+             [:td.expiration_time]
+             (content (util/unix->fuller (:expiration_time t)))
+
+             [:td.times_used]
+             (content (str (count (s/split (:used_by_license_plates t) #","))))
+
+             [:td.only_for_first_orders]
+             (content (if (:only_for_first_orders t) "Yes" "No")))
 
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
   [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x))
@@ -203,7 +221,8 @@
                                              :gas_type
                                              :license_plate]
                                             {}))
-        id->vehicle #(first (get vehicles-by-id %))]
+        id->vehicle #(first (get vehicles-by-id %))
+        coupons (db/select db-conn "coupons" ["*"] {:type "standard"})]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
@@ -236,6 +255,7 @@
                      #(.getTime (:timestamp_created %))
                      >
                      (map (comp first val) users-by-id))
+             :coupons coupons
              :users-count (count users-by-id)
              :base-url config/base-url
              :gas-price-87 @config/gas-price-87

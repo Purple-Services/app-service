@@ -135,9 +135,9 @@
   [db-conn o]
   (if (< (:time-in-minutes o) 180)
     (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
-          pm (get purple.dispatch/zq zone-id)
+          pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
           num-orders-in-queue (count @pm)
-          num-couriers (min 1
+          num-couriers (max 1
                             (count (filter #(util/in? (:zones %) zone-id)
                                            (connected-couriers db-conn))))]
       (< num-orders-in-queue

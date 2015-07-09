@@ -37,6 +37,10 @@
     (:id (first (filter #(util/in? (:zip_codes %) zip-code)
                         zones)))))
 
+(defn get-map-by-zone-id
+  [zone-id]
+  (get zq zone-id))
+
 (defn priority-score
   "Compute the priority score (an int) of the order."
   [order]
