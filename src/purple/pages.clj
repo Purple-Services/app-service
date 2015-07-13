@@ -181,7 +181,10 @@
              (content (util/unix->fuller (:expiration_time t)))
 
              [:td.times_used]
-             (content (str (count (s/split (:used_by_license_plates t) #","))))
+             (content (str (-> (:used_by_license_plates t)
+                               (s/split #",")
+                               (->> (remove s/blank?))
+                               count)))
 
              [:td.only_for_first_orders]
              (content (if (:only_for_first_orders t) "Yes" "No")))

@@ -57,7 +57,10 @@
                           "orders"
                           ["*"]
                           {:courier_id courier-id}
-                          :append "ORDER BY target_time_start DESC")
+                          :append (str "AND target_time_start > "
+                                       (- (quot (System/currentTimeMillis) 1000)
+                                          (* 60 60 24 16)) ;; 16 days
+                                       " ORDER BY target_time_start DESC"))
         customer-ids (distinct (map :user_id orders))
         customers (group-by :id
                             (db/select db-conn
@@ -141,7 +144,8 @@
                             (count (filter #(util/in? (:zones %) zone-id)
                                            (connected-couriers db-conn))))]
       (< num-orders-in-queue
-         (* 2 num-couriers)))
+         ;(* 2 num-couriers)))
+         (* 1 num-couriers)))
     true))
 
 (defn infer-gas-type-by-price
