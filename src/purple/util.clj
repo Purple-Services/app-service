@@ -20,6 +20,12 @@
            [org.apache.http.message BasicNameValuePair]
            [java.util List ArrayList]))
 
+(defmacro !
+  "Keeps code from running during compilation."
+  [& body]
+  `(when (not *compile-files*)
+     ~@body))
+
 (defn split-on-comma [x] (s/split x #","))
 
 (defn cents->dollars
@@ -111,12 +117,11 @@
 
 
 ;; Amazon SNS (Push Notifications)
-(when (not *compile-files*)
-  (do
-    (def aws-creds (aws/credentials (System/getProperty "AWS_ACCESS_KEY_ID")
-                                    (System/getProperty "AWS_SECRET_KEY")))
-    (def sns-client (sns/client aws-creds))
-    (.setEndpoint sns-client "https://sns.us-west-2.amazonaws.com")))
+(! (do
+     (def aws-creds (aws/credentials (System/getProperty "AWS_ACCESS_KEY_ID")
+                                     (System/getProperty "AWS_SECRET_KEY")))
+     (def sns-client (sns/client aws-creds))
+     (.setEndpoint sns-client "https://sns.us-west-2.amazonaws.com")))
 
 ;; todo - recreate/update endpoint_arn with new device_token if a certain exception is thrown
 
@@ -166,12 +171,11 @@
 
 
 ;; Twilio (SMS & Phone Calls)
-(when (not *compile-files*)
-  (do
-    (def twilio-client (TwilioRestClient. config/twilio-account-sid
-                                          config/twilio-auth-token))
-    (def twilio-sms-factory (.getMessageFactory (.getAccount twilio-client)))
-    (def twilio-call-factory (.getCallFactory (.getAccount twilio-client)))))
+(! (do
+     (def twilio-client (TwilioRestClient. config/twilio-account-sid
+                                           config/twilio-auth-token))
+     (def twilio-sms-factory (.getMessageFactory (.getAccount twilio-client)))
+     (def twilio-call-factory (.getCallFactory (.getAccount twilio-client)))))
 
 ;; doesn't handle TwilioRestException properly
 (defn send-sms

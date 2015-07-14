@@ -1,10 +1,10 @@
 (ns purple.handler
-  (:use cheshire.core
+  (:use purple.util
+        cheshire.core
         ring.util.response
         clojure.walk)
   (:require [purple.config :as config]
             [purple.db :as db]
-            [purple.util :as util]
             [purple.users :as users]
             [purple.orders :as orders]
             [purple.dispatch :as dispatch]
@@ -84,8 +84,8 @@
                    (response
                     (let [b (keywordize-keys body)]
                       (users/forgot-password (db/conn)
-                                      ;; 'platform_id' is email address
-                                      (:platform_id b)))))
+                                             ;; 'platform_id' is email address
+                                             (:platform_id b)))))
 
              ;; only for native users
              (GET "/reset-password/:key" [key]
@@ -231,9 +231,9 @@
                          db-conn
                          (:user_id b)
                          (:token b)
-                         (util/send-feedback (:text b)
-                                             :user_id (:user_id b)))
-                        (util/send-feedback (:text b))))))))
+                         (send-feedback (:text b)
+                                        :user_id (:user_id b)))
+                        (send-feedback (:text b))))))))
   (context "/invite" []
            (defroutes invite-routes
              (POST "/send" {body :body}
@@ -258,11 +258,11 @@
               (GET "/" []
                    (wrap-page (response (pages/dashboard (db/conn)))))
               (POST "/change-gas-price" {body :body}
-                   (response
-                    (let [b (keywordize-keys body)]
-                      (dispatch/change-gas-price (db/conn)
-                                                 (:gas-price-87 b)
-                                                 (:gas-price-91 b))))))
+                    (response
+                     (let [b (keywordize-keys body)]
+                       (dispatch/change-gas-price (db/conn)
+                                                  (:gas-price-87 b)
+                                                  (:gas-price-91 b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication

@@ -1,8 +1,8 @@
 (ns purple.payment
-  (:use cheshire.core
+  (:use purple.util
+        cheshire.core
         clojure.walk)
   (:require [purple.config :as config]
-            [purple.util :as util]
             [purple.db :as db]
             [clj-http.client :as client]
             [clojure.string :as s]))
@@ -78,7 +78,7 @@
            {:success false
             :message (:failure_message resp)}))
        (catch Exception e ;; not ideal, it assumes any bad status code is this
-         (util/send-email
+         (send-email
           {:to "chris@purpledelivery.com"
            :subject "Purple - Error"
            :body (str "Stripe Exception: " (.getMessage e))})

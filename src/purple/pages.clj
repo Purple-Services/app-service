@@ -1,9 +1,9 @@
 (ns purple.pages
-  (:use net.cgrand.enlive-html
+  (:use purple.util
+        net.cgrand.enlive-html
         :reload)
   (:require [purple.users :as users]
             [purple.orders :as orders]
-            [purple.util :as util]
             [purple.config :as config]
             [purple.db :as db]
             [clojure.string :as s]))
@@ -109,10 +109,10 @@
              (content (:courier_name t))
 
              [:td.target_time_start]
-             (content (util/unix->full (:target_time_start t)))
+             (content (unix->full (:target_time_start t)))
 
              [:td.target_time_end]
-             (content (util/unix->full (:target_time_end t)))
+             (content (unix->full (:target_time_end t)))
 
              [:td.customer_name]
              (content (:customer_name t))
@@ -138,27 +138,27 @@
              (content (str (:coupon_code t)))
              
              [:td.total_price]
-             (content (str "$" (util/cents->dollars (:total_price t)))))
+             (content (str "$" (cents->dollars (:total_price t)))))
 
   
   [:#users :tbody :tr] (clone-for [t (:users x)]
-                   [:td.name]
-                   (content (:name t))
+                                  [:td.name]
+                                  (content (:name t))
 
-                   [:td.email]
-                   (content (:email t))
+                                  [:td.email]
+                                  (content (:email t))
 
-                   [:td.phone_number]
-                   (content (:phone_number t))
+                                  [:td.phone_number]
+                                  (content (:phone_number t))
 
-                   [:td.has_added_card]
-                   (content (if (:stripe_default_card t) "Yes" "No"))
+                                  [:td.has_added_card]
+                                  (content (if (:stripe_default_card t) "Yes" "No"))
 
-                   [:td.timestamp_created]
-                   (content (util/unix->full
-                             (/ (.getTime (:timestamp_created t))
-                                1000))) ;; i think this is wrong timezone, idk
-                   )
+                                  [:td.timestamp_created]
+                                  (content (unix->full
+                                            (/ (.getTime (:timestamp_created t))
+                                               1000))) ;; i think this is wrong timezone, idk
+                                  )
 
   [:#emails-list] (content (->> (:users x)
                                 (map :email)
@@ -175,10 +175,10 @@
              (content (:code t))
 
              [:td.value]
-             (content (str "$" (util/cents->dollars (Math/abs (:value t)))))
+             (content (str "$" (cents->dollars (Math/abs (:value t)))))
 
              [:td.expiration_time]
-             (content (util/unix->fuller (:expiration_time t)))
+             (content (unix->fuller (:expiration_time t)))
 
              [:td.times_used]
              (content (str (-> (:used_by_license_plates t)
@@ -197,9 +197,9 @@
                                           "display: block; margin: 0px auto;")))
 
 (defn dashboard [db-conn & {:keys [read-only]}]
-  (let [couriers (remove #(util/in? ["9eadx6i2wCCjUI1leBBr" ;; remove JP, Bruno, & Chris
-                                     "O5Lgnj2nq16GmDvcYNeO"
-                                     "VUtTv9w1NL7Iim3LS7D7"] (:id %))
+  (let [couriers (remove #(in? ["9eadx6i2wCCjUI1leBBr" ;; remove JP, Bruno, & Chris
+                                "O5Lgnj2nq16GmDvcYNeO"
+                                "VUtTv9w1NL7Iim3LS7D7"] (:id %))
                          (db/select db-conn "couriers" ["*"] {}))
         courier-ids (distinct (map :id couriers))
         users-by-id (group-by :id
@@ -268,9 +268,9 @@
 (defn twiml-simple
   [message]
   (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-         "<Response>"
-           "<Pause length=\"1\"/>"
-           "<Say voice=\"woman\" loop=\"1\">"
-             message
-           "</Say>"
-         "</Response>"))
+       "<Response>"
+       "<Pause length=\"1\"/>"
+       "<Say voice=\"woman\" loop=\"1\">"
+       message
+       "</Say>"
+       "</Response>"))

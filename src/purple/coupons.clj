@@ -1,6 +1,6 @@
 (ns purple.coupons
+  (:use purple.util)
   (:require [purple.config :as config]
-            [purple.util :as util]
             [purple.db :as db]
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
@@ -35,14 +35,14 @@
         used-by-license-plate?
         (fn [coupon license-plate]
           (-> (:used_by_license_plates coupon)
-              util/split-on-comma
-              (util/in? license-plate)))
+              split-on-comma
+              (in? license-plate)))
 
         used-by-user-id?
         (fn [coupon user-id]
           (-> (:used_by_user_ids coupon)
-              util/split-on-comma
-              (util/in? user-id)))
+              split-on-comma
+              (in? user-id)))
 
         has-ordered? ;; license-plate nor user-id is associated with an order
         (fn [db-conn license-plate user-id]
@@ -104,10 +104,10 @@
   (let [coupon (get-coupon-by-code db-conn code)
         license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)
         used-by-license-plates (-> (:used_by_license_plates coupon)
-                                   util/split-on-comma
+                                   split-on-comma
                                    set)
         used-by-user-ids (-> (:used_by_user_ids coupon)
-                             util/split-on-comma
+                             split-on-comma
                              set)]
     (sql/with-connection db-conn
       (sql/do-prepared
@@ -159,7 +159,7 @@
 (defn create-standard-coupon
   [db-conn code value expiration-time]
   (if (is-code-available? db-conn (s/upper-case code))
-    (db/insert db-conn "coupons" {:id (util/rand-str-alpha-num 20)
+    (db/insert db-conn "coupons" {:id (rand-str-alpha-num 20)
                                   :code (s/upper-case code)
                                   :type "standard"
                                   :value value
@@ -171,9 +171,9 @@
   "Creates a new referral coupon and returns its code."
   [db-conn user-id]
   (loop []
-    (let [code (util/gen-coupon-code)]
+    (let [code (gen-coupon-code)]
       (if (is-code-available? db-conn code)
-        (do (db/insert db-conn "coupons" {:id (util/rand-str-alpha-num 20)
+        (do (db/insert db-conn "coupons" {:id (rand-str-alpha-num 20)
                                           :code code
                                           :type "referral"
                                           :value 0

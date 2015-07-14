@@ -1,9 +1,9 @@
 (ns purple.users
-  (:use cheshire.core
+  (:use purple.util
+        cheshire.core
         gapi.core
         clojure.walk)
   (:require [purple.config :as config]
-            [purple.util :as util]
             [purple.db :as db]
             [purple.orders :as orders]
             [purple.coupons :as coupons]
@@ -112,7 +112,7 @@
 
 (defn init-session
   [db-conn user]
-  (let [token (util/new-auth-token)]
+  (let [token (new-auth-token)]
     (db/insert db-conn
                "sessions"
                {:user_id (:id user)
@@ -164,7 +164,7 @@
                                    :name (:name fb-user)
                                    :gender (:gender fb-user)
                                    :type "facebook"}
-                                  (do (util/send-email
+                                  (do (send-email
                                        {:to "chris@purpledelivery.com"
                                         :subject "Purple - Error"
                                         :body (str "Facebook user didn't provide email: "
@@ -182,7 +182,7 @@
                                  :name (:displayName google-user)
                                  :gender (:gender google-user)
                                  :type "google"}
-                                (do (util/send-email
+                                (do (send-email
                                      {:to "chris@purpledelivery.com"
                                       :subject "Purple - Error"
                                       :body (str "Google user didn't provide email: "
@@ -215,7 +215,7 @@
   (if (good-email db-conn platform-id)
     (if (good-password auth-key)
       (do (add db-conn
-               {:id (util/rand-str-alpha-num 20)
+               {:id (rand-str-alpha-num 20)
                 :email platform-id
                 :type "native"}
                :password auth-key)
@@ -240,19 +240,19 @@
 (defn details
   [db-conn user-id]
   (let [user (get-user-by-id db-conn user-id)]
-  (if (seq user)
-    {:success true
-     :user (assoc (select-keys user safe-authd-user-keys)
-             :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
-     :vehicles (into [] (get-users-vehicles db-conn user-id))
-     :orders (into [] (if (:is_courier user)
-                        (orders/get-by-courier db-conn (:id user))
-                        (orders/get-by-user db-conn (:id user))))
-     :cards (into [] (get-users-cards user))
-     :system {:referral_referred_value config/referral-referred-value
-              :referral_referrer_gallons config/referral-referrer-gallons}}
-    {:success false
-     :message "User could not be found."})))
+    (if (seq user)
+      {:success true
+       :user (assoc (select-keys user safe-authd-user-keys)
+               :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
+       :vehicles (into [] (get-users-vehicles db-conn user-id))
+       :orders (into [] (if (:is_courier user)
+                          (orders/get-by-courier db-conn (:id user))
+                          (orders/get-by-user db-conn (:id user))))
+       :cards (into [] (get-users-cards user))
+       :system {:referral_referred_value config/referral-referred-value
+                :referral_referrer_gallons config/referral-referrer-gallons}}
+      {:success false
+       :message "User could not be found."})))
 
 (defn update-user
   "The user-id given is assumed to have been auth'd already."
@@ -289,7 +289,7 @@
       (db/insert db-conn
                  "vehicles"
                  (assoc record-map
-                   :id (util/rand-str-alpha-num 20)
+                   :id (rand-str-alpha-num 20)
                    :user_id user-id
                    :license_plate (clean-up-license-plate
                                    (:license_plate record-map))
@@ -397,14 +397,14 @@
   "cred for APNS (apple) is the device token, for GCM (android) it is regid"
   [db-conn user-id push-platform cred]
   (let [user (get-user-by-id db-conn user-id)
-        arn-endpoint (util/sns-create-endpoint util/sns-client
-                                               cred
-                                               user-id
-                                               (case push-platform
-                                                 "apns" (if (:is_courier user)
-                                                          config/sns-app-arn-apns-courier
-                                                          config/sns-app-arn-apns)
-                                                 "gcm" config/sns-app-arn-gcm))]
+        arn-endpoint (sns-create-endpoint sns-client
+                                          cred
+                                          user-id
+                                          (case push-platform
+                                            "apns" (if (:is_courier user)
+                                                     config/sns-app-arn-apns-courier
+                                                     config/sns-app-arn-apns)
+                                            "gcm" config/sns-app-arn-gcm))]
     (db/update db-conn
                "users"
                {:arn_endpoint arn-endpoint}
@@ -415,21 +415,21 @@
   [db-conn platform-id]
   (let [user (get-user db-conn "native" platform-id)]
     (if user
-      (let [reset-key (util/rand-str-alpha-num 22)]
+      (let [reset-key (rand-str-alpha-num 22)]
         (db/update db-conn
                    "users"
                    {:reset_key reset-key}
                    {:id (:id user)})
-        (util/send-email {:to platform-id
-                          :subject "Purple Account - Reset Password"
-                          :body (str "Hello " (:name user) ","
-                                     "\n\nPlease click the link below to reset "
-                                     "your password:"
-                                     "\n\n"
-                                     config/base-url
-                                     "user/reset-password/" reset-key
-                                     "\n\nThanks,"
-                                     "\nPurple")})
+        (send-email {:to platform-id
+                     :subject "Purple Account - Reset Password"
+                     :body (str "Hello " (:name user) ","
+                                "\n\nPlease click the link below to reset "
+                                "your password:"
+                                "\n\n"
+                                config/base-url
+                                "user/reset-password/" reset-key
+                                "\n\nThanks,"
+                                "\nPurple")})
         {:success true
          :message (str "An email has been sent to "
                        platform-id
@@ -455,13 +455,13 @@
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
-  (util/send-email (merge {:to email-address}
-                          (if (not (nil? user_id))
-                            (let [user (get-user-by-id db-conn user_id)]
-                              {:subject (str (:name user) " invites you to try Purple")
-                               :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
-                            {:subject "Invitation to Try Purple"
-                             :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
+  (send-email (merge {:to email-address}
+                     (if (not (nil? user_id))
+                       (let [user (get-user-by-id db-conn user_id)]
+                         {:subject (str (:name user) " invites you to try Purple")
+                          :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
+                       {:subject "Invitation to Try Purple"
+                        :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
 
 (defn charge-user
   "Charges user amount (an int in cents) using default payment method."
@@ -469,7 +469,7 @@
   (let [u (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
-      (do (util/send-email
+      (do (send-email
            {:to "chris@purpledelivery.com"
             :subject "Purple - Error"
             :body (str "Error charging user, no payment method is set up.")})
@@ -484,23 +484,23 @@
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
     (when (not (s/blank? (:arn_endpoint user)))
-      (util/sns-publish util/sns-client
-                        (:arn_endpoint user)
-                        message))
+      (sns-publish sns-client
+                   (:arn_endpoint user)
+                   message))
     {:success true}))
 
-(defn send-sms
+(defn text-user
   "Sends an SMS message to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (util/send-sms (:phone_number user)
-                   message)
+    (send-sms (:phone_number user)
+              message)
     {:success true}))
 
 (defn call-user
   "Calls user with automated message."
   [db-conn user-id call-url]
   (let [user (get-user-by-id db-conn user-id)]
-    (util/make-call (:phone_number user)
-                    call-url)
+    (make-call (:phone_number user)
+               call-url)
     {:success true}))

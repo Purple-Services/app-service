@@ -1,6 +1,6 @@
 (ns purple.orders
+  (:use purple.util)
   (:require [purple.config :as config]
-            [purple.util :as util]
             [purple.db :as db]
             [purple.payment :as payment]
             [purple.coupons :as coupons]
@@ -101,7 +101,7 @@
    user-id
    referral-gallons-used]
   (max 0
-       (+ (* (util/octane->gas-price octane)
+       (+ (* (octane->gas-price octane)
              (- gallons
                 (min gallons
                      referral-gallons-used)))
@@ -126,7 +126,7 @@
 (defn connected-couriers
   [db-conn]
   (map #(assoc % :zones (map (fn [x] (Integer. x))
-                             (util/split-on-comma (:zones %))))
+                             (split-on-comma (:zones %))))
        (db/select db-conn
                   "couriers"
                   ["*"]
@@ -141,19 +141,19 @@
           pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
           num-orders-in-queue (count @pm)
           num-couriers (max 1
-                            (count (filter #(util/in? (:zones %) zone-id)
+                            (count (filter #(in? (:zones %) zone-id)
                                            (connected-couriers db-conn))))]
       (< num-orders-in-queue
-         ;(* 2 num-couriers)))
+                                        ;(* 2 num-couriers)))
          (* 1 num-couriers)))
     true))
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
   [gas-price]
-  (if (= gas-price (util/octane->gas-price "87"))
+  (if (= gas-price (octane->gas-price "87"))
     "87"
-    (if (= gas-price (util/octane->gas-price "91"))
+    (if (= gas-price (octane->gas-price "91"))
       "91"
       "87"))) ;; if we can't find it then assume 87
 
@@ -182,7 +182,7 @@
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
                                      :service_fee :total_price])
-            :id (util/rand-str-alpha-num 20)
+            :id (rand-str-alpha-num 20)
             :user_id user-id
             :status "unassigned"
             :target_time_start (quot (System/currentTimeMillis) 1000)
@@ -222,16 +222,16 @@
                                          (:coupon_code o)
                                          (:license_plate o)
                                          (:user_id o)))
-            (future (util/send-email {:to "chris@purpledelivery.com"
-                                      :subject "Purple - New Order"
-                                      :body (str o)})
+            (future (send-email {:to "chris@purpledelivery.com"
+                                 :subject "Purple - New Order"
+                                 :body (str o)})
                     (when (= config/db-user "purplemasterprod") ;; only in production
-                      (doall (map #(util/send-sms %
-                                                  (str "New order:\n"
-                                                       "Due: " (util/unix->full
-                                                                (:target_time_end o))
-                                                       "\n" (:address_street o)
-                                                       ", " (:address_zip o)))
+                      (doall (map #(send-sms %
+                                             (str "New order:\n"
+                                                  "Due: " (unix->full
+                                                           (:target_time_end o))
+                                                  "\n" (:address_street o)
+                                                  ", " (:address_zip o)))
                                   ["3235782263" ;; Bruno
                                    "3106919061" ;; JP
                                    "8589228571" ;; Lee
@@ -266,7 +266,7 @@
                           "orders"
                           [:id :status]
                           {:courier_id courier-id})]
-    (boolean (some #(util/in? busy-statuses (:status %)) orders))))
+    (boolean (some #(in? busy-statuses (:status %)) orders))))
 
 (defn set-courier-busy
   [db-conn courier-id busy]
@@ -325,7 +325,7 @@
                                       " Octane)\n" "Where: "
                                       (:address_street o)
                                       "\n" "When: "
-                                      (util/unix->fuller
+                                      (unix->fuller
                                        (quot (System/currentTimeMillis) 1000)))
               charge-result ((resolve 'purple.users/charge-user) db-conn
                              (:user_id o) (:total_price o) charge-description)]
@@ -391,7 +391,7 @@
 (defn cancel
   [db-conn user-id order-id]
   (if-let [o (get-by-id db-conn order-id)]
-    (if (util/in? cancellable-statuses (:status o))
+    (if (in? cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
           ((resolve 'purple.dispatch/remove-order-from-zq) o)
           ;; return any free gallons that may have been used
