@@ -1,7 +1,6 @@
 (ns purple.config)
 
 
-
 ;; stub for local testing DEV DB
 (System/setProperty "AWS_ACCESS_KEY_ID" "AKIAJLB35GOFQUJZCX5A")
 (System/setProperty "AWS_SECRET_KEY" "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")
@@ -21,9 +20,6 @@
 (System/setProperty "BASE_URL" "http://localhost:3000/")
 (System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
 (System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
-
-
-
 
 
 (def base-url (System/getProperty "BASE_URL"))
@@ -103,4 +99,4 @@
 ;; Discount value in cents of using a referral code
 (def referral-referred-value -1000) ;; should be negative!
 ;; The # of gallons credited to the Referrer upon usage of their coupon code
-(def referral-referrer-gallons 10)
+(def referral-referrer-gallons 5)
