@@ -9,7 +9,7 @@
 
 ;; Order status definitions
 ;; unassigned - not assigned to any courier yet
-;; assigned   - assigned to a courier
+;; assigned   - assigned to a courier (usually we are skipping over this status)
 ;; accepted   - courier accepts this order as their current task (can be forced)
 ;; enroute    - courier has begun task (can't be forced; always done by courier)
 ;; servicing  - car is being serviced by courier (e.g., pumping gas)
@@ -56,11 +56,14 @@
   (let [orders (db/select db-conn
                           "orders"
                           ["*"]
-                          {:courier_id courier-id}
-                          :append (str "AND target_time_start > "
-                                       (- (quot (System/currentTimeMillis) 1000)
-                                          (* 60 60 24 16)) ;; 16 days
-                                       " ORDER BY target_time_start DESC"))
+                          {}
+                          :custom-where
+                          (str "(courier_id = \""
+                               (db/mysql-escape-str courier-id)
+                               "\" AND target_time_start > "
+                               (- (quot (System/currentTimeMillis) 1000)
+                                  (* 60 60 24 16)) ;; 16 days
+                               ") OR status = \"unassigned\" ORDER BY target_time_end DESC"))
         customer-ids (distinct (map :user_id orders))
         customers (group-by :id
                             (db/select db-conn
@@ -222,7 +225,10 @@
                                          (:coupon_code o)
                                          (:license_plate o)
                                          (:user_id o)))
-            (future (send-email {:to "chris@purpledelivery.com"
+            (future (doall (map #((resolve 'purple.users/send-push)
+                                  db-conn (:id %) "New order available. Please accept ASAP if interested.")
+                                ((resolve 'purple.dispatch/available-couriers) db-conn)))
+                    (send-email {:to "chris@purpledelivery.com"
                                  :subject "Purple - New Order"
                                  :body (str o)})
                     (when (= config/db-user "purplemasterprod") ;; only in production
@@ -284,8 +290,7 @@
                  {:courier_id courier-id}
                  {:id order-id})
       (set-courier-busy db-conn courier-id true)
-      ((resolve 'purple.users/send-push) db-conn courier-id
-       "You have been assigned a new order.")))
+      {:success true}))
 
 (defn assign-to-courier
   [db-conn order-id courier-id]
@@ -350,25 +355,48 @@
       ((resolve 'purple.users/send-push) db-conn (:user_id o)
        "We are currently servicing your vehicle.")))
 
+(defn next-status
+  [status]
+  (get config/status->next-status status))
+
 (defn update-status-by-courier
   [db-conn user-id order-id status]
   (if-let [order (get-by-id db-conn order-id)]
-    (if (= user-id (:courier_id order)) ;; auth'd user is courier for this order
-      (if (= status (:status order)) ;; no change is being made to status
+    (if (not= "cancelled" (:status order))
+      (if (not= status (next-status (:status order)))
         {:success false
-         :message "Your app seems to be out of sync. Try closing the app completely and restarting it."}
-        (let [update-result (case status
-                              "enroute" (begin-route db-conn order)
-                              "servicing" (service db-conn order)
-                              "complete" (complete db-conn order)
+         :message (if (= status "assigned")
+                    "Oops... it looks like another courier accepted that order before you."
+                    "Your app seems to be out of sync. Try closing the app completely and restarting it.")}
+        (let [update-result
+              (case status
+                "assigned" (if (in? (map :id
+                                         ((resolve 'purple.dispatch/available-couriers) db-conn))
+                                    user-id)
+                             (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
+                                 (assign-to-courier db-conn order-id user-id))
+                             {:success false
+                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds."})
+                "enroute" (if (= user-id (:courier_id order))
+                            (begin-route db-conn order)
+                            {:success false
+                             :message "Permission denied."})
+                "servicing" (if (= user-id (:courier_id order))
+                              (service db-conn order)
                               {:success false
-                               :message "Invalid status."})]
+                               :message "Permission denied."})
+                "complete" (if (= user-id (:courier_id order))
+                             (complete db-conn order)
+                             {:success false
+                              :message "Permission denied."})
+                {:success false
+                 :message "Invalid status."})]
           ;; send back error message or user details if successful
           (if (:success update-result)
             ((resolve 'purple.users/details) db-conn user-id)
             update-result)))
       {:success false
-       :message "Permission denied."})
+       :message "That order was cancelled."})
     {:success false
      :message "An order with that ID could not be found."}))
 
@@ -386,12 +414,10 @@
   (do (update-rating db-conn order-id (:number_rating rating) (:text_rating rating))
       ((resolve 'purple.users/details) db-conn user-id)))
 
-(def cancellable-statuses ["unassigned" "assigned" "accepted" "enroute"])
-
 (defn cancel
   [db-conn user-id order-id]
   (if-let [o (get-by-id db-conn order-id)]
-    (if (in? cancellable-statuses (:status o))
+    (if (in? config/cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
           ((resolve 'purple.dispatch/remove-order-from-zq) o)
           ;; return any free gallons that may have been used

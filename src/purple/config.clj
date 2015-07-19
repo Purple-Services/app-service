@@ -86,7 +86,17 @@
 ;; hour of day, start and end (in PST/PDT), both are inclusive
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
 ;; the way things are coded, you can't wrap around past midnight
-(def service-time-bracket [10 20])
+
+
+
+
+;(def service-time-bracket [10 20])
+(def service-time-bracket [0 24])
+
+
+
+
+
 
 ;; key is number of minutes till deadline
 ;; if changing service fee, also change in dispatch.clj where the hardcoded
@@ -100,3 +110,16 @@
 (def referral-referred-value -1000) ;; should be negative!
 ;; The # of gallons credited to the Referrer upon usage of their coupon code
 (def referral-referrer-gallons 5)
+
+
+
+(def status->next-status
+  {"unassigned" "assigned"
+   "assigned" "accepted"
+   "accepted" "enroute"
+   "enroute" "servicing"
+   "servicing" "complete"
+   "complete" "complete"
+   "cancelled" "cancelled"})
+
+(def cancellable-statuses ["unassigned" "assigned" "accepted" "enroute"])

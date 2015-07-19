@@ -26,6 +26,15 @@
   `(when (not *compile-files*)
      ~@body))
 
+(defmacro catch-notify
+  "A try catch block that emails me exceptions."
+  [& body]
+  `(try ~@body
+        (catch Exception e#
+          (send-email {:to "chris@purpledelivery.com"
+                       :subject "Purple - Exception Caught"
+                       :body (str e#)}))))
+
 (defn split-on-comma [x] (s/split x #","))
 
 (defn cents->dollars
@@ -177,21 +186,23 @@
      (def twilio-sms-factory (.getMessageFactory (.getAccount twilio-client)))
      (def twilio-call-factory (.getCallFactory (.getAccount twilio-client)))))
 
-;; doesn't handle TwilioRestException properly
+
 (defn send-sms
   [to-number message]
-  (.create twilio-sms-factory
-           (ArrayList. [(BasicNameValuePair. "Body" message)
-                        (BasicNameValuePair. "To" to-number)
-                        (BasicNameValuePair. "From" config/twilio-from-number)])))
+  (catch-notify
+   (.create twilio-sms-factory
+            (ArrayList. [(BasicNameValuePair. "Body" message)
+                         (BasicNameValuePair. "To" to-number)
+                         (BasicNameValuePair. "From" config/twilio-from-number)]))))
 
-;; doesn't handle TwilioRestException properly
+
 (defn make-call
   [to-number call-url]
-  (.create twilio-call-factory
-           (ArrayList. [(BasicNameValuePair. "Url" call-url)
-                        (BasicNameValuePair. "To" to-number)
-                        (BasicNameValuePair. "From" config/twilio-from-number)])))
+  (catch-notify
+   (.create twilio-call-factory
+            (ArrayList. [(BasicNameValuePair. "Url" call-url)
+                         (BasicNameValuePair. "To" to-number)
+                         (BasicNameValuePair. "From" config/twilio-from-number)]))))
 
 
 (defn octane->gas-price

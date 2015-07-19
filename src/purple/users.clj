@@ -237,22 +237,37 @@
       true
       false)))
 
+(defn update-user-metadata
+  [db-conn user-id app-version os]
+  (db/update db-conn
+             "users"
+             (filter (comp not nil? val)
+                     {:app_version app-version
+                      :os os})
+             {:id user-id}))
+
 (defn details
-  [db-conn user-id]
-  (let [user (get-user-by-id db-conn user-id)]
-    (if (seq user)
-      {:success true
-       :user (assoc (select-keys user safe-authd-user-keys)
-               :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
-       :vehicles (into [] (get-users-vehicles db-conn user-id))
-       :orders (into [] (if (:is_courier user)
-                          (orders/get-by-courier db-conn (:id user))
-                          (orders/get-by-user db-conn (:id user))))
-       :cards (into [] (get-users-cards user))
-       :system {:referral_referred_value config/referral-referred-value
-                :referral_referrer_gallons config/referral-referrer-gallons}}
-      {:success false
-       :message "User could not be found."})))
+  [db-conn user-id & {:keys [user-meta]}]
+  (if-let [user (get-user-by-id db-conn user-id)]
+    (do (when (and user-meta
+                   (or (not= (:app_version user-meta) (:app_version user))
+                       (not= (:os user-meta) (:os user))))
+          (update-user-metadata db-conn
+                                user-id
+                                (:app_version user-meta)
+                                (:os user-meta)))
+        {:success true
+         :user (assoc (select-keys user safe-authd-user-keys)
+                 :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
+         :vehicles (into [] (get-users-vehicles db-conn user-id))
+         :orders (into [] (if (:is_courier user)
+                            (orders/get-by-courier db-conn (:id user))
+                            (orders/get-by-user db-conn (:id user))))
+         :cards (into [] (get-users-cards user))
+         :system {:referral_referred_value config/referral-referred-value
+                  :referral_referrer_gallons config/referral-referrer-gallons}})
+    {:success false
+     :message "User could not be found."}))
 
 (defn update-user
   "The user-id given is assumed to have been auth'd already."

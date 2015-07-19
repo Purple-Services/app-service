@@ -154,6 +154,12 @@
                                   [:td.has_added_card]
                                   (content (if (:stripe_default_card t) "Yes" "No"))
 
+                                  [:td.os]
+                                  (content (:os t))
+
+                                  [:td.app_version]
+                                  (content (:app_version t))
+
                                   [:td.timestamp_created]
                                   (content (unix->full
                                             (/ (.getTime (:timestamp_created t))
@@ -209,6 +215,8 @@
                                           :name
                                           :email
                                           :phone_number
+                                          :os
+                                          :app_version
                                           :stripe_default_card
                                           :timestamp_created]
                                          {}))

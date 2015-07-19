@@ -175,7 +175,9 @@
   [pm-entry db-conn courier-id] ;; pm-entry = key order-id, value priority score
   (when pm-entry
     (let [order-id (first pm-entry)]
-      (orders/assign-to-courier db-conn order-id courier-id))))
+      (orders/assign-to-courier db-conn order-id courier-id)
+      ((resolve 'purple.users/send-push) db-conn courier-id
+       "You have been assigned a new order."))))
 
 (defn take-order-from-zones
   "Does take-order-from-zone over multiple zones. Stops after first hit."
@@ -246,7 +248,7 @@
   "Does a few periodic tasks."
   []
   (do (update-courier-state process-db-conn)
-      (match-orders-with-couriers process-db-conn)
+      ;; (match-orders-with-couriers process-db-conn)
       (remind-couriers process-db-conn)
       (warn-orphaned-order process-db-conn)))
 

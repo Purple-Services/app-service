@@ -141,7 +141,9 @@
                        (:user_id b)
                        (:token b)
                        (users/details db-conn
-                                      (:user_id b))))))))
+                                      (:user_id b)
+                                      :user-meta {:app_version (:version b)
+                                                  :os (:os b)})))))))
   (context "/orders" []
            (defroutes orders-routes
              (POST "/add" {body :body}
