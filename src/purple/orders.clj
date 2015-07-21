@@ -226,7 +226,7 @@
                                          (:license_plate o)
                                          (:user_id o)))
             (future (doall (map #((resolve 'purple.users/send-push)
-                                  db-conn (:id %) "New order available. Please accept ASAP if interested.")
+                                  db-conn (:id %) "New order available. Please \"Accept Order\" ASAP.")
                                 ((resolve 'purple.dispatch/available-couriers) db-conn)))
                     (send-email {:to "chris@purpledelivery.com"
                                  :subject "Purple - New Order"

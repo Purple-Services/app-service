@@ -1,6 +1,7 @@
 (ns purple.config)
 
 
+
 ;; stub for local testing DEV DB
 (System/setProperty "AWS_ACCESS_KEY_ID" "AKIAJLB35GOFQUJZCX5A")
 (System/setProperty "AWS_SECRET_KEY" "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")
@@ -20,6 +21,7 @@
 (System/setProperty "BASE_URL" "http://localhost:3000/")
 (System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
 (System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
+
 
 
 (def base-url (System/getProperty "BASE_URL"))
@@ -86,17 +88,7 @@
 ;; hour of day, start and end (in PST/PDT), both are inclusive
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
 ;; the way things are coded, you can't wrap around past midnight
-
-
-
-
-;(def service-time-bracket [10 20])
-(def service-time-bracket [0 24])
-
-
-
-
-
+(def service-time-bracket [10 20])
 
 ;; key is number of minutes till deadline
 ;; if changing service fee, also change in dispatch.clj where the hardcoded
@@ -110,8 +102,6 @@
 (def referral-referred-value -1000) ;; should be negative!
 ;; The # of gallons credited to the Referrer upon usage of their coupon code
 (def referral-referrer-gallons 5)
-
-
 
 (def status->next-status
   {"unassigned" "assigned"

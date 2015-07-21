@@ -227,20 +227,21 @@
 (def last-orphan-warning (atom 0))
 
 (defn warn-orphaned-order
-  "If there are no couriers connected, but there are orders, then warn all."
+  "If there are no couriers connected, but there are orders, then warn us."
   [db-conn]
   (if (and (seq (filter #(seq @(val %)) zq))
            (empty? (available-couriers db-conn))
-           (< (* 60 10) ;; only warn every 10 minutes
+           (< (* 60 20) ;; only warn every 20 minutes
               (- (quot (System/currentTimeMillis) 1000)
                  @last-orphan-warning)))
-    (do (doall (map #(send-sms (:phone_number %)
-                               "There are orders, but no couriers online. If you are supposed to be on duty, please log into the app. If you have the app open already, try restarting it.")
-                    (db/select db-conn
-                               "users"
-                               [:id
-                                :phone_number]
-                               {:is_courier 1})))
+    (do (doall (map #(send-sms % "There are orders, but no available couriers.")
+                    (when (= config/db-user "purplemasterprod") ;; only in PROD
+                      ["3235782263"  ;; Bruno
+                       "3106919061"  ;; JP
+                       "8589228571"  ;; Lee
+                       "4846823011"] ;; Chris
+                      ["4846823011"] ;; just Chris when not in PROD
+                      )))
         (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000)))))
 
 

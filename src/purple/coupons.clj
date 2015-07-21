@@ -72,13 +72,13 @@
      (or (used-by-license-plate? coupon license-plate)
          (used-by-user-id? coupon user-id))
      {:success false
-      :message "Sorry, you have already used that code."
+      :message "Sorry, you have already used that code. (Or, your license plate may be invalid.)"
       :value 0}
 
      (and (:only_for_first_orders coupon)
           (has-ordered? db-conn license-plate user-id))
      {:success false
-      :message "Sorry, that code is only for a first-time order."
+      :message "Sorry, that code is only for a first-time order. (Or, your license plate may be invalid.)"
       :value 0}
 
      :else
