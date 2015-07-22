@@ -228,7 +228,7 @@
                           db-conn (db/conn)]
                       ;; they don't have to send user auth
                       ;; but if they do, it should be correct
-                      (if (not (nil? (:user_id b)))
+                      (if-not (nil? (:user_id b))
                         (demand-user-auth
                          db-conn
                          (:user_id b)
@@ -244,7 +244,7 @@
                           db-conn (db/conn)]
                       ;; they don't have to send user auth
                       ;; but if they do, it should be correct
-                      (if (not (nil? (:user_id b)))
+                      (if-not (nil? (:user_id b))
                         (demand-user-auth
                          db-conn
                          (:user_id b)

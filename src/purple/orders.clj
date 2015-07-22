@@ -109,7 +109,7 @@
                 (min gallons
                      referral-gallons-used)))
           (:service_fee (get config/delivery-times time))
-          (if (not (s/blank? coupon-code))
+          (if-not (s/blank? coupon-code)
             (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))
             0))))
 
@@ -196,8 +196,8 @@
             :gas_type (if (nil? (:gas_type order))
                         (infer-gas-type-by-price (:gas_price order))
                         (:gas_type order))
-            :lat (Double. (:lat order))
-            :lng (Double. (:lng order))
+            :lat (unless-p Double/isNaN (Double. (:lat order)) 0)
+            :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
             :license_plate license-plate
             :referral_gallons_used (min (Integer. (:gallons order))
                                         referral-gallons-available)
@@ -216,11 +216,11 @@
                                                         :license_plate :coupon_code
                                                         :referral_gallons_used]))
             ((resolve 'purple.dispatch/add-order-to-zq) o)
-            (when (not (= 0 (:referral_gallons_used o)))
+            (when-not (= 0 (:referral_gallons_used o))
               (coupons/mark-gallons-as-used db-conn
                                             (:user_id o)
                                             (:referral_gallons_used o)))
-            (when (not (s/blank? (:coupon_code o)))
+            (when-not (s/blank? (:coupon_code o))
               (coupons/mark-code-as-used db-conn
                                          (:coupon_code o)
                                          (:license_plate o)
@@ -421,7 +421,7 @@
       (do (update-status db-conn order-id "cancelled")
           ((resolve 'purple.dispatch/remove-order-from-zq) o)
           ;; return any free gallons that may have been used
-          (when (not (= 0 (:referral_gallons_used o)))
+          (when (not= 0 (:referral_gallons_used o))
             (coupons/mark-gallons-as-unused db-conn
                                             (:user_id o)
                                             (:referral_gallons_used o))
@@ -430,7 +430,7 @@
                        {:referral_gallons_used 0}
                        {:id order-id}))
           ;; free up that coupon code for that vehicle
-          (when (not (s/blank? (:coupon_code o)))
+          (when-not (s/blank? (:coupon_code o))
             (coupons/mark-code-as-unused db-conn
                                          (:coupon_code o)
                                          (:vehicle_id o)
@@ -439,7 +439,7 @@
                        "orders"
                        {:coupon_code ""}
                        {:id order-id}))
-          (when (not (s/blank? (:courier_id o)))
+          (when-not (s/blank? (:courier_id o))
             (set-courier-busy db-conn (:courier_id o) false)
             ((resolve 'purple.users/send-push) db-conn (:courier_id o)
              "The current order has been cancelled."))

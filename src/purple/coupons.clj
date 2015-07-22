@@ -138,7 +138,7 @@
 
 (defn apply-referral-bonus
   [db-conn code]
-  (when (not (s/blank? code))
+  (when-not (s/blank? code)
     (let [user-id (-> (db/select db-conn "users" [:id] {:referral_code code})
                       first
                       :id)]

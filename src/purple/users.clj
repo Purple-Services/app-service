@@ -380,15 +380,15 @@
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id body]
   (let [resp (atom {:success true})]
-    (when (not (nil? (:user body)))
+    (when-not (nil? (:user body))
       (swap! resp merge
              (update-user db-conn user-id (:user body))))
-    (when (not (nil? (:vehicle body)))
+    (when-not (nil? (:vehicle body))
       (swap! resp merge
              (if (= "new" (:id (:vehicle body)))
                (add-vehicle db-conn user-id (:vehicle body))
                (update-vehicle db-conn user-id (:vehicle body)))))
-    (when (not (nil? (:card body)))
+    (when-not (nil? (:card body))
       (swap! resp merge
              (case (:action (:card body))
                "delete" (delete-card db-conn user-id (:id (:card body)))
@@ -456,7 +456,7 @@
 (defn change-password
   "Only for native accounts."
   [db-conn reset-key password]
-  (if (not (s/blank? reset-key)) ;; <-- very important check, for security
+  (if-not (s/blank? reset-key) ;; <-- very important check, for security
     (if (good-password password)
       (db/update db-conn
                  "users"
@@ -471,7 +471,7 @@
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
   (send-email (merge {:to email-address}
-                     (if (not (nil? user_id))
+                     (if-not (nil? user_id)
                        (let [user (get-user-by-id db-conn user_id)]
                          {:subject (str (:name user) " invites you to try Purple")
                           :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
@@ -498,7 +498,7 @@
   "Sends a push notification to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (when (not (s/blank? (:arn_endpoint user)))
+    (when-not (s/blank? (:arn_endpoint user))
       (sns-publish sns-client
                    (:arn_endpoint user)
                    message))

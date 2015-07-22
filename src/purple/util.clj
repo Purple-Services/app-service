@@ -23,7 +23,7 @@
 (defmacro !
   "Keeps code from running during compilation."
   [& body]
-  `(when (not *compile-files*)
+  `(when-not *compile-files*
      ~@body))
 
 (defmacro catch-notify
@@ -34,6 +34,13 @@
           (send-email {:to "chris@purpledelivery.com"
                        :subject "Purple - Exception Caught"
                        :body (str e#)}))))
+
+(defmacro unless-p
+  "Use x unless the predicate is true for x, then use y instead."
+  [pred x y]
+  `(if-not (~pred ~x)
+     ~x
+     ~y))
 
 (defn split-on-comma [x] (s/split x #","))
 
@@ -117,7 +124,7 @@
   [text & {:keys [user_id]}]
   (send-email {:to "chris@purpledelivery.com"
                :subject "Purple Feedback Form Response"
-               :body (if (not (nil? user_id))
+               :body (if-not (nil? user_id)
                        (str "From User ID: "
                             user_id
                             "\n\n"

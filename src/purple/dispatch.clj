@@ -150,7 +150,7 @@
                                          (apply str
                                                 (interpose "\",\"" expired-courier-ids))
                                          "\")"))]
-    (when (not (empty? expired-couriers))
+    (when-not (empty? expired-couriers)
       (do (doall (map #(send-sms (:phone_number %)
                                  "You have just disconnected from the Purple Courier App.")
                       expired-couriers))
