@@ -1,9 +1,9 @@
 (ns purple.payment
   (:use purple.util
         cheshire.core
-        clojure.walk)
+        clojure.walk
+        [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.db :as db]
             [clj-http.client :as client]
             [clojure.string :as s]))
 
@@ -12,66 +12,50 @@
    :as :json
    :coerce :always})
 
+(defn stripe-req
+  [method endpoint & [params]]
+  (:body ((resolve (symbol "clj-http.client" method))
+          (str config/stripe-api-url endpoint)
+          (merge common-opts {:form-params params}))))
+
 (defn create-stripe-customer
   [user-id stripe-token]
-  (:body (client/post
-          (str config/stripe-api-url "customers")
-          (merge common-opts
-                 {:form-params {:description (str "Purple ID: " user-id)
-                                :card stripe-token}}))))
+  (stripe-req "post"
+              "customers"
+              {:description (str "Purple ID: " user-id)
+               :card stripe-token}))
 
 (defn get-stripe-customer
   [customer-id]
-  (:body (client/get
-          (str config/stripe-api-url "customers/" customer-id)
-          common-opts)))
+  (stripe-req "get" (str "customers/" customer-id)))
 
 (defn add-stripe-card
   [customer-id stripe-token]
-  (:body (client/post
-          (str config/stripe-api-url "customers/" customer-id "/cards")
-          (merge common-opts
-                 {:form-params {:card stripe-token}}))))
+  (stripe-req "post"
+              (str "customers/" customer-id "/cards")
+              {:card stripe-token}))
 
 (defn delete-stripe-card
   [customer-id card-id]
-  (:body (client/delete
-          (str config/stripe-api-url "customers/" customer-id "/cards/" card-id)
-          common-opts)))
+  (stripe-req "delete"
+              (str "customers/" customer-id "/cards/" card-id)))
 
 (defn set-default-stripe-card
   [customer-id card-id]
-  (:body (client/post
-          (str config/stripe-api-url "customers/" customer-id)
-          (merge common-opts
-                 {:form-params {:default_card card-id}}))))
-
-(defn update-stripe-charge-description
-  [charge-id description]
-  (:body (client/post
-          (str config/stripe-api-url "charges/" charge-id)
-          (merge common-opts
-                 {:form-params {:description description}}))))
-
-;; warning - using this function cause receipt email to be sent as well
-(defn update-stripe-charge-receipt-email
-  [charge-id receipt-email]
-  (:body (client/post
-          (str config/stripe-api-url "charges/" charge-id)
-          (merge common-opts
-                 {:form-params {:receipt_email receipt-email}}))))
+  (stripe-req "post"
+              (str "customers/" customer-id)
+              {:default_card card-id}))
 
 (defn charge-stripe-customer
   "Amount is an integer of cents to charge. Semi-sensitive info returned!"
   [customer-id amount description receipt-email]
-  (try (let [resp (:body (client/post
-                          (str config/stripe-api-url "charges")
-                          (merge common-opts
-                                 {:form-params {:customer customer-id
-                                                :amount amount
-                                                :currency config/default-currency
-                                                :description description
-                                                :receipt_email receipt-email}})))]
+  (try (let [resp (stripe-req "post"
+                              "charges"
+                              {:customer customer-id
+                               :amount amount
+                               :currency config/default-currency
+                               :description description
+                               :receipt_email receipt-email})]
          (if (:paid resp)
            {:success true
             :charge resp}

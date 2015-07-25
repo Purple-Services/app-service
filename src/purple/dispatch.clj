@@ -1,9 +1,10 @@
 (ns purple.dispatch
   (:use purple.util
-        clojure.data.priority-map)
+        clojure.data.priority-map
+        [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.db :as db]
             [purple.orders :as orders]
+            [purple.users :as users]
             [clojure.java.jdbc :as sql]
             [overtone.at-at :as at-at]
             [clojure.string :as s])
@@ -14,11 +15,11 @@
 (defn get-all-zones
   "Get all zones from the database."
   [db-conn]
-  (db/select db-conn "zones" ["*"] {}))
+  (!select db-conn "zones" ["*"] {}))
 
 ;; holds all zone definitions in local memory, some parsing in there too
 (! (def zones (map #(assoc % :zip_codes (split-on-comma (:zip_codes %)))
-                   (get-all-zones (db/conn)))))
+                   (get-all-zones (conn)))))
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
@@ -59,8 +60,15 @@
          dissoc (:id order)))
 
 ;; on server boot, put any existing unassigned orders into the zq
-(! (doall (map add-order-to-zq
-               (orders/get-all-unassigned (db/conn)))))
+(! (run! add-order-to-zq
+         (orders/get-all-unassigned (conn))))
+
+(defn get-gas-prices
+  [zip-code]
+  {:success true
+   :gas_prices (->> (map (juxt identity octane->gas-price) ["87" "91"])
+                    flatten
+                    (apply hash-map))})
 
 (defn available
   [good-zip? good-time? octane]
@@ -69,7 +77,7 @@
     {:octane octane
      :gallons 15 ;; for now, we always assume 15 is available
      :price_per_gallon (octane->gas-price octane)
-     :times (into (array-map) (map (juxt identity config/delivery-times) good-times))}))
+     :times (into {} (map (juxt identity config/delivery-times) good-times))}))
 
 (defn availability
   "Get courier availability for given constraints."
@@ -86,7 +94,7 @@
                          ;;(- closing-hour hours-needed)
                          ;; removed the check for enough time
                          closing-hour))
-        user ((resolve 'purple.users/get-user-by-id) db-conn user-id)]
+        user (users/get-user-by-id db-conn user-id)]
     {:success true
      :availabilities (map (partial available good-zip? good-time?) ["87" "91"])
      ;; if unavailable, this is the explanation:
@@ -113,47 +121,39 @@
                      :service_fee [0 0]}]
      }))
 
-(! (def process-db-conn (db/conn))) ;; ok to use same conn forever? (have to test..)
+(! (def process-db-conn (conn))) ;; ok to use same conn forever? (have to test..)
 
 (defn available-couriers
   [db-conn]
   (map #(assoc % :zones (map (fn [x] (Integer. x))
                              (split-on-comma (:zones %))))
-       (db/select db-conn
-                  "couriers"
-                  ["*"]
-                  {:active true
-                   :on_duty true
-                   :connected true
-                   :busy false})))
+       (!select db-conn
+                "couriers"
+                ["*"]
+                {:active true
+                 :on_duty true
+                 :connected true
+                 :busy false})))
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
   [db-conn]
   (let [expired-courier-ids (map :id
-                                 (db/select db-conn
-                                            "couriers"
-                                            ["*"]
-                                            {}
-                                            :custom-where
-                                            (str "active = 1 AND connected = 1 AND ("
-                                                 (quot (System/currentTimeMillis) 1000)
-                                                 " - last_ping) > "
-                                                 config/max-courier-abandon-time)))
+                                 (!select db-conn
+                                          "couriers"
+                                          ["*"]
+                                          {}
+                                          :custom-where
+                                          (str "active = 1 AND connected = 1 AND ("
+                                               (quot (System/currentTimeMillis) 1000)
+                                               " - last_ping) > "
+                                               config/max-courier-abandon-time)))
         ;; as user rows
-        expired-couriers (db/select db-conn
-                                    "users"
-                                    [:id :name :phone_number]
-                                    {}
-                                    :custom-where
-                                    (str "id IN (\""
-                                         (apply str
-                                                (interpose "\",\"" expired-courier-ids))
-                                         "\")"))]
+        expired-couriers (users/get-users-by-ids expired-courier-ids)]
     (when-not (empty? expired-couriers)
-      (do (doall (map #(send-sms (:phone_number %)
-                                 "You have just disconnected from the Purple Courier App.")
-                      expired-couriers))
+      (do (run! #(send-sms (:phone_number %)
+                           "You have just disconnected from the Purple Courier App.")
+                expired-couriers)
           (sql/with-connection db-conn
             (sql/update-values
              "couriers"
@@ -176,8 +176,8 @@
   (when pm-entry
     (let [order-id (first pm-entry)]
       (orders/assign-to-courier db-conn order-id courier-id)
-      ((resolve 'purple.users/send-push) db-conn courier-id
-       "You have been assigned a new order."))))
+      (users/send-push db-conn courier-id
+                       "You have been assigned a new order."))))
 
 (defn take-order-from-zones
   "Does take-order-from-zone over multiple zones. Stops after first hit."
@@ -188,19 +188,19 @@
 
 (defn match-orders-with-couriers
   [db-conn]
-  (doall (map #(take-order-from-zones db-conn (:id %) (:zones %))
-              (available-couriers db-conn))))
+  (run! #(take-order-from-zones db-conn (:id %) (:zones %))
+        (available-couriers db-conn)))
 
 (defn remind-couriers
   "Notifies couriers if they have not responded to new orders assigned to them."
   [db-conn]
-  (let [accepted-orders (db/select db-conn
-                                   "orders"
-                                   ["*"]
-                                   ;; currently, "accepted" is a misnomer,
-                                   ;; because it's forced. It does not mean the
-                                   ;; courier is aware of the order for sure.
-                                   {:status "accepted"})]
+  (let [accepted-orders (!select db-conn
+                                 "orders"
+                                 ["*"]
+                                 ;; currently, "accepted" is a misnomer,
+                                 ;; because it's forced. It does not mean the
+                                 ;; courier is aware of the order for sure.
+                                 {:status "accepted"})]
     (doall
      (map #(let [time-accepted (-> (:event_log %)
                                    (s/split #"\||\s")
@@ -219,8 +219,8 @@
              (when (<= (first reminder-time-bracket)
                        current-time
                        (last reminder-time-bracket))
-               ((resolve 'purple.users/call-user) db-conn (:courier_id %)
-                (str config/base-url "twiml/courier-new-order"))))
+               (users/call-user db-conn (:courier_id %)
+                                (str config/base-url "twiml/courier-new-order"))))
           accepted-orders))))
 
 
@@ -234,14 +234,11 @@
            (< (* 60 20) ;; only warn every 20 minutes
               (- (quot (System/currentTimeMillis) 1000)
                  @last-orphan-warning)))
-    (do (doall (map #(send-sms % "There are orders, but no available couriers.")
-                    (when (= config/db-user "purplemasterprod") ;; only in PROD
-                      ["3235782263"  ;; Bruno
-                       "3106919061"  ;; JP
-                       "8589228571"  ;; Lee
-                       "4846823011"] ;; Chris
-                      ["4846823011"] ;; just Chris when not in PROD
-                      )))
+    (do (run! #(send-sms % "There are orders, but no available couriers.")
+              (concat ["4846823011"]               ;; just Chris when not in PROD
+                      (only-prod ["3235782263"     ;; Bruno
+                                  "3106919061"     ;; JP
+                                  "8589228571"]))) ;; Lee
         (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000)))))
 
 
@@ -259,18 +256,18 @@
 
 (defn courier-ping
   [db-conn user-id lat lng gallons]
-  (db/update db-conn
-             "couriers"
-             {:lat lat
-              :lng lng
-              :gallons_87 (Integer. (:87 gallons))
-              :gallons_91 (Integer. (:91 gallons))
-              :connected 1
-              :last_ping (quot (System/currentTimeMillis) 1000)}
-             {:id user-id}))
+  (!update db-conn
+           "couriers"
+           {:lat lat
+            :lng lng
+            :gallons_87 (Integer. (:87 gallons))
+            :gallons_91 (Integer. (:91 gallons))
+            :connected 1
+            :last_ping (quot (System/currentTimeMillis) 1000)}
+           {:id user-id}))
 
 ;; on server boot, set initial gas prices locally from database
-(! (let [c (first (db/select (db/conn) "config" ["*"] {:id 1}))]
+(! (let [c (first (!select (conn) "config" ["*"] {:id 1}))]
      (reset! config/gas-price-87 (:gas_price_87 c))
      (reset! config/gas-price-91 (:gas_price_91 c))))
 
@@ -279,8 +276,8 @@
   [db-conn gas-price-87 gas-price-91]
   (do (reset! config/gas-price-87 gas-price-87)
       (reset! config/gas-price-91 gas-price-91)
-      (db/update db-conn
-                 "config"
-                 {:gas_price_87 gas-price-87
-                  :gas_price_91 gas-price-91}
-                 {:id 1})))
+      (!update db-conn
+               "config"
+               {:gas_price_87 gas-price-87
+                :gas_price_91 gas-price-91}
+               {:id 1})))

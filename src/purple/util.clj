@@ -1,6 +1,6 @@
 (ns purple.util
+  (:use [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.db :as db]
             [clojure.string :as s]
             [postal.core :as postal]
             [clj-time.core :as time]
@@ -24,6 +24,12 @@
   "Keeps code from running during compilation."
   [& body]
   `(when-not *compile-files*
+     ~@body))
+
+(defmacro only-prod
+  "Only run this code when in production mode."
+  [& body]
+  `(when (= config/db-user "purplemasterprod")
      ~@body))
 
 (defmacro catch-notify

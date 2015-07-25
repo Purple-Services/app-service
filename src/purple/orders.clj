@@ -1,9 +1,10 @@
 (ns purple.orders
-  (:use purple.util)
+  (:use purple.util
+        [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.db :as db]
             [purple.payment :as payment]
             [purple.coupons :as coupons]
+            [purple.couriers :as couriers]
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
 
@@ -18,74 +19,74 @@
 
 (defn get-all
   [db-conn]
-  (db/select db-conn
-             "orders"
-             ["*"]
-             {}
-             :append "ORDER BY target_time_start DESC"))
+  (!select db-conn
+           "orders"
+           ["*"]
+           {}
+           :append "ORDER BY target_time_start DESC"))
 
 (defn get-all-unassigned
   [db-conn]
-  (db/select db-conn
-             "orders"
-             ["*"]
-             {:status "unassigned"}
-             :append "ORDER BY target_time_start DESC"))
+  (!select db-conn
+           "orders"
+           ["*"]
+           {:status "unassigned"}
+           :append "ORDER BY target_time_start DESC"))
 
 (defn get-by-id
   "Gets a user from db by user-id."
   [db-conn id]
-  (first (db/select db-conn
-                    "orders"
-                    ["*"]
-                    {:id id})))
+  (first (!select db-conn
+                  "orders"
+                  ["*"]
+                  {:id id})))
 
 
 (defn get-by-user
   "Gets all of a user's orders."
   [db-conn user-id]
-  (db/select db-conn
-             "orders"
-             ["*"]
-             {:user_id user-id}
-             :append "ORDER BY target_time_start DESC"))
+  (!select db-conn
+           "orders"
+           ["*"]
+           {:user_id user-id}
+           :append "ORDER BY target_time_start DESC"))
 
 (defn get-by-courier
   "Gets all of a courier's assigned orders."
   [db-conn courier-id]
-  (let [orders (db/select db-conn
-                          "orders"
-                          ["*"]
-                          {}
-                          :custom-where
-                          (str "(courier_id = \""
-                               (db/mysql-escape-str courier-id)
-                               "\" AND target_time_start > "
-                               (- (quot (System/currentTimeMillis) 1000)
-                                  (* 60 60 24 16)) ;; 16 days
-                               ") OR status = \"unassigned\" ORDER BY target_time_end DESC"))
+  (let [orders (!select db-conn
+                        "orders"
+                        ["*"]
+                        {}
+                        :custom-where
+                        (str "(courier_id = \""
+                             (mysql-escape-str courier-id)
+                             "\" AND target_time_start > "
+                             (- (quot (System/currentTimeMillis) 1000)
+                                (* 60 60 24 16)) ;; 16 days
+                             ") OR status = \"unassigned\" ORDER BY target_time_end DESC"))
         customer-ids (distinct (map :user_id orders))
         customers (group-by :id
-                            (db/select db-conn
-                                       "users"
-                                       [:id :name :phone_number]
-                                       {}
-                                       :custom-where
-                                       (str "id IN (\""
-                                            (apply str
-                                                   (interpose "\",\"" customer-ids))
-                                            "\")")))
+                            (!select db-conn
+                                     "users"
+                                     [:id :name :phone_number]
+                                     {}
+                                     :custom-where
+                                     (str "id IN (\""
+                                          (apply str
+                                                 (interpose "\",\"" customer-ids))
+                                          "\")")))
         vehicle-ids (distinct (map :vehicle_id orders))
         vehicles (group-by :id
-                           (db/select db-conn
-                                      "vehicles"
-                                      ["*"]
-                                      {}
-                                      :custom-where
-                                      (str "id IN (\""
-                                           (apply str
-                                                  (interpose "\",\"" vehicle-ids))
-                                           "\")")))]
+                           (!select db-conn
+                                    "vehicles"
+                                    ["*"]
+                                    {}
+                                    :custom-where
+                                    (str "id IN (\""
+                                         (apply str
+                                                (interpose "\",\"" vehicle-ids))
+                                         "\")")))]
     (map #(assoc %
             :customer
             (first (get customers (:user_id %)))
@@ -120,34 +121,23 @@
      (calculate-cost db-conn
                      (:gas_type o)
                      (:gallons o)
-                     (:time-in-minutes o)
+                     (:time-limit o)
                      (:coupon_code o)
                      (:vehicle_id o)
                      (:user_id o)
                      (:referral_gallons_used o))))
 
-(defn connected-couriers
-  [db-conn]
-  (map #(assoc % :zones (map (fn [x] (Integer. x))
-                             (split-on-comma (:zones %))))
-       (db/select db-conn
-                  "couriers"
-                  ["*"]
-                  {:active true
-                   :on_duty true
-                   :connected true})))
-
-(defn valid-time?
+(defn valid-time-limit?
+  "Check if the Time choice is truly available."
   [db-conn o]
-  (if (< (:time-in-minutes o) 180)
+  (if (< (:time-limit o) 180)
     (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
           pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
           num-orders-in-queue (count @pm)
           num-couriers (max 1
                             (count (filter #(in? (:zones %) zone-id)
-                                           (connected-couriers db-conn))))]
+                                           (couriers/get-all-connected db-conn))))]
       (< num-orders-in-queue
-                                        ;(* 2 num-couriers)))
          (* 1 num-couriers)))
     true))
 
@@ -160,27 +150,29 @@
       "91"
       "87"))) ;; if we can't find it then assume 87
 
+(defn new-order-text
+  [o]
+  (str "New order:"
+       "\nDue: " (unix->full
+                  (:target_time_end o))
+       "\n" (:address_street o) ", "
+       (:address_zip o)
+       "\n" (:gallons o)
+       " Gallons of " (:gas_type o)))
+
 (defn add
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id order]
-  (let [time-in-minutes (case (:time order)
-                          ;; these are under the old system
-                          "< 1 hr" 60
-                          "< 3 hr" 180
-                          ;; the rest are handled as new system
-                          ;; which means it is given in minutes
-                          (Integer. (:time order)))
-
-        license-plate (some-> (db/select db-conn
-                                         "vehicles"
-                                         ["license_plate"]
-                                         {:id (:vehicle_id order)})
-                              first
-                              :license_plate)
-
-        referral-gallons-available
-        (:referral_gallons ((resolve 'purple.users/get-user-by-id) db-conn user-id))
-        
+  (let [time-limit (case (:time order)
+                     ;; these are under the old system
+                     "< 1 hr" 60
+                     "< 3 hr" 180
+                     ;; the rest are handled as new system
+                     ;; which means it is simply given in minutes
+                     (Integer. (:time order)))
+        license-plate (coupons/get-license-plate-by-vehicle-id (:vehicle_id order))
+        user ((resolve 'purple.users/get-user-by-id) db-conn user-id)
+        referral-gallons-available (:referral_gallons user)
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -190,63 +182,79 @@
             :status "unassigned"
             :target_time_start (quot (System/currentTimeMillis) 1000)
             :target_time_end (+ (quot (System/currentTimeMillis) 1000)
-                                (* 60 time-in-minutes))
-            :time-in-minutes time-in-minutes
+                                (* 60 time-limit))
+            :time-limit time-limit
             :gallons (Integer. (:gallons order))
-            :gas_type (if (nil? (:gas_type order))
-                        (infer-gas-type-by-price (:gas_price order))
-                        (:gas_type order))
+            :gas_type (unless-p nil?
+                                (:gas_type order)
+                                (infer-gas-type-by-price (:gas_price order)))
             :lat (unless-p Double/isNaN (Double. (:lat order)) 0)
             :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
             :license_plate license-plate
+            ;; we'll use as many referral gallons as available
             :referral_gallons_used (min (Integer. (:gallons order))
                                         referral-gallons-available)
             :coupon_code (s/upper-case (or (:coupon_code order) "")))]
-    (if (valid-price? db-conn o)
-      (if (valid-time? db-conn o)
-        (do (db/insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
-                                                        :status :target_time_start
-                                                        :target_time_end
-                                                        :gallons :gas_type
-                                                        :special_instructions
-                                                        :lat :lng :address_street
-                                                        :address_city :address_state
-                                                        :address_zip :gas_price
-                                                        :service_fee :total_price
-                                                        :license_plate :coupon_code
-                                                        :referral_gallons_used]))
-            ((resolve 'purple.dispatch/add-order-to-zq) o)
-            (when-not (= 0 (:referral_gallons_used o))
-              (coupons/mark-gallons-as-used db-conn
-                                            (:user_id o)
-                                            (:referral_gallons_used o)))
-            (when-not (s/blank? (:coupon_code o))
-              (coupons/mark-code-as-used db-conn
-                                         (:coupon_code o)
-                                         (:license_plate o)
-                                         (:user_id o)))
-            (future (doall (map #((resolve 'purple.users/send-push)
-                                  db-conn (:id %) "New order available. Please \"Accept Order\" ASAP.")
-                                ((resolve 'purple.dispatch/available-couriers) db-conn)))
-                    (send-email {:to "chris@purpledelivery.com"
-                                 :subject "Purple - New Order"
-                                 :body (str o)})
-                    (when (= config/db-user "purplemasterprod") ;; only in production
-                      (doall (map #(send-sms %
-                                             (str "New order:\n"
-                                                  "Due: " (unix->full
-                                                           (:target_time_end o))
-                                                  "\n" (:address_street o)
-                                                  ", " (:address_zip o)))
-                                  ["3235782263" ;; Bruno
-                                   "3106919061" ;; JP
-                                   "8589228571" ;; Lee
-                                   ]))))
-            {:success true})
-        {:success false
-         :message "Sorry, we currently are experiencing high volume and can't promise a delivery within that time limit. Please go back and choose the \"within 3 hours\" option."})
-      {:success false
-       :message "Sorry, the price changed while you were creating your order. Please press the back button to go back to the map and start over."})))
+
+    (cond
+     (not (valid-price? db-conn o))
+     {:success false
+      :message (str "Sorry, the price changed while you were creating your "
+                    "order. Please press the back button to go back to the "
+                    "map and start over.")}
+
+     (not (valid-time-limit? db-conn o))
+     {:success false
+      :message (str "Sorry, we currently are experiencing high volume and "
+                    "can't promise a delivery within that time limit. Please "
+                    "go back and choose the \"within 3 hours\" option.")}
+     
+     :else
+     (do (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
+                                                   :status :target_time_start
+                                                   :target_time_end
+                                                   :gallons :gas_type
+                                                   :special_instructions
+                                                   :lat :lng :address_street
+                                                   :address_city :address_state
+                                                   :address_zip :gas_price
+                                                   :service_fee :total_price
+                                                   :license_plate :coupon_code
+                                                   :referral_gallons_used]))
+         ((resolve 'purple.dispatch/add-order-to-zq) o)
+         (when-not (= 0 (:referral_gallons_used o))
+           (coupons/mark-gallons-as-used db-conn
+                                         (:user_id o)
+                                         (:referral_gallons_used o)))
+         (when-not (s/blank? (:coupon_code o))
+           (coupons/mark-code-as-used db-conn
+                                      (:coupon_code o)
+                                      (:license_plate o)
+                                      (:user_id o)))
+         (future (let [connected-couriers (couriers/get-all-connected db-conn)
+                       available-couriers (remove :busy connected-couriers)
+                       users-by-id (group-by :id
+                                             ((resolve 'purple.users/get-users-by-ids)
+                                              (map :id connected-couriers)))
+                       id->phone-number #(:phone_number (first (get users-by-id %)))]
+                   (send-email {:to "chris@purpledelivery.com"
+                                :subject "Purple - New Order"
+                                :body (str o)})
+                   (run! #((resolve 'purple.users/send-push)
+                           db-conn (:id %) (str "New order available. "
+                                                "Please press Accept "
+                                                "Order ASAP."))
+                         available-couriers)
+                   (run! #(send-sms % (new-order-text o))
+                         (concat (map (comp id->phone-number :id)
+                                      connected-couriers)
+                                 (only-prod ["3235782263" ;; Bruno
+                                             "3106919061" ;; JP
+                                             "8589228571" ;; Lee
+                                             ])))))
+         {:success true
+          :message "Your order has been accepted, and a courier will be on the way soon! Please ensure that the fueling door on your gas tank is unlocked."
+          :message_title "Order Accepted"}))))
 
 (defn update-status
   "Assumed to have been auth'd properly already."
@@ -254,11 +262,11 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE orders SET "
-          "status = \"" (db/mysql-escape-str status) "\", "
+          "status = \"" (mysql-escape-str status) "\", "
           "event_log = CONCAT(event_log, \""
-          (db/mysql-escape-str status) " " (quot (System/currentTimeMillis) 1000)
+          (mysql-escape-str status) " " (quot (System/currentTimeMillis) 1000)
           "\", '|') WHERE id = \""
-          (db/mysql-escape-str order-id)
+          (mysql-escape-str order-id)
           "\""))))
 
 (def busy-statuses ["assigned" "accepted" "enroute" "servicing"])
@@ -268,27 +276,27 @@
 (defn courier-busy?
   "Is courier currently working on an order?"
   [db-conn courier-id]
-  (let [orders (db/select db-conn
-                          "orders"
-                          [:id :status]
-                          {:courier_id courier-id})]
+  (let [orders (!select db-conn
+                        "orders"
+                        [:id :status]
+                        {:courier_id courier-id})]
     (boolean (some #(in? busy-statuses (:status %)) orders))))
 
 (defn set-courier-busy
   [db-conn courier-id busy]
-  (db/update db-conn
-             "couriers"
-             {:busy busy}
-             {:id courier-id}))
+  (!update db-conn
+           "couriers"
+           {:busy busy}
+           {:id courier-id}))
 
 (defn accept
   "There should be exactly one or zero orders in 'accepted' state, per courier."
   [db-conn order-id courier-id]
   (do (update-status db-conn order-id "accepted")
-      (db/update db-conn
-                 "orders"
-                 {:courier_id courier-id}
-                 {:id order-id})
+      (!update db-conn
+               "orders"
+               {:courier_id courier-id}
+               {:id order-id})
       (set-courier-busy db-conn courier-id true)
       {:success true}))
 
@@ -301,14 +309,14 @@
 (defn stamp-with-charge
   "Give it a charge object from Stripe."
   [db-conn order-id charge]
-  (db/update db-conn
-             "orders"
-             {:paid true
-              :stripe_charge_id (:id charge)
-              :stripe_customer_id_charged (:customer charge)
-              :stripe_balance_transaction_id (:balance_transaction charge)
-              :time_paid (:created charge)}
-             {:id order-id}))
+  (!update db-conn
+           "orders"
+           {:paid true
+            :stripe_charge_id (:id charge)
+            :stripe_customer_id_charged (:customer charge)
+            :stripe_balance_transaction_id (:balance_transaction charge)
+            :time_paid (:created charge)}
+           {:id order-id}))
 
 (defn complete
   "Completes order and charges user."
@@ -321,10 +329,10 @@
              "Your delivery has been completed. Thank you!"))
         (let [charge-description (str "Delivery of "
                                       (:gallons o) " Gallons of Gasoline ("
-                                      (->> (db/select db-conn
-                                                      "vehicles"
-                                                      [:gas_type]
-                                                      {:id (:vehicle_id o)})
+                                      (->> (!select db-conn
+                                                    "vehicles"
+                                                    [:gas_type]
+                                                    {:id (:vehicle_id o)})
                                            first
                                            :gas_type)
                                       " Octane)\n" "Where: "
@@ -403,11 +411,11 @@
 (defn update-rating
   "Assumed to have been auth'd properly already."
   [db-conn order-id number-rating text-rating]
-  (db/update db-conn
-             "orders"
-             {:number_rating number-rating
-              :text_rating text-rating}
-             {:id order-id}))
+  (!update db-conn
+           "orders"
+           {:number_rating number-rating
+            :text_rating text-rating}
+           {:id order-id}))
 
 (defn rate
   [db-conn user-id order-id rating]
@@ -425,20 +433,20 @@
             (coupons/mark-gallons-as-unused db-conn
                                             (:user_id o)
                                             (:referral_gallons_used o))
-            (db/update db-conn
-                       "orders"
-                       {:referral_gallons_used 0}
-                       {:id order-id}))
+            (!update db-conn
+                     "orders"
+                     {:referral_gallons_used 0}
+                     {:id order-id}))
           ;; free up that coupon code for that vehicle
           (when-not (s/blank? (:coupon_code o))
             (coupons/mark-code-as-unused db-conn
                                          (:coupon_code o)
                                          (:vehicle_id o)
                                          (:user_id o))
-            (db/update db-conn
-                       "orders"
-                       {:coupon_code ""}
-                       {:id order-id}))
+            (!update db-conn
+                     "orders"
+                     {:coupon_code ""}
+                     {:id order-id}))
           (when-not (s/blank? (:courier_id o))
             (set-courier-busy db-conn (:courier_id o) false)
             ((resolve 'purple.users/send-push) db-conn (:courier_id o)

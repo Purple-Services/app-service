@@ -2,9 +2,9 @@
   (:use purple.util
         cheshire.core
         ring.util.response
-        clojure.walk)
+        clojure.walk
+        [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.db :as db]
             [purple.users :as users]
             [purple.orders :as orders]
             [purple.dispatch :as dispatch]
@@ -49,7 +49,7 @@
              (POST "/login" {body :body}
                    (response
                     (let [b (keywordize-keys body)]
-                      (users/login (db/conn)
+                      (users/login (conn)
                                    ;; 'type' is either:
                                    ;; native, facebook, or google
                                    (:type b)
@@ -75,7 +75,7 @@
              (POST "/register" {body :body} ;; only for native users
                    (response
                     (let [b (keywordize-keys body)]
-                      (users/register (db/conn)
+                      (users/register (conn)
                                       ;; 'platform_id' is email address
                                       (:platform_id b)
                                       ;; 'auth_key' is password
@@ -83,23 +83,23 @@
              (POST "/forgot-password" {body :body} ;; only for native users
                    (response
                     (let [b (keywordize-keys body)]
-                      (users/forgot-password (db/conn)
+                      (users/forgot-password (conn)
                                              ;; 'platform_id' is email address
                                              (:platform_id b)))))
 
              ;; only for native users
              (GET "/reset-password/:key" [key]
-                  (wrap-page (response (pages/reset-password (db/conn) key))))
+                  (wrap-page (response (pages/reset-password (conn) key))))
              (POST "/reset-password" {body :body}
                    (response
                     (let [b (keywordize-keys body)]
-                      (users/change-password (db/conn) (:key b) (:password b)))))
+                      (users/change-password (conn) (:key b) (:password b)))))
              
              ;; you can send in one :user and/or one :vehicle key to edit those
              (POST "/edit" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -110,7 +110,7 @@
              (POST "/add-sns" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -122,7 +122,7 @@
              (POST "/code" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -135,7 +135,7 @@
              (POST "/details" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -149,7 +149,7 @@
              (POST "/add" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -160,7 +160,7 @@
              (POST "/rate" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -173,7 +173,7 @@
              (POST "/update-status-by-courier" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -186,7 +186,7 @@
              (POST "/cancel" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -196,10 +196,14 @@
                                       (:order_id b))))))))
   (context "/dispatch" []
            (defroutes dispatch-routes
+             (POST "/gas-prices" {body :body}
+                   (response
+                    (let [b (keywordize-keys body)]
+                      (dispatch/get-gas-prices (:zip_code b)))))
              (POST "/availability" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -210,7 +214,7 @@
              (POST "/ping" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       (demand-user-auth
                        db-conn
                        (:user_id b)
@@ -225,7 +229,7 @@
              (POST "/send" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       ;; they don't have to send user auth
                       ;; but if they do, it should be correct
                       (if-not (nil? (:user_id b))
@@ -241,7 +245,7 @@
              (POST "/send" {body :body}
                    (response
                     (let [b (keywordize-keys body)
-                          db-conn (db/conn)]
+                          db-conn (conn)]
                       ;; they don't have to send user auth
                       ;; but if they do, it should be correct
                       (if-not (nil? (:user_id b))
@@ -258,11 +262,11 @@
            (wrap-basic-authentication
             (defroutes dashboard-routes
               (GET "/" []
-                   (wrap-page (response (pages/dashboard (db/conn)))))
+                   (wrap-page (response (pages/dashboard (conn)))))
               (POST "/change-gas-price" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
-                       (dispatch/change-gas-price (db/conn)
+                       (dispatch/change-gas-price (conn)
                                                   (:gas-price-87 b)
                                                   (:gas-price-91 b))))))
             dashboard-auth?))
@@ -270,7 +274,7 @@
            (wrap-basic-authentication
             (defroutes stats-routes
               (GET "/" []
-                   (wrap-page (response (pages/dashboard (db/conn)
+                   (wrap-page (response (pages/dashboard (conn)
                                                          :read-only true)))))
             stats-auth?))
   (context "/twiml" []

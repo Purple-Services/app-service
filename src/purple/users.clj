@@ -2,9 +2,9 @@
   (:use purple.util
         cheshire.core
         gapi.core
-        clojure.walk)
+        clojure.walk
+        [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.db :as db]
             [purple.orders :as orders]
             [purple.coupons :as coupons]
             [purple.payment :as payment]
@@ -19,36 +19,51 @@
 (defn get-user
   "Gets a user from db by type and platform-id. Some fields unsafe for output."
   [db-conn type platform-id]
-  (first (db/select db-conn
-                    "users"
-                    ["*"]
-                    (merge {:type type}
-                           (case type
-                             "native" {:email platform-id}
-                             "facebook" {:id (str "fb" platform-id)}
-                             "google" {:id (str "g" platform-id)}
-                             (throw (Exception. "Unknown user type.")))))))
+  (first (!select db-conn
+                  "users"
+                  ["*"]
+                  (merge {:type type}
+                         (case type
+                           "native" {:email platform-id}
+                           "facebook" {:id (str "fb" platform-id)}
+                           "google" {:id (str "g" platform-id)}
+                           (throw (Exception. "Unknown user type.")))))))
 
 (defn get-user-by-id
   "Gets a user from db by user-id."
   [db-conn user-id]
-  (first (db/select db-conn
-                    "users"
-                    ["*"]
-                    {:id user-id})))
+  (first (!select db-conn
+                  "users"
+                  ["*"]
+                  {:id user-id})))
+
+(defn get-users-by-ids
+  "Gets multiple users by a list of ids."
+  [db-conn ids]
+  (!select db-conn
+           "users"
+           ["*"]
+           {}
+           :custom-where
+           (str "id IN (\""
+                (->> ids
+                     (map mysql-escape-str)
+                     (interpose "\",\"")
+                     (apply str))
+                "\")")))
 
 (defn get-user-by-reset-key
   "Gets a user from db by reset_key (for password reset)."
   [db-conn key]
-  (first (db/select db-conn
-                    "users"
-                    [:id
-                     :email
-                     :type
-                     :password_hash
-                     :phone_number
-                     :name]
-                    {:reset_key key})))
+  (first (!select db-conn
+                  "users"
+                  [:id
+                   :email
+                   :type
+                   :password_hash
+                   :phone_number
+                   :name]
+                  {:reset_key key})))
 
 (defn auth-native
   [user auth-key]
@@ -88,20 +103,20 @@
 (defn get-users-vehicles
   "Gets all of a user's vehicles."
   [db-conn user-id]
-  (db/select db-conn
-             "vehicles"
-             [:id
-              :user_id
-              :year
-              :make
-              :model
-              :color
-              :gas_type
-              :license_plate
-              :photo
-              :timestamp_created]
-             {:user_id user-id
-              :active 1}))
+  (!select db-conn
+           "vehicles"
+           [:id
+            :user_id
+            :year
+            :make
+            :model
+            :color
+            :gas_type
+            :license_plate
+            :photo
+            :timestamp_created]
+           {:user_id user-id
+            :active 1}))
 
 (defn get-users-cards
   "We cache the card info as JSON in the stripe_cards column."
@@ -113,11 +128,11 @@
 (defn init-session
   [db-conn user]
   (let [token (new-auth-token)]
-    (db/insert db-conn
-               "sessions"
-               {:user_id (:id user)
-                :token token
-                :ip "1.1.1.1"})
+    (!insert db-conn
+             "sessions"
+             {:user_id (:id user)
+              :token token
+              :ip "1.1.1.1"})
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -133,13 +148,13 @@
 (defn add
   "Adds new user. Will fail if user_id is already being used."
   [db-conn user & {:keys [password]}]
-  (db/insert db-conn
-             "users"
-             (assoc (if (= "native" (:type user))
-                      (assoc user :password_hash (bcrypt/encrypt password))
-                      user)
-               :referral_code (coupons/create-referral-coupon db-conn
-                                                              (:id user)))))
+  (!insert db-conn
+           "users"
+           (assoc (if (= "native" (:type user))
+                    (assoc user :password_hash (bcrypt/encrypt password))
+                    user)
+             :referral_code (coupons/create-referral-coupon db-conn
+                                                            (:id user)))))
 
 (defn login
   "Logs in user depeding on 'type' of user."
@@ -227,24 +242,24 @@
 
 (defn valid-session?
   [db-conn user-id token]
-  (let [session (db/select db-conn
-                           "sessions"
-                           [:id
-                            :timestamp_created]
-                           {:user_id user-id
-                            :token token})]
+  (let [session (!select db-conn
+                         "sessions"
+                         [:id
+                          :timestamp_created]
+                         {:user_id user-id
+                          :token token})]
     (if (seq session)
       true
       false)))
 
 (defn update-user-metadata
   [db-conn user-id app-version os]
-  (db/update db-conn
-             "users"
-             (filter (comp not nil? val)
-                     {:app_version app-version
-                      :os os})
-             {:id user-id}))
+  (!update db-conn
+           "users"
+           (filter (comp not nil? val)
+                   {:app_version app-version
+                    :os os})
+           {:id user-id}))
 
 (defn details
   [db-conn user-id & {:keys [user-meta]}]
@@ -274,13 +289,13 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (db/update db-conn
-               "users"
-               (select-keys record-map
-                            [:name
-                             :phone_number
-                             :gender])
-               {:id user-id})
+    (!update db-conn
+             "users"
+             (select-keys record-map
+                          [:name
+                           :phone_number
+                           :gender])
+             {:id user-id})
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -301,14 +316,14 @@
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
     (if (valid-license-plate? (:license_plate record-map))
-      (db/insert db-conn
-                 "vehicles"
-                 (assoc record-map
-                   :id (rand-str-alpha-num 20)
-                   :user_id user-id
-                   :license_plate (clean-up-license-plate
-                                   (:license_plate record-map))
-                   :active 1))
+      (!insert db-conn
+               "vehicles"
+               (assoc record-map
+                 :id (rand-str-alpha-num 20)
+                 :user_id user-id
+                 :license_plate (clean-up-license-plate
+                                 (:license_plate record-map))
+                 :active 1))
       {:success false
        :message "Please enter a valid license plate."})
     {:success false
@@ -321,15 +336,15 @@
                 (select-keys record-map required-vehicle-fields))
     (if (or (nil? (:license_plate record-map))
             (valid-license-plate? (:license_plate record-map)))
-      (db/update db-conn
-                 "vehicles"
-                 (if (nil? (:license_plate record-map))
-                   record-map
-                   (assoc record-map
-                     :license_plate (clean-up-license-plate
-                                     (:license_plate record-map))))
-                 {:id (:id record-map)
-                  :user_id user-id})
+      (!update db-conn
+               "vehicles"
+               (if (nil? (:license_plate record-map))
+                 record-map
+                 (assoc record-map
+                   :license_plate (clean-up-license-plate
+                                   (:license_plate record-map))))
+               {:id (:id record-map)
+                :user_id user-id})
       {:success false
        :message "Please enter a valid license plate."})
     {:success false
@@ -339,16 +354,16 @@
 
 (defn update-user-stripe-fields
   [db-conn user-id customer-resp]
-  (db/update db-conn
-             "users"
-             {:stripe_customer_id (:id customer-resp)
-              :stripe_cards (->> customer-resp
-                                 :cards
-                                 :data
-                                 (map #(select-keys % cc-fields-to-keep))
-                                 generate-string)
-              :stripe_default_card (:default_card customer-resp)}
-             {:id user-id}))
+  (!update db-conn
+           "users"
+           {:stripe_customer_id (:id customer-resp)
+            :stripe_cards (->> customer-resp
+                               :cards
+                               :data
+                               (map #(select-keys % cc-fields-to-keep))
+                               generate-string)
+            :stripe_default_card (:default_card customer-resp)}
+           {:id user-id}))
 
 (defn add-card
   "Add card. If user's first card, create Stripe customer object (+ card) instead."
@@ -420,10 +435,10 @@
                                                      config/sns-app-arn-apns-courier
                                                      config/sns-app-arn-apns)
                                             "gcm" config/sns-app-arn-gcm))]
-    (db/update db-conn
-               "users"
-               {:arn_endpoint arn-endpoint}
-               {:id user-id})))
+    (!update db-conn
+             "users"
+             {:arn_endpoint arn-endpoint}
+             {:id user-id})))
 
 (defn forgot-password
   "Only for native accounts; platform-id is email address."
@@ -431,10 +446,10 @@
   (let [user (get-user db-conn "native" platform-id)]
     (if user
       (let [reset-key (rand-str-alpha-num 22)]
-        (db/update db-conn
-                   "users"
-                   {:reset_key reset-key}
-                   {:id (:id user)})
+        (!update db-conn
+                 "users"
+                 {:reset_key reset-key}
+                 {:id (:id user)})
         (send-email {:to platform-id
                      :subject "Purple Account - Reset Password"
                      :body (str "Hello " (:name user) ","
@@ -458,11 +473,11 @@
   [db-conn reset-key password]
   (if-not (s/blank? reset-key) ;; <-- very important check, for security
     (if (good-password password)
-      (db/update db-conn
-                 "users"
-                 {:password_hash (bcrypt/encrypt password)
-                  :reset_key ""}
-                 {:reset_key reset-key})
+      (!update db-conn
+               "users"
+               {:password_hash (bcrypt/encrypt password)
+                :reset_key ""}
+               {:reset_key reset-key})
       {:success false
        :message "Password must be at least 7 characters and contain a number."})
     {:success false

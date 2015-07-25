@@ -68,7 +68,7 @@
 ;; NOTE: table, columns, and where-map keys are not checked for SQL Injection
 ;; Thus, where-map vals are the only input that is protected from attack.
 ;; TODO - allow 'all' flag for *. can be used in combination with DECRYPT still
-(defn select
+(defn !select
   "Select columns from table and decrypt any values whose column name is in the
   set 'decrypt'. All this, according the constraints of simple where-map."
   [db-conn table columns where-map & {:keys [decrypt append custom-where]}]
@@ -89,13 +89,13 @@
                   table
                   " WHERE "
                   (if custom-where
-                      custom-where
-                      (if (empty? where-map)
-                        "1"
-                        (->> (keys where-map)
-                             (map #(str (sql/as-identifier %) " = ?"))
-                             (interpose " AND ")
-                             (apply str))))
+                    custom-where
+                    (if (empty? where-map)
+                      "1"
+                      (->> (keys where-map)
+                           (map #(str (sql/as-identifier %) " = ?"))
+                           (interpose " AND ")
+                           (apply str))))
                   " "
                   append)
              (vals where-map))
@@ -134,7 +134,7 @@
   [table record encrypt]
   (insert-values table (keys record) (vals record) encrypt))
 
-(defn insert
+(defn !insert
   "Insert row in 'table' of values 'insertion-map'.
   You can pass a set of keys to encrypt values of."
   [db-conn table insertion-map & {:keys [encrypt]}]
@@ -229,11 +229,11 @@
   (let [[where & params] where-params
         columns (update-tpl (keys record) encrypt)]
     (sql/do-prepared
-      (format "UPDATE %s SET %s WHERE %s"
-              (sql/as-identifier table) columns where)
-      (concat (vals record) params))))
+     (format "UPDATE %s SET %s WHERE %s"
+             (sql/as-identifier table) columns where)
+     (concat (vals record) params))))
 
-(defn update
+(defn !update
   [db-conn table update-map where-map & {:keys [encrypt]}]
   (try
     (do (sql/with-connection db-conn

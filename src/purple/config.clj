@@ -1,5 +1,31 @@
 (ns purple.config)
 
+
+
+;; stub for local testing DEV DB
+(System/setProperty "AWS_ACCESS_KEY_ID" "AKIAJLB35GOFQUJZCX5A")
+(System/setProperty "AWS_SECRET_KEY" "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")
+(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
+(System/setProperty "DB_NAME" "ebdb")
+(System/setProperty "DB_PORT" "3306")
+(System/setProperty "DB_USER" "purplemaster")
+(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
+(System/setProperty "EMAIL_USER" "no-reply@purpledelivery.com")
+(System/setProperty "EMAIL_PASSWORD" "HJdhj34HJd")
+(System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
+(System/setProperty "SNS_APP_ARN_APNS" "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
+(System/setProperty "SNS_APP_ARN_GCM" "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple")
+(System/setProperty "TWILIO_ACCOUNT_SID" "AC0a0954acca9ba8c527f628a3bfaf1329")
+(System/setProperty "TWILIO_AUTH_TOKEN" "3da1b036da5fb7716a95008c318ff154")
+(System/setProperty "TWILIO_FROM_NUMBER" "+13239243338")
+(System/setProperty "BASE_URL" "http://localhost:3000/")
+(System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
+(System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
+
+
+
+
+
 (def base-url (System/getProperty "BASE_URL"))
 
 ;; Database
@@ -64,15 +90,18 @@
 ;; hour of day, start and end (in PST/PDT), both are inclusive
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
 ;; the way things are coded, you can't wrap around past midnight
+;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
 (def service-time-bracket [10 20])
 
 ;; key is number of minutes till deadline
 ;; if changing service fee, also change in dispatch.clj where the hardcoded
 ;; service fee is being used for old versions of the app
-(def delivery-times (array-map 180 {:service_fee 0
-                                    :text "within 3 hours (free)"}
-                               60  {:service_fee 0
-                                    :text "within 1 hour (free)"}))
+(def delivery-times {180 {:service_fee 0
+                          :text "within 3 hours (free)"
+                          :order 0}
+                     60  {:service_fee 499
+                          :text "within 1 hour ($4.99)"
+                          :order 1}})
 
 ;; Discount value in cents of using a referral code
 (def referral-referred-value -1000) ;; should be negative!

@@ -1,7 +1,7 @@
-(defproject purple "1.0.1-SNAPSHOT"
+(defproject purple "1.1.0-SNAPSHOT"
   :description "Purple"
   :url "http://purpledelivery.com"
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
                  [compojure "1.1.8"]
                  [ring/ring-json "0.1.2"]
                  [c3p0/c3p0 "0.9.1.2"] ;; db connection pooling

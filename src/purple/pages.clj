@@ -1,11 +1,11 @@
 (ns purple.pages
   (:use purple.util
+        [purple.db :only [conn !select !insert !update mysql-escape-str]]
         net.cgrand.enlive-html
         :reload)
   (:require [purple.users :as users]
             [purple.orders :as orders]
             [purple.config :as config]
-            [purple.db :as db]
             [clojure.string :as s]))
 
 (deftemplate index-template "templates/index.html"
@@ -205,34 +205,34 @@
 (defn dashboard [db-conn & {:keys [read-only]}]
   (let [couriers (remove #(in? ["9eadx6i2wCCjUI1leBBr"] ;; remove chriscourier@test.com
                                (:id %))
-                         (db/select db-conn "couriers" ["*"] {}))
+                         (!select db-conn "couriers" ["*"] {}))
         courier-ids (distinct (map :id couriers))
         users-by-id (group-by :id
-                              (db/select db-conn
-                                         "users"
-                                         [:id
-                                          :name
-                                          :email
-                                          :phone_number
-                                          :os
-                                          :app_version
-                                          :stripe_default_card
-                                          :timestamp_created]
-                                         {}))
+                              (!select db-conn
+                                       "users"
+                                       [:id
+                                        :name
+                                        :email
+                                        :phone_number
+                                        :os
+                                        :app_version
+                                        :stripe_default_card
+                                        :timestamp_created]
+                                       {}))
         id->name #(:name (first (get users-by-id %)))
         vehicles-by-id (group-by :id
-                                 (db/select db-conn
-                                            "vehicles"
-                                            [:id
-                                             :year
-                                             :make
-                                             :model
-                                             :color
-                                             :gas_type
-                                             :license_plate]
-                                            {}))
+                                 (!select db-conn
+                                          "vehicles"
+                                          [:id
+                                           :year
+                                           :make
+                                           :model
+                                           :color
+                                           :gas_type
+                                           :license_plate]
+                                          {}))
         id->vehicle #(first (get vehicles-by-id %))
-        coupons (db/select db-conn "coupons" ["*"] {:type "standard"})]
+        coupons (!select db-conn "coupons" ["*"] {:type "standard"})]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
@@ -260,7 +260,7 @@
 
                              :vehicle
                              (id->vehicle (:vehicle_id %)))
-                          (take 500 (orders/get-all (db/conn))))
+                          (take 500 (orders/get-all (conn))))
              :users (sort-by
                      #(.getTime (:timestamp_created %))
                      >
