@@ -79,6 +79,17 @@
      (time/time-zone-for-id "America/Los_Angeles"))
    (time-coerce/from-long (* 1000 x))))
 
+(def hour-formatter (time-format/formatter "H"))
+(defn unix->hour-of-day
+  "Convert integer unix timestamp to integer hour of day 0-23."
+  [x]
+  (Integer.
+   (time-format/unparse
+    (time-format/with-zone
+      hour-formatter
+      (time/time-zone-for-id "America/Los_Angeles"))
+    (time-coerce/from-long (* 1000 x)))))
+
 (defn in? 
   "true if seq contains elm"
   [seq elm]  

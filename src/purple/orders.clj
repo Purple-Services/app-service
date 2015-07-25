@@ -131,14 +131,16 @@
   "Check if the Time choice is truly available."
   [db-conn o]
   (if (< (:time-limit o) 180)
-    (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
-          pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
-          num-orders-in-queue (count @pm)
-          num-couriers (max 1
-                            (count (filter #(in? (:zones %) zone-id)
-                                           (couriers/get-all-connected db-conn))))]
-      (< num-orders-in-queue
-         (* 1 num-couriers)))
+    (and (> (unix->hour-of-day (:target_time_start o))
+            9)
+         (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
+               pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
+               num-orders-in-queue (count @pm)
+               num-couriers (max 1
+                                 (count (filter #(in? (:zones %) zone-id)
+                                                (couriers/get-all-connected db-conn))))]
+           (< num-orders-in-queue
+              (* 1 num-couriers))))
     true))
 
 (defn infer-gas-type-by-price
@@ -170,7 +172,8 @@
                      ;; the rest are handled as new system
                      ;; which means it is simply given in minutes
                      (Integer. (:time order)))
-        license-plate (coupons/get-license-plate-by-vehicle-id (:vehicle_id order))
+        license-plate (coupons/get-license-plate-by-vehicle-id db-conn
+                                                               (:vehicle_id order))
         user ((resolve 'purple.users/get-user-by-id) db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         o (assoc (select-keys order [:vehicle_id :special_instructions
@@ -205,7 +208,7 @@
 
      (not (valid-time-limit? db-conn o))
      {:success false
-      :message (str "Sorry, we currently are experiencing high volume and "
+      :message (str "Sorry, we currently are experiencing high demand and "
                     "can't promise a delivery within that time limit. Please "
                     "go back and choose the \"within 3 hours\" option.")}
      
@@ -235,7 +238,7 @@
                        available-couriers (remove :busy connected-couriers)
                        users-by-id (group-by :id
                                              ((resolve 'purple.users/get-users-by-ids)
-                                              (map :id connected-couriers)))
+                                              db-conn (map :id connected-couriers)))
                        id->phone-number #(:phone_number (first (get users-by-id %)))]
                    (send-email {:to "chris@purpledelivery.com"
                                 :subject "Purple - New Order"

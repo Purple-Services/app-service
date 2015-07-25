@@ -40,17 +40,19 @@
 (defn get-users-by-ids
   "Gets multiple users by a list of ids."
   [db-conn ids]
-  (!select db-conn
-           "users"
-           ["*"]
-           {}
-           :custom-where
-           (str "id IN (\""
-                (->> ids
-                     (map mysql-escape-str)
-                     (interpose "\",\"")
-                     (apply str))
-                "\")")))
+  (if (seq ids)
+    (!select db-conn
+             "users"
+             ["*"]
+             {}
+             :custom-where
+             (str "id IN (\""
+                  (->> ids
+                       (map mysql-escape-str)
+                       (interpose "\",\"")
+                       (apply str))
+                  "\")"))
+    []))
 
 (defn get-user-by-reset-key
   "Gets a user from db by reset_key (for password reset)."
