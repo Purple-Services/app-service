@@ -2,7 +2,6 @@
   (:use purple.util
         [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
-            [purple.payment :as payment]
             [purple.coupons :as coupons]
             [purple.couriers :as couriers]
             [clojure.java.jdbc :as sql]
@@ -256,7 +255,9 @@
                                              "8589228571" ;; Lee
                                              ])))))
          {:success true
-          :message "Your order has been accepted, and a courier will be on the way soon! Please ensure that the fueling door on your gas tank is unlocked."
+          :message (str "Your order has been accepted, and a courier will be "
+                        "on the way soon! Please ensure that the fueling door "
+                        "on your gas tank is unlocked.")
           :message_title "Order Accepted"}))))
 
 (defn update-status
@@ -321,35 +322,43 @@
             :time_paid (:created charge)}
            {:id order-id}))
 
+(defn after-payment
+  [db-conn order]
+  (do (coupons/apply-referral-bonus db-conn (:coupon_code order))
+      ((resolve 'purple.users/send-push) db-conn (:user_id order)
+       "Your delivery has been completed. Thank you!")))
+
+(defn gen-charge-description
+  [db-conn order]
+  (str "Delivery of "
+       (:gallons order) " Gallons of Gasoline ("
+       (->> (!select db-conn
+                     "vehicles"
+                     [:gas_type]
+                     {:id (:vehicle_id order)})
+            first
+            :gas_type)
+       " Octane)\n" "Where: "
+       (:address_street order)
+       "\n" "When: "
+       (unix->fuller
+        (quot (System/currentTimeMillis) 1000))))
+
 (defn complete
   "Completes order and charges user."
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
       (set-courier-busy db-conn (:courier_id o) false)
       (if (= 0 (:total_price o))
-        (do (coupons/apply-referral-bonus db-conn (:coupon_code o))
-            ((resolve 'purple.users/send-push) db-conn (:user_id o)
-             "Your delivery has been completed. Thank you!"))
-        (let [charge-description (str "Delivery of "
-                                      (:gallons o) " Gallons of Gasoline ("
-                                      (->> (!select db-conn
-                                                    "vehicles"
-                                                    [:gas_type]
-                                                    {:id (:vehicle_id o)})
-                                           first
-                                           :gas_type)
-                                      " Octane)\n" "Where: "
-                                      (:address_street o)
-                                      "\n" "When: "
-                                      (unix->fuller
-                                       (quot (System/currentTimeMillis) 1000)))
-              charge-result ((resolve 'purple.users/charge-user) db-conn
-                             (:user_id o) (:total_price o) charge-description)]
+        (after-payment db-conn o)
+        (let [charge-result ((resolve 'purple.users/charge-user)
+                             db-conn
+                             (:user_id o)
+                             (:total_price o)
+                             (gen-charge-description db-conn o))]
           (if (:success charge-result)
             (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
-                (coupons/apply-referral-bonus db-conn (:coupon_code o))
-                ((resolve 'purple.users/send-push) db-conn (:user_id o)
-                 "Your delivery has been completed. Thank you!"))
+                (after-payment db-conn o))
             charge-result)))))
 
 (defn begin-route

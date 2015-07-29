@@ -149,7 +149,7 @@
                                                " - last_ping) > "
                                                config/max-courier-abandon-time)))
         ;; as user rows
-        expired-couriers (users/get-users-by-ids expired-courier-ids)]
+        expired-couriers (users/get-users-by-ids db-conn expired-courier-ids)]
     (when-not (empty? expired-couriers)
       (do (run! #(send-sms (:phone_number %)
                            "You have just disconnected from the Purple Courier App.")

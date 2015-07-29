@@ -209,7 +209,7 @@
             (login db-conn type platform-id auth-key)))
       (catch Exception e (case (.getMessage e)
                            "Invalid login." {:success false
-                                             :message "Invalid login."}
+                                             :message "Incorrect email / password combination."}
                            "No email." {:success false
                                         :message "You must provide access to your email address. Please contact us via the Feedback form, or use a different method to log in."}
                            {:success false

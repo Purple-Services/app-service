@@ -88,7 +88,7 @@
    "accepted" "enroute"
    "enroute" "servicing"
    "servicing" "complete"
-   "complete" "complete"
+   "complete" nil
    "cancelled" "cancelled"})
 
 (def cancellable-statuses ["unassigned" "assigned" "accepted" "enroute"])
