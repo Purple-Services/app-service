@@ -150,13 +150,20 @@
 (defn add
   "Adds new user. Will fail if user_id is already being used."
   [db-conn user & {:keys [password]}]
-  (!insert db-conn
-           "users"
-           (assoc (if (= "native" (:type user))
-                    (assoc user :password_hash (bcrypt/encrypt password))
-                    user)
-             :referral_code (coupons/create-referral-coupon db-conn
-                                                            (:id user)))))
+  (let [result (!insert db-conn
+                        "users"
+                        (assoc (if (= "native" (:type user))
+                                 (assoc user :password_hash (bcrypt/encrypt password))
+                                 user)
+                               :referral_code (coupons/create-referral-coupon db-conn
+                                                                              (:id user))))]
+    (do (future (send-email ;; debugging purposes, "why many coupons created somtimes?"
+                 {:to "chris@purpledelivery.com"
+                  :subject "Purple - users/add caleld"
+                  :body (str user
+                             "\nResult:\n"
+                             result)}))
+        result)))
 
 (defn login
   "Logs in user depeding on 'type' of user."

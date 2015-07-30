@@ -20,13 +20,13 @@
 
 (defn dashboard-auth?
   [username password]
-  (and (= config/basic-auth-username username)
-       (= config/basic-auth-password password)))
+  (and (= (:username config/basic-auth-admin) username)
+       (= (:password config/basic-auth-admin) password)))
 
 (defn stats-auth?
   [username password]
-  (and (= config/basic-auth-read-only-username username)
-       (= config/basic-auth-read-only-password password)))
+  (and (= (:username config/basic-auth-read-only) username)
+       (= (:password config/basic-auth-read-only) password)))
 
 (defn wrap-page [resp]
   (-> resp
@@ -221,8 +221,8 @@
                        (:token b)
                        (dispatch/courier-ping db-conn
                                               (:user_id b)
-                                              (or (Double. (:lat b)) 0)
-                                              (or (Double. (:lng b)) 0)
+                                              (Double. (or (:lat b) 0))
+                                              (Double. (or (:lng b) 0))
                                               (or (:gallons b) 0))))))))
   (context "/feedback" []
            (defroutes feedback-routes

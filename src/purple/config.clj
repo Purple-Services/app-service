@@ -17,11 +17,13 @@
 
 ;; Basic Auth, for Dashboard
 ;; with edit privileges
-(def basic-auth-username (System/getProperty "BASIC_AUTH_USERNAME"))
-(def basic-auth-password (System/getProperty "BASIC_AUTH_PASSWORD"))
+(def basic-auth-admin
+  {:username (System/getProperty "BASIC_AUTH_USERNAME")
+   :password (System/getProperty "BASIC_AUTH_PASSWORD")})
 ;; with read-only privileges (the page is /stats instead of /dashboard)
-(def basic-auth-read-only-username (System/getProperty "BASIC_AUTH_READ_ONLY_USERNAME"))
-(def basic-auth-read-only-password (System/getProperty "BASIC_AUTH_READ_ONLY_PASSWORD"))
+(def basic-auth-read-only
+  {:username (System/getProperty "BASIC_AUTH_READ_ONLY_USERNAME")
+   :password (System/getProperty "BASIC_AUTH_READ_ONLY_PASSWORD")})
 
 ;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
@@ -51,15 +53,10 @@
 (def sns-app-arn-apns-courier "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
 (def sns-app-arn-gcm (System/getProperty "SNS_APP_ARN_GCM"))
 
-
 ;; Twilio, for sending SMS and phone calls
 (def twilio-account-sid (System/getProperty "TWILIO_ACCOUNT_SID"))
 (def twilio-auth-token (System/getProperty "TWILIO_AUTH_TOKEN"))
 (def twilio-from-number (System/getProperty "TWILIO_FROM_NUMBER"))
-
-
-(def gas-price-87 (atom 0))
-(def gas-price-91 (atom 0))
 
 ;; hour of day, start and end (in PST/PDT), both are inclusive
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
@@ -92,3 +89,7 @@
    "cancelled" "cancelled"})
 
 (def cancellable-statuses ["unassigned" "assigned" "accepted" "enroute"])
+
+;; these will be initiated on startup with values from db
+(def gas-price-87 (atom 0))
+(def gas-price-91 (atom 0))
