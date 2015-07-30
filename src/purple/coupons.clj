@@ -6,6 +6,7 @@
             [clojure.string :as s]))
 
 (defn get-coupon-by-code
+  "Get a coupon from DB given its code (e.g., GAS15)."
   [db-conn code]
   (first (!select db-conn
                   "coupons"
@@ -13,6 +14,7 @@
                   {:code code})))
 
 (defn get-license-plate-by-vehicle-id
+  "Get the license of a vehicle given its id. Or nil."
   [db-conn vehicle-id]
   (some-> (!select db-conn
                    "vehicles"
@@ -22,7 +24,7 @@
           :license_plate))
 
 (defn code->value
-  "Get the value for a coupon code."
+  "Get the value for a coupon code contextualized by user and vehicle choice."
   [db-conn code vehicle-id user-id]
   (let [coupon (get-coupon-by-code db-conn code)
         license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)
@@ -89,6 +91,7 @@
                    :value config/referral-referred-value}))))
 
 (defn mark-code-as-used
+  "Mark a coupon as used given its code."
   [db-conn code license-plate user-id]
   (sql/with-connection db-conn
     (sql/do-prepared
@@ -100,6 +103,7 @@
           " WHERE code = \"" (mysql-escape-str code) "\""))))
 
 (defn mark-code-as-unused
+  "Mark a coupon as unused (available for use) given its code."
   [db-conn code vehicle-id user-id]
   (let [coupon (get-coupon-by-code db-conn code)
         license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)
@@ -121,6 +125,7 @@
             "\" WHERE code = \"" (mysql-escape-str code) "\"")))))
 
 (defn mark-gallons-as-used
+  "Use gallons from user's referral gallons. Assumes gallons are available."
   [db-conn user-id gallons]
   (sql/with-connection db-conn
     (sql/do-prepared
@@ -129,6 +134,7 @@
           " WHERE id = \"" (mysql-escape-str user-id) "\""))))
 
 (defn mark-gallons-as-unused
+  "Un-use gallons from user's referral gallons. (Add gallons to their account)."
   [db-conn user-id gallons]
   (sql/with-connection db-conn
     (sql/do-prepared

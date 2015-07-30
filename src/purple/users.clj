@@ -67,18 +67,21 @@
                    :name]
                   {:reset_key key})))
 
-(defn auth-native
+(defn auth-native?
+  "Is password correct for this user map?"
   [user auth-key]
   (bcrypt/check auth-key (:password_hash user)))
 
 (defn get-user-from-fb
+  "Get the Facebook user data from Facebook's Graph based on given acess token."
   [auth-key]
   (-> (client/get (str "https://graph.facebook.com/me?access_token=" auth-key))
       :body
       parse-string
       keywordize-keys))
 
-(defn auth-facebook
+(defn auth-facebook?
+  "Is this auth-key associated with the Facebook user ID'd in this user map?"
   [user auth-key]
   (= (:id user)
      (str "fb" (:id (get-user-from-fb auth-key)))))
@@ -87,13 +90,15 @@
   (build "https://www.googleapis.com/discovery/v1/apis/plus/v1/rest"))
 
 (defn get-user-from-google
+  "Get the Google user data from Google Plus based on given token."
   [auth-key]
   (call (atom {:token auth-key})
         google-plus-service
         "plus.people/get"
         {"userId" "me"}))
 
-(defn auth-google
+(defn auth-google?
+  "Is this auth-key associated with the Google user ID'd in this user map?"
   [user auth-key]
   (= (:id user)
      (str "g" (:id (get-user-from-google auth-key)))))
@@ -107,16 +112,8 @@
   [db-conn user-id]
   (!select db-conn
            "vehicles"
-           [:id
-            :user_id
-            :year
-            :make
-            :model
-            :color
-            :gas_type
-            :license_plate
-            :photo
-            :timestamp_created]
+           [:id :user_id :year :make :model :color :gas_type :license_plate
+            :photo :timestamp_created]
            {:user_id user-id
             :active 1}))
 
@@ -172,9 +169,9 @@
     (try
       (if user
         (if (case (:type user)
-              "native" (auth-native user auth-key)
-              "facebook" (auth-facebook user auth-key)
-              "google" (auth-google user auth-key)
+              "native" (auth-native? user auth-key)
+              "facebook" (auth-facebook? user auth-key)
+              "google" (auth-google? user auth-key)
               nil false
               (throw (Exception. "Unknown user type!")))
           (init-session db-conn user)
