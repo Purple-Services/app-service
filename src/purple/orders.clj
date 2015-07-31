@@ -196,7 +196,7 @@
             ;; we'll use as many referral gallons as available
             :referral_gallons_used (min (Integer. (:gallons order))
                                         referral-gallons-available)
-            :coupon_code (s/upper-case (or (:coupon_code order) "")))]
+            :coupon_code (format-coupon-code (or (:coupon_code order) "")))]
 
     (cond
      (not (valid-price? db-conn o))

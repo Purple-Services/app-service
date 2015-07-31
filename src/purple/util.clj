@@ -113,13 +113,24 @@
             length))
 
 (defn gen-coupon-code []
-  (rand-str (remove #{48  ;; 0  - removing nums that look like chars
-                      49  ;; 1
-                      79  ;; O  - removing chars that look like nums
-                      73} ;; I
+  (rand-str (remove (set [65  ;; A  - removing vowels to avoid offensive words
+                          69  ;; E
+                          73  ;; I
+                          79  ;; O
+                          85  ;; U
+                          48  ;; 0  - removing nums that look like chars
+                          49  ;; 1
+                          79  ;; O  - removing chars that look like nums
+                          73]);; I
                     (concat (range 48 58)  ;; 0-9
                             (range 65 91)))  ;; A-Z
             5))
+
+(defn format-coupon-code
+  "Format coupon code to consistent format. (Keep this idempotent!)"
+  [code]
+  (-> (s/upper-case code)
+      (s/replace #" " "")))
 
 (defn new-session-id []
   (rand-str-alpha-num 64))

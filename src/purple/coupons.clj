@@ -143,6 +143,7 @@
           " WHERE id = \"" (mysql-escape-str user-id) "\""))))
 
 (defn apply-referral-bonus
+  "Add benefits of referral to origin account."
   [db-conn code]
   (when-not (s/blank? code)
     (let [user-id (-> (!select db-conn "users" [:id] {:referral_code code})
@@ -164,9 +165,9 @@
 
 (defn create-standard-coupon
   [db-conn code value expiration-time]
-  (if (is-code-available? db-conn (s/upper-case code))
+  (if (is-code-available? db-conn (format-coupon-code code))
     (!insert db-conn "coupons" {:id (rand-str-alpha-num 20)
-                                :code (s/upper-case code)
+                                :code (format-coupon-code code)
                                 :type "standard"
                                 :value value
                                 :expiration_time expiration-time})

@@ -80,13 +80,13 @@
 (def referral-referrer-gallons 5)
 
 (def status->next-status
-  {"unassigned" "assigned"
-   "assigned" "accepted"
-   "accepted" "enroute"
-   "enroute" "servicing"
-   "servicing" "complete"
-   "complete" nil
-   "cancelled" "cancelled"})
+  {"unassigned"  "assigned"
+   "assigned"    "accepted"
+   "accepted"    "enroute"
+   "enroute"     "servicing"
+   "servicing"   "complete"
+   "complete"    nil
+   "cancelled"   nil})
 
 (def cancellable-statuses ["unassigned" "assigned" "accepted" "enroute"])
 

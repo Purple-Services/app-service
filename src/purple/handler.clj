@@ -46,7 +46,9 @@
 (defroutes app-routes
   (context "/user" []
            (defroutes user-routes
-             (POST "/login" {body :body}
+             (POST "/login" {body :body
+                             headers :headers
+                             remote-addr :remote-addr}
                    (response
                     (let [b (keywordize-keys body)]
                       (users/login (conn)
@@ -71,15 +73,22 @@
                                    ;; because the plugin we are using doesn't allow
                                    ;; to modify scope of auth_key, but it does
                                    ;; give the email address in the JS object
-                                   :email-override (:email_override b)))))
-             (POST "/register" {body :body} ;; only for native users
+                                   :email-override (:email_override b)
+                                   :client-ip (or (get headers "x-forwarded-for")
+                                                  remote-addr)))))
+              ;; only for native users
+             (POST "/register" {body :body
+                                headers :headers
+                                remote-addr :remote-addr}
                    (response
                     (let [b (keywordize-keys body)]
                       (users/register (conn)
                                       ;; 'platform_id' is email address
                                       (:platform_id b)
                                       ;; 'auth_key' is password
-                                      (:auth_key b)))))
+                                      (:auth_key b)
+                                      :client-ip (or (get headers "x-forwarded-for")
+                                                     remote-addr)))))
              (POST "/forgot-password" {body :body} ;; only for native users
                    (response
                     (let [b (keywordize-keys body)]
@@ -128,7 +137,7 @@
                        (:user_id b)
                        (:token b)
                        (coupons/code->value db-conn
-                                            (s/upper-case (:code b))
+                                            (format-coupon-code (:code b))
                                             (:vehicle_id b)
                                             (:user_id b))))))
              ;; Get info about currently auth'd user

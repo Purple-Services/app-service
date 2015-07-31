@@ -125,13 +125,13 @@
          (keywordize-keys (parse-string (:stripe_cards user))))))
 
 (defn init-session
-  [db-conn user]
+  [db-conn user & {:keys [client-ip]}]
   (let [token (new-auth-token)]
     (!insert db-conn
              "sessions"
              {:user_id (:id user)
               :token token
-              :ip "1.1.1.1"})
+              :ip (or client-ip "")})
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -164,7 +164,7 @@
 
 (defn login
   "Logs in user depeding on 'type' of user."
-  [db-conn type platform-id auth-key & {:keys [email-override]}]
+  [db-conn type platform-id auth-key & {:keys [email-override client-ip]}]
   (let [user (get-user db-conn type platform-id)]
     (try
       (if user
@@ -174,7 +174,7 @@
               "google" (auth-google? user auth-key)
               nil false
               (throw (Exception. "Unknown user type!")))
-          (init-session db-conn user)
+          (init-session db-conn user :client-ip client-ip)
           (throw (Exception. "Invalid login.")))
         (do (add db-conn
                  (case type
@@ -210,7 +210,7 @@
                                                  (str "g" (:id google-user)))})
                                     (throw (Exception. "No email.")))))
                    (throw (Exception. "Invalid login."))))
-            (login db-conn type platform-id auth-key)))
+            (login db-conn type platform-id auth-key :client-ip client-ip)))
       (catch Exception e (case (.getMessage e)
                            "Invalid login." {:success false
                                              :message "Incorrect email / password combination."}
@@ -232,7 +232,7 @@
 
 (defn register
   "Only for native users."
-  [db-conn platform-id auth-key]
+  [db-conn platform-id auth-key & {:keys [client-ip]}]
   (if (good-email db-conn platform-id)
     (if (good-password auth-key)
       (do (add db-conn
@@ -240,7 +240,7 @@
                 :email platform-id
                 :type "native"}
                :password auth-key)
-          (login db-conn "native" platform-id auth-key))
+          (login db-conn "native" platform-id auth-key :client-ip client-ip))
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false
