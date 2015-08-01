@@ -70,8 +70,8 @@
 (def delivery-times {180 {:service_fee 0
                           :text "within 3 hours (free)"
                           :order 0}
-                     60  {:service_fee 0
-                          :text "within 1 hour (free)"
+                     60  {:service_fee 100
+                          :text "within 1 hour ($1)"
                           :order 1}})
 
 ;; Discount value in cents of using a referral code
