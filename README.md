@@ -4,9 +4,147 @@ The RESTful web service that the Purple mobile app uses. Also, provides a Dashbo
 
 ## Running Locally
 
+### Fork and clone locally
+
+1. Fork the project on GitHub by going to the 'web-service' repository and click on 'Fork' near the top right-hand
+side of the page.
+2. Fork it into your own dir on GitHub. The repository will remain private in your own home dir.
+3. Go to the 'web-service' repo in your GitHub account and select the HTTPS clone url
+4. On your machine, do a
+```bash
+$ clone https://github.com/jborden/web-service.git
+```
+
+This will clone your fork into a local 'web-service' dir on your machine.
+
+### Configuration
+
+Paste the following stub to the top of src/purple/config.clj
+
+```Clojure
+;; stub for local testing DEV DB
+(System/setProperty "AWS_ACCESS_KEY_ID" "AKIAJLB35GOFQUJZCX5A")
+(System/setProperty "AWS_SECRET_KEY" "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")
+(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
+(System/setProperty "DB_NAME" "ebdb")
+(System/setProperty "DB_PORT" "3306")
+(System/setProperty "DB_USER" "purplemaster")
+(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
+(System/setProperty "EMAIL_USER" "no-reply@purpledelivery.com")
+(System/setProperty "EMAIL_PASSWORD" "HJdhj34HJd")
+(System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
+(System/setProperty "SNS_APP_ARN_APNS" "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
+(System/setProperty "SNS_APP_ARN_GCM" "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple")
+(System/setProperty "TWILIO_ACCOUNT_SID" "AC0a0954acca9ba8c527f628a3bfaf1329")
+(System/setProperty "TWILIO_AUTH_TOKEN" "3da1b036da5fb7716a95008c318ff154")
+(System/setProperty "TWILIO_FROM_NUMBER" "+13239243338")
+(System/setProperty "BASE_URL" "http://localhost:3000/")
+(System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
+(System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
+```
+
+This stub will give you access to a test database. You will not affect the main site
+### Request addition of your IP address to RDS
+
+Go to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed before continuing further.
+
+### Start the local 
+
+
 To start a web server for the application, run:
 
     lein ring server
+
+### Open page in browser
+
+Navigate to localhost:3000 and you will see the Purple home page. If not, there is a problem
+
+### Confirm /login
+
+```bash
+$ curl -X POST -H "Content-Type: application/json" -d '{ "type": "native", "platform_id": "elwssdell.scssshristasfadsfopher@gmail.com", "auth_key": "myPassworsasdd"}' localhost:3000/user/login
+```
+
+You should see something like
+
+```bash
+{"success":true,"token":"pC0BhWGvXBjSqIUmzrzA5tWPXqpR5aSt0IK0NdmiLUAu3YuJUP6MQy6eh0gaL6M1acP6S9RNSg5tDO40dtADJX9KALJC5oL2kHPRzfL0yXq2DBwZ9nj9pYO9I9PjQItI","user":{"id":"LkD7ebDcAaq37CMKPhvD","type":"native","email":"elwssdell.scssshristasfadsfopher@gmail.com","name":"Test User","phone_number":"773-508-0888","referral_code":"V8VMM","referral_gallons":0,"is_courier":false,"has_push_notifications_set_up":false},"vehicles":[],"orders":[],"cards":[],"account_complete":true}
+```
+
+## Client
+
+### Errors
+
+You may encounter 'Alert' errors which do not provide more information. This is due to the fact that the client has mobile-specific error alerts that work in the native iOS and Android app, but not in the Chrome browser. You will have to further investigate errors by navigating to the "Network" tab in Chrome Developer Tools menu and looking at the 'Response' section for the last request you made.
+
+
+### Initial client setup
+The client is a Sencha Touch web application. Obtain a zip file with the latest client from Chris. Unzip the file and go to the working dir with the index.html file. Chrome will need the '--disable-web-security' flag, which is not the default. If you already have a browser open, you will need to use the '--user-data-dir=/tmp/chrome2/' workaround to launch a new, separate Chrome session. In Mac OS X:
+
+```bash
+$ /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-web-security --user-data-dir=/tmp/chrome2/ index.html
+```
+
+You will be presented with a screen with a map with a button that says "Request Gas". Chrome will request to use your location information. If you allow it, Chrome will move the map to your location. In order to test the app, you will need to change your current location to an address served by Purple. To do this:
+
+1. Click on the current address
+2. Type "Beverly Hills"
+3. Click on "Beverly Hills CA, United States"
+4. Click "Request Gas"
+5. You will now be shown a login page. You can create an account by clicking "Create Account".
+6. Enter your information in the fields provided and click 'Register'
+7. Enter your name and phone number, click 'Register'
+
+### Request Gas
+
+
+1. Click on the 'Request Gas' button. You will be taken to the 'Add Vehicle' menu.
+2. Enter information for the 'Year','Make','Model','Color','Gas' and 'License Plate'. Click and Drag in order to scroll through popup menus. The 'Take Photo' menu item can be left blank. You won't be able to use this feature in Chrome because it requires a native mobile camera. 
+3. Click 'Save Changes'. If you have any errors, see 'Errors' above.
+4. You will be taken to the 'Request Gas' menu. After making your selections, click 'Review Order'. Click 'Confirm Order' to confirm it.
+5. You will have to add credit card information. You can use '4242424242424242' as the Card Number and any valid expiration and cvc number (i.e. three digit number).
+6. After you review the order, 'Confirm Order'. You will be presented with a list of your Orders.
+
+### View Requests on dashboard
+
+Navigate to http://localhost:3000/dashboard with the following credentials
+
+Username: purpleadmin
+Password: gasdelivery8791
+
+You should see your new order with the Status 'Unassigned'
+
+### Login with the Courier Client
+
+
+Couriers fulfill orders by delivering gas to the client. A courier should have the app logged in and running in the background on their phone whenever they are on duty. The courier app will ping web service every 10 seconds. When a new order is created, all connected couriers get notified. Unassigned orders are shown in the courier app in a list. They can Accept an order by pressing a button and then the pressing 'Begin Route' for that order.
+
+To test out how the courier works, first logout of the Customer Client application.
+1. Click the "Hamburger" icon in the top left of the client. Select 'Account' in the side-menu.
+2. Click the 'Logout' button on the bottom center.
+3. Login with the test courier credentials,
+email: testcourier1@test.com
+password: qwerty123
+
+
+### Fulfilling an order
+
+After you login as a courier, you will be presented with the 'Orders' page. Test fulfilling the order you just
+placed.
+
+1. Click on an open order. It will have a dark purple bar on the left.
+2. You will not be able to click 'Accept Order'. Instead you will have to go to the console and type
+```javascript
+util.ctl('Orders').nextStatus()
+```
+3. You will be taken back to orders. Notice that the status bar has started to fill for this order.
+4. In order to 'Start Route' type 'util.ctl('Orders').nextStatus()' into the console again.
+5. Continue this process of opening the order and using 'util.ctl('Orders').nextStatus()' to go through
+the order status. You must be on the Order's page in order to cycle through.
+
+
+The statuses in the Dashboard cycle through as Unassigned -> Assigned -> Accepted -> Enroute -> Servicing -> Complete or Cancelled. Currently we skip Assigned and go straight to Accepted because the courier can choose which ones they want.
+
 
 ## Deploying to Development Server
 
