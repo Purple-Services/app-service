@@ -5,6 +5,7 @@
             [clojure.string :as s]))
 
 (defn get-all-connected
+  "All the couriers that are currently connected."
   [db-conn]
   (map #(assoc % :zones (map (fn [x] (Integer. x))
                              (split-on-comma (:zones %))))

@@ -74,7 +74,7 @@
                                    :email-override (:email_override b)
                                    :client-ip (or (get headers "x-forwarded-for")
                                                   remote-addr)))))
-              ;; only for native users
+              ;; Only for native users
              (POST "/register" {body :body
                                 headers :headers
                                 remote-addr :remote-addr}
@@ -87,14 +87,15 @@
                                       (:auth_key b)
                                       :client-ip (or (get headers "x-forwarded-for")
                                                      remote-addr)))))
-             (POST "/forgot-password" {body :body} ;; only for native users
+             ;; Only for native users
+             (POST "/forgot-password" {body :body}
                    (response
                     (let [b (keywordize-keys body)]
                       (users/forgot-password (conn)
                                              ;; 'platform_id' is email address
                                              (:platform_id b)))))
 
-             ;; only for native users
+             ;; Only for native users
              (GET "/reset-password/:key" [key]
                   (wrap-page (response (pages/reset-password (conn) key))))
              (POST "/reset-password" {body :body}
@@ -102,7 +103,7 @@
                     (let [b (keywordize-keys body)]
                       (users/change-password (conn) (:key b) (:password b)))))
              
-             ;; you can send in one :user and/or one :vehicle key to edit those
+             ;; You can send in one :user and/or one :vehicle key to edit those
              (POST "/edit" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -114,6 +115,7 @@
                        (users/edit db-conn
                                    (:user_id b)
                                    b)))))
+             ;; Set up push notifications
              (POST "/add-sns" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -126,6 +128,7 @@
                                       (:user_id b)
                                       (:push_platform b)
                                       (:cred b))))))
+             ;; Try a coupon code
              (POST "/code" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -176,7 +179,7 @@
                                     (:user_id b)
                                     (:order_id b)
                                     (:rating b))))))
-             ;; for status updates by courier
+             ;; Courier updates status of order (e.g., Enroute -> Servicing)
              (POST "/update-status-by-courier" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -189,7 +192,7 @@
                                                         (:user_id b)
                                                         (:order_id b)
                                                         (:status b))))))
-             ;; for cancels by customer
+             ;; Customer tries to cancel order
              (POST "/cancel" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -203,10 +206,12 @@
                                       (:order_id b))))))))
   (context "/dispatch" []
            (defroutes dispatch-routes
+             ;; Get current gas price
              (POST "/gas-prices" {body :body}
                    (response
                     (let [b (keywordize-keys body)]
                       (dispatch/get-gas-prices (:zip_code b)))))
+             ;; Check availability options for given params (location, etc.)
              (POST "/availability" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -218,6 +223,7 @@
                        (dispatch/availability db-conn (:zip_code b) (:user_id b))))))))
   (context "/courier" []
            (defroutes courier-routes
+             ;; Courier app periodically updates web service with their status
              (POST "/ping" {body :body}
                    (response
                     (let [b (keywordize-keys body)
@@ -249,6 +255,8 @@
                         (send-feedback (:text b))))))))
   (context "/invite" []
            (defroutes invite-routes
+             ;; I don't think this is being used anymore.
+             ;; But keep it for a while because of old versions of app.
              (POST "/send" {body :body}
                    (response
                     (let [b (keywordize-keys body)

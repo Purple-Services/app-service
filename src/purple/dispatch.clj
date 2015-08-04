@@ -195,9 +195,6 @@
   (let [accepted-orders (!select db-conn
                                  "orders"
                                  ["*"]
-                                 ;; currently, "accepted" is a misnomer,
-                                 ;; because it's forced. It does not mean the
-                                 ;; courier is aware of the order for sure.
                                  {:status "accepted"})]
     (doall
      (map #(let [time-accepted (-> (:event_log %)
@@ -244,6 +241,8 @@
   "Does a few periodic tasks."
   []
   (do (update-courier-state process-db-conn)
+      ;; Temporarily turning off auto-assign of orders to couriers
+      ;; Currently, couriers can Accept any order in the queue.
       ;; (match-orders-with-couriers process-db-conn)
       (remind-couriers process-db-conn)
       (warn-orphaned-order process-db-conn)))
@@ -253,6 +252,7 @@
                                  job-pool)))
 
 (defn courier-ping
+  "The courier app periodically pings us with courier status details."
   [db-conn user-id lat lng gallons]
   (!update db-conn
            "couriers"

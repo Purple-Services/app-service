@@ -46,8 +46,8 @@
               (str "customers/" customer-id)
               {:default_card card-id}))
 
+;; Amount is an integer of cents to charge. Semi-sensitive info returned!
 (defn charge-stripe-customer
-  "Amount is an integer of cents to charge. Semi-sensitive info returned!"
   [customer-id amount description receipt-email]
   (try (let [resp (stripe-req "post"
                               "charges"

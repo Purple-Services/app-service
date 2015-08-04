@@ -10,9 +10,9 @@
                  [cheshire "5.4.0"] ;; json and related utilities
                  [clj-http "1.0.1"]
                  [crypto-password "0.1.3"]
-                 [com.draines/postal "1.11.3"]
-                 [gapi "1.0.1"]
-                 [enlive "1.1.5"]
+                 [com.draines/postal "1.11.3"] ;; email utility
+                 [gapi "1.0.1"]  ;; Google API
+                 [enlive "1.1.5"] ;; templating
                  [overtone/at-at "1.2.0"] ;; scheduled jobs
                  [clj-time "0.8.0"] ;; date/time utilities
                  [com.amazonaws/aws-java-sdk "1.9.24"] ;; this will be used by clj-aws below instead of its default aws version
@@ -20,7 +20,7 @@
                  [org.clojure/data.priority-map "0.0.6"]
                  [ring-basic-authentication "1.0.5"]
                  [ring-cors "0.1.7"]
-                 [com.twilio.sdk/twilio-java-sdk "4.2.0"]
+                 [com.twilio.sdk/twilio-java-sdk "4.2.0"] ;; SMS and Phone Calls
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
