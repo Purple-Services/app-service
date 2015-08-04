@@ -72,8 +72,7 @@
                                      {}
                                      :custom-where
                                      (str "id IN (\""
-                                          (apply str
-                                                 (interpose "\",\"" customer-ids))
+                                          (s/join "\",\"" customer-ids)
                                           "\")")))
         vehicle-ids (distinct (map :vehicle_id orders))
         vehicles (group-by :id
@@ -83,8 +82,7 @@
                                     {}
                                     :custom-where
                                     (str "id IN (\""
-                                         (apply str
-                                                (interpose "\",\"" vehicle-ids))
+                                         (s/join "\",\"" vehicle-ids)
                                          "\")")))]
     (map #(assoc %
             :customer
@@ -224,7 +222,7 @@
                                                    :license_plate :coupon_code
                                                    :referral_gallons_used]))
          ((resolve 'purple.dispatch/add-order-to-zq) o)
-         (when-not (= 0 (:referral_gallons_used o))
+         (when-not (zero? (:referral_gallons_used o))
            (coupons/mark-gallons-as-used db-conn
                                          (:user_id o)
                                          (:referral_gallons_used o)))
@@ -349,7 +347,7 @@
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
       (set-courier-busy db-conn (:courier_id o) false)
-      (if (= 0 (:total_price o))
+      (if (zero? (:total_price o))
         (after-payment db-conn o)
         (let [charge-result ((resolve 'purple.users/charge-user)
                              db-conn

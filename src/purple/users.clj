@@ -154,13 +154,14 @@
                                  user)
                                :referral_code (coupons/create-referral-coupon db-conn
                                                                               (:id user))))]
-    (do (future (send-email ;; debugging purposes, "why many coupons created somtimes?"
-                 {:to "chris@purpledelivery.com"
-                  :subject "Purple - users/add caleld"
-                  :body (str user
-                             "\nResult:\n"
-                             result)}))
-        result)))
+    (future
+      (send-email ;; debugging purposes, "why sometimes 100's of calls..."
+       {:to "chris@purpledelivery.com"
+        :subject "Purple - users/add caleld"
+        :body (str user
+                   "\nResult:\n"
+                   result)}))
+    result))
 
 (defn login
   "Logs in user depeding on 'type' of user."
@@ -325,11 +326,11 @@
       (!insert db-conn
                "vehicles"
                (assoc record-map
-                 :id (rand-str-alpha-num 20)
-                 :user_id user-id
-                 :license_plate (clean-up-license-plate
-                                 (:license_plate record-map))
-                 :active 1))
+                      :id (rand-str-alpha-num 20)
+                      :user_id user-id
+                      :license_plate (clean-up-license-plate
+                                      (:license_plate record-map))
+                      :active 1))
       {:success false
        :message "Please enter a valid license plate."})
     {:success false
@@ -346,9 +347,7 @@
                "vehicles"
                (if (nil? (:license_plate record-map))
                  record-map
-                 (assoc record-map
-                   :license_plate (clean-up-license-plate
-                                   (:license_plate record-map))))
+                 (update-in record-map [:license_plate] clean-up-license-plate))
                {:id (:id record-map)
                 :user_id user-id})
       {:success false

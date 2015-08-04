@@ -29,12 +29,10 @@
        (= (:password config/basic-auth-read-only) password)))
 
 (defn wrap-page [resp]
-  (-> resp
-      (header "Content-Type" "text/html; charset=utf-8")))
+  (header resp "Content-Type" "text/html; charset=utf-8"))
 
 (defn wrap-xml [resp]
-  (-> resp
-      (header "Content-Type" "text/xml; charset=utf-8")))
+  (header resp "Content-Type" "text/xml; charset=utf-8"))
 
 (defmacro demand-user-auth
   [db-conn user-id token & body]

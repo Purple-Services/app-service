@@ -18,7 +18,7 @@
   (!select db-conn "zones" ["*"] {}))
 
 ;; holds all zone definitions in local memory, some parsing in there too
-(! (def zones (map #(assoc % :zip_codes (split-on-comma (:zip_codes %)))
+(! (def zones (map #(update-in % [:zip_codes] split-on-comma)
                    (get-all-zones (conn)))))
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
@@ -82,8 +82,7 @@
 (defn availability
   "Get courier availability for given constraints."
   [db-conn zip-code user-id]
-  (let [good-zip? (not (empty? (filter #(in? (:zip_codes %) zip-code)
-                                       zones)))
+  (let [good-zip? (seq (filter #(in? (:zip_codes %) zip-code) zones))
         opening-hour (first config/service-time-bracket)
         closing-hour (last config/service-time-bracket)
         current-hour (.getHourOfDay
@@ -111,14 +110,14 @@
                                 15 0) ;; just assume 15 gallons
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-87
-                     :service_fee [0 0]}
+                     :service_fee [100 0]}
                     {:octane "91"
                      :gallons (if (and good-zip?
                                        (not (empty? (filter good-time? [1 3]))))
                                 15 0)
                      :time (filter good-time? [1 3])
                      :price_per_gallon @config/gas-price-91
-                     :service_fee [0 0]}]
+                     :service_fee [100 0]}]
      }))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? (have to test..)
@@ -151,17 +150,16 @@
         ;; as user rows
         expired-couriers (users/get-users-by-ids db-conn expired-courier-ids)]
     (when-not (empty? expired-couriers)
-      (do (run! #(send-sms (:phone_number %)
-                           "You have just disconnected from the Purple Courier App.")
-                expired-couriers)
-          (sql/with-connection db-conn
-            (sql/update-values
-             "couriers"
-             [(str "id IN (\""
-                   (apply str
-                          (interpose "\",\"" expired-courier-ids))
-                   "\")")]
-             {:connected 0}))))))
+      (run! #(send-sms (:phone_number %)
+                       "You have just disconnected from the Purple Courier App.")
+            expired-couriers)
+      (sql/with-connection db-conn
+        (sql/update-values
+         "couriers"
+         [(str "id IN (\""
+               (s/join "\",\"" expired-courier-ids)
+               "\")")]
+         {:connected 0})))))
 
 (defn take-order-from-zone
   "Tries to take one order from the chosen zone."
@@ -229,17 +227,17 @@
 (defn warn-orphaned-order
   "If there are no couriers connected, but there are orders, then warn us."
   [db-conn]
-  (if (and (seq (filter #(seq @(val %)) zq))
-           (empty? (available-couriers db-conn))
-           (< (* 60 20) ;; only warn every 20 minutes
-              (- (quot (System/currentTimeMillis) 1000)
-                 @last-orphan-warning)))
-    (do (run! #(send-sms % "There are orders, but no available couriers.")
-              (concat ["4846823011"]               ;; just Chris when not in PROD
-                      (only-prod ["3235782263"     ;; Bruno
-                                  "3106919061"     ;; JP
-                                  "8589228571"]))) ;; Lee
-        (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000)))))
+  (when (and (seq (filter #(seq @(val %)) zq))
+             (empty? (available-couriers db-conn))
+             (< (* 60 20) ;; only warn every 20 minutes
+                (- (quot (System/currentTimeMillis) 1000)
+                   @last-orphan-warning)))
+    (run! #(send-sms % "There are orders, but no available couriers.")
+          (concat ["4846823011"]               ;; just Chris when not in PROD
+                  (only-prod ["3235782263"     ;; Bruno
+                              "3106919061"     ;; JP
+                              "8589228571"]))) ;; Lee
+    (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
 
 (defn process

@@ -59,11 +59,11 @@
 
 ;; Find out if an SQLException is for a duplicate entry for a key
 (defn duplicate-entry-exception? [e]
-  (not (empty? (re-seq #"Duplicate entry.*for key" (.getMessage e)))))
+  (seq (re-seq #"Duplicate entry.*for key" (.getMessage e))))
 
 ;; Find out if an SQLException is being caused by the table not existing
 (defn table-doesnt-exist-exception? [e]
-  (not (empty? (re-seq #"Table.*doesn't exist" (.getMessage e)))))
+  (seq (re-seq #"Table.*doesn't exist" (.getMessage e))))
 
 ;; NOTE: table, columns, and where-map keys are not checked for SQL Injection
 ;; Thus, where-map vals are the only input that is protected from attack.
@@ -88,14 +88,13 @@
                   " FROM "
                   table
                   " WHERE "
-                  (if custom-where
-                    custom-where
-                    (if (empty? where-map)
-                      "1"
-                      (->> (keys where-map)
-                           (map #(str (sql/as-identifier %) " = ?"))
-                           (interpose " AND ")
-                           (apply str))))
+                  (or custom-where
+                      (if (empty? where-map)
+                        "1"
+                        (->> (keys where-map)
+                             (map #(str (sql/as-identifier %) " = ?"))
+                             (interpose " AND ")
+                             (apply str))))
                   " "
                   append)
              (vals where-map))
@@ -106,13 +105,12 @@
 (defn insert-tpl
   "Contructs a values template (?'s) given a seq 'values' and set 'encrypt'."
   [columns encrypt]
-  (apply str
-         (interpose "," (map #(if (contains? encrypt %)
-                                (format "AES_ENCRYPT(?, UNHEX(\"%s\"))"
-                                        "0000" ;; config/db-encryption-key-hex
-                                        )
-                                "?")
-                             columns))))
+  (s/join "," (map #(if (contains? encrypt %)
+                      (format "AES_ENCRYPT(?, UNHEX(\"%s\"))"
+                              "0000" ;; config/db-encryption-key-hex
+                              )
+                      "?")
+                   columns)))
 
 (defn insert-values
   "Inserts rows into a table with values for specified columns only.
@@ -120,7 +118,7 @@
   values is a vector containing values for each column in order."
   [table column-names values encrypt]
   (let [columns (map sql/as-identifier column-names)
-        columns-str (apply str (interpose "," columns))
+        columns-str (s/join "," columns)
         template-str (insert-tpl column-names encrypt)]
     (apply sql/do-prepared-return-keys
            (format "INSERT INTO %s (%s) VALUES (%s)"
@@ -208,21 +206,16 @@
 ;;        :unsafeMessage e})))
 
 
-
-
 (defn update-tpl
   [columns encrypt]
-  (apply str
-         (interpose
-          ", "
-          (map #(if (contains? encrypt %)
-                  (format (str (sql/as-identifier %)
-                               "="
-                               "AES_ENCRYPT(?, UNHEX(\"%s\"))")
-                          "0000" ;; config/db-encryption-key-hex
-                          )
-                  (str (sql/as-identifier %) "=?"))
-               columns))))
+  (s/join ", " (map #(if (contains? encrypt %)
+                       (format (str (sql/as-identifier %)
+                                    "="
+                                    "AES_ENCRYPT(?, UNHEX(\"%s\"))")
+                               "0000" ;; config/db-encryption-key-hex
+                               )
+                       (str (sql/as-identifier %) "=?"))
+                    columns)))
 
 (defn update-values
   [table where-params record encrypt]

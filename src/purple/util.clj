@@ -129,8 +129,7 @@
 (defn format-coupon-code
   "Format coupon code to consistent format. (Keep this idempotent!)"
   [code]
-  (-> (s/upper-case code)
-      (s/replace #" " "")))
+  (s/replace (s/upper-case code) #" " ""))
 
 (defn new-session-id []
   (rand-str-alpha-num 64))

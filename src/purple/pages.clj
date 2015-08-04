@@ -77,7 +77,7 @@
                                            (:orders x))
                             total (count orders)
                             late (count (filter :was-late orders))]
-                        (if (> total 0)
+                        (if (pos? total)
                           (str (format "%.0f"
                                        (float (- 100
                                                  (* (/ late
