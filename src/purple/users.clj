@@ -231,6 +231,12 @@
   [password]
   (boolean (re-matches #"^.{6,100}$" password)))
 
+(defn good-phone-number
+  "Given a phone-number string, check whether or not it is a valid phone number with a 10 digit code.
+  Returns true if it is valid, false otherwise. See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507 for more information about the regex used"
+  [phone-number]
+  (boolean (re-matches #"^(\+0?1\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$" phone-number)))
+
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key & {:keys [client-ip]}]
@@ -401,8 +407,12 @@
   [db-conn user-id body]
   (let [resp (atom {:success true})]
     (when-not (nil? (:user body))
-      (swap! resp merge
-             (update-user db-conn user-id (:user body))))
+      (if (good-phone-number (:phone_number (:user body)))
+        (swap! resp merge
+               (update-user db-conn user-id (:user body)))
+        (swap! resp (fn [x]
+                      {:success false
+                       :message "Please use a 10 digit phone number"}))))
     (when-not (nil? (:vehicle body))
       (swap! resp merge
              (if (= "new" (:id (:vehicle body)))
