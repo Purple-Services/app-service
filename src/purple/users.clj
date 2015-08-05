@@ -237,6 +237,11 @@
   [phone-number]
   (boolean (re-matches #"^(\+0?1\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$" phone-number)))
 
+(defn valid-name
+  "Given a name, make sure that it has a space in it"
+  [name]
+  (boolean (re-find #"\s" name)))
+
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key & {:keys [client-ip]}]
@@ -407,12 +412,37 @@
   [db-conn user-id body]
   (let [resp (atom {:success true})]
     (when-not (nil? (:user body))
-      (if (good-phone-number (:phone_number (:user body)))
-        (swap! resp merge
-               (update-user db-conn user-id (:user body)))
-        (swap! resp (fn [x]
-                      {:success false
-                       :message "Please use a 10 digit phone number"}))))
+      (let [user (:user body)]
+        ;; the user hashmap has both a phone_number and a name
+        (cond (and (contains? user :phone_number)
+                   (contains? user :name))
+              (if (and (good-phone-number (:phone_number user))
+                       (valid-name (:name user)))
+                (swap! resp merge
+                       (update-user db-conn user-id user))
+                (swap! resp (fn [x]
+                              {:success false
+                               :message "Please use your full name and a 10 digit phone number"})))
+              ;; the hashmap contains only a phone_number
+              (contains? user :phone_number)
+              (if (good-phone-number (:phone_number user))
+                (swap! resp merge
+                       (update-user db-conn user-id user))
+                (swap! resp (fn [x]
+                              {:success false
+                               :message "Please use a 10 digit phone number"})))
+              ;; the hashmap contains only a name
+              (contains? (:user body) :name)
+              (if (valid-name (:name user))
+                (swap! resp merge
+                       (update-user db-conn user-id user))
+                (swap! resp (fn [x]
+                              {:success false
+                               :message "Please enter your full name"})))
+              ;; unknown error
+              :else (swap! resp (fn [x]
+                                  {:success false
+                                   :message "Unknown error."})))))
     (when-not (nil? (:vehicle body))
       (swap! resp merge
              (if (= "new" (:id (:vehicle body)))
