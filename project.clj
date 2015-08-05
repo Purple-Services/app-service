@@ -21,12 +21,11 @@
                  [ring-basic-authentication "1.0.5"]
                  [ring-cors "0.1.7"]
                  [com.twilio.sdk/twilio-java-sdk "4.2.0"] ;; SMS and Phone Calls
-                 [org.clojure/tools.nrepl "0.2.10"] ;; nrepl for interactive development
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]
-            [cider/cider-nrepl "0.9.1"]] ;; nrepl plugin for emacs
+            ]
   :ring {:handler purple.handler/app
          :auto-reload? true
          :auto-refresh? true
