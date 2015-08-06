@@ -1,5 +1,5 @@
 (ns purple.test.users
-  (:require [purple.users :refer [good-phone-number]]
+  (:require [purple.users :refer [good-phone-number valid-name]]
             [clojure.test :refer[deftest is test-ns]]))
 
 (deftest phone-number-validator
@@ -16,4 +16,16 @@
   (is (not (good-phone-number "888 555 1212d"))) ;; number contains a letter
   (is (not (good-phone-number "888 555 121"))) ;; not enough digits
   
+  )
+
+(deftest name-validator
+  "Test that the name validator works"
+
+  ;; The following tests should pass
+  (is (valid-name "Test User"))
+  (is (valid-name "Test Middle User"))
+
+  ;; The following tests should fail
+  (is (not (valid-name "Test")))
+  (is (not (valid-name "TestUser")))
   )
