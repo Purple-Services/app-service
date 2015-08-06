@@ -14,7 +14,8 @@
 
 (def safe-authd-user-keys
   "Keys of a user map that are safe to send out to auth'd user."
-  [:id :type :email :name :phone_number :referral_code :referral_gallons :is_courier])
+  [:id :type :email :name :phone_number :referral_code
+   :referral_gallons :is_courier])
 
 (defn get-user
   "Gets a user from db by type and platform-id. Some fields unsafe for output."
