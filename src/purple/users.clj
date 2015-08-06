@@ -235,7 +235,7 @@
   "Given a phone-number string, check whether or not it is a valid phone number with a 10 digit code.
   Returns true if it is valid, false otherwise. See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507 for more information about the regex used"
   [phone-number]
-  (boolean (re-matches #"^(\+0?1\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$" phone-number)))
+  (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$" phone-number)))
 
 (defn valid-name
   "Given a name, make sure that it has a space in it"
