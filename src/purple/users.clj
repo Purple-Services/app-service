@@ -220,18 +220,18 @@
                            {:success false
                             :message "Unknown error."})))))
 
-(defn good-email
+(defn valid-email
   "Only for native users."
   [db-conn email]
   (and (boolean (re-matches #"^\S+@\S+\.\S+$" email))
        (not (get-user db-conn "native" email))))
 
-(defn good-password
+(defn valid-password
   "Only for native users."
   [password]
   (boolean (re-matches #"^.{6,100}$" password)))
 
-(defn good-phone-number
+(defn valid-phone-number
   "Given a phone-number string, check whether or not it is a valid phone number with a 10 digit code.
   Returns true if it is valid, false otherwise. See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507 for more information about the regex used"
   [phone-number]
@@ -245,8 +245,8 @@
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key & {:keys [client-ip]}]
-  (if (good-email db-conn platform-id)
-    (if (good-password auth-key)
+  (if (valid-email db-conn platform-id)
+    (if (valid-password auth-key)
       (do (add db-conn
                {:id (rand-str-alpha-num 20)
                 :email platform-id
@@ -410,54 +410,41 @@
 (defn edit
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id body]
-  (let [resp (atom {:success true})]
-    (when-not (nil? (:user body))
-      (let [user (:user body)]
-        ;; the user hashmap has both a phone_number and a name
-        (cond (and (contains? user :phone_number)
-                   (contains? user :name))
-              (if (and (good-phone-number (:phone_number user))
-                       (valid-name (:name user)))
-                (swap! resp merge
-                       (update-user db-conn user-id user))
-                (swap! resp (fn [x]
-                              {:success false
-                               :message "Please use your full name and a 10 digit phone number"})))
-              ;; the hashmap contains only a phone_number
-              (contains? user :phone_number)
-              (if (good-phone-number (:phone_number user))
-                (swap! resp merge
-                       (update-user db-conn user-id user))
-                (swap! resp (fn [x]
-                              {:success false
-                               :message "Please use a 10 digit phone number"})))
-              ;; the hashmap contains only a name
-              (contains? (:user body) :name)
-              (if (valid-name (:name user))
-                (swap! resp merge
-                       (update-user db-conn user-id user))
-                (swap! resp (fn [x]
-                              {:success false
-                               :message "Please enter your full name"})))
-              ;; unknown error
-              :else (swap! resp (fn [x]
-                                  {:success false
-                                   :message "Unknown error."})))))
-    (when-not (nil? (:vehicle body))
-      (swap! resp merge
-             (if (= "new" (:id (:vehicle body)))
-               (add-vehicle db-conn user-id (:vehicle body))
-               (update-vehicle db-conn user-id (:vehicle body)))))
-    (when-not (nil? (:card body))
-      (swap! resp merge
-             (case (:action (:card body))
-               "delete" (delete-card db-conn user-id (:id (:card body)))
-               "makeDefault" (set-default-card db-conn user-id (:id (:card body)))
-               nil (add-card db-conn user-id (:stripe_token (:card body))))))
-    (if (:success @resp)
-      (details db-conn user-id)
-      @resp)))
+  (let [merge-unless-failed (fn [x y] (merge x (when (:success x) y)))]
+    (unless-p :success
+              (cond-> {:success true}
+                (:user body)
+                (merge-unless-failed
+                 (let [user (:user body)
+                       phone-number (:phone_number user)
+                       name (:name user)]
+                   (cond
+                     (and phone-number
+                          (not (valid-phone-number phone-number)))
+                     {:success false
+                      :message "Please enter a valid phone number."}
+                     
+                     (and name (not (valid-name name)))
+                     {:success false
+                      :message "Please enter your full name."}
 
+                     :else (update-user db-conn user-id user))))
+                
+                (:vehicle body)
+                (merge-unless-failed
+                 (let [vehicle (:vehicle body)]
+                   (if (= "new" (:id vehicle))
+                     (add-vehicle db-conn user-id vehicle)
+                     (update-vehicle db-conn user-id vehicle))))
+                
+                (:card body)
+                (merge-unless-failed
+                 (let [card (:card body)]
+                   (case (:action card)
+                     "delete" (delete-card db-conn user-id (:id card))
+                     "makeDefault" (set-default-card db-conn user-id (:id card))
+                     nil (add-card db-conn user-id (:stripe_token card))))))
+              (details db-conn user-id))))
 
 ;; This can be simplified to remove the user lookup, once we are using the Live
 ;; APNS App ARN for both customer and courier accounts. However, currently the
@@ -517,7 +504,7 @@
   "Only for native accounts."
   [db-conn reset-key password]
   (if-not (s/blank? reset-key) ;; <-- very important check, for security
-    (if (good-password password)
+    (if (valid-password password)
       (!update db-conn
                "users"
                {:password_hash (bcrypt/encrypt password)

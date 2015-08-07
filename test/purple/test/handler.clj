@@ -50,7 +50,7 @@
             response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (= (:message body) "Please use a 10 digit phone number"))))
+        (is (not (:success body)))))
 
     (testing "A name of the user can be updated with a valid name"
       (let [post-data {:user_id user-id
@@ -80,7 +80,7 @@
             response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (= (:message body) "Please use your full name and a 10 digit phone number"))))
+        (is (not (:success body)))))
 
     (testing "A name and number of the user can be updated with an invalid name and valid phone number"
       (let [post-data {:user_id user-id
@@ -90,7 +90,7 @@
             response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (= (:message body) "Please use your full name and a 10 digit phone number"))))
+        (is (not(:success body)))))
 
     (testing "A name and number of the user can be updated with an invalid name and valid phone number"
       (let [post-data {:user_id user-id
@@ -100,7 +100,7 @@
             response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (= (:message body) "Please use your full name and a 10 digit phone number"))))
+        (is (not (:success body)))))
     
     ))
 
