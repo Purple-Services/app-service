@@ -13,6 +13,9 @@ table {
 table thead {
     font-weight: bold;
 }
+table tbody td.currently-connected, table tbody td.currently-connected ~ td {
+    background-color: rgba(20,210,0,0.15);
+}
 table tbody tr:hover {
     background: #ddd;
 }

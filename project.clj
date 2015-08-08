@@ -24,7 +24,8 @@
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
-            [lein-beanstalk "0.2.7"]]
+            [lein-beanstalk "0.2.7"]
+            ]
   :ring {:handler purple.handler/app
          :auto-reload? true
          :auto-refresh? true

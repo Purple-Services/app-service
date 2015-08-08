@@ -230,7 +230,7 @@
                 (- (quot (System/currentTimeMillis) 1000)
                    @last-orphan-warning)))
     (run! #(send-sms % "There are orders, but no available couriers.")
-          (concat ["4846823011"]               ;; just Chris when not in PROD
+          (concat [] ;; put your number in here when dev'ing
                   (only-prod ["3235782263"     ;; Bruno
                               "3106919061"     ;; JP
                               "8589228571"]))) ;; Lee
