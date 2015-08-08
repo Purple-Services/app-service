@@ -419,14 +419,13 @@
                        phone-number (:phone_number user)
                        name (:name user)]
                    (cond
-                     (and phone-number
-                          (not (valid-phone-number phone-number)))
-                     {:success false
-                      :message "Please enter a valid phone number."}
-                     
                      (and name (not (valid-name name)))
                      {:success false
                       :message "Please enter your full name."}
+                     
+                     (and phone-number (not (valid-phone-number phone-number)))
+                     {:success false
+                      :message "Please enter a valid phone number."}
 
                      :else (update-user db-conn user-id user))))
                 
