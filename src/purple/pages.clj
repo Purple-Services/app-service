@@ -61,7 +61,10 @@
   [:#couriers :tbody :tr]
   (clone-for [t (:couriers x)]
              [:td.connected]
-             (content (if (:connected t) "Yes" "No"))
+             (do-> (if (:connected t)
+                     (add-class "currently-connected")
+                     (add-class "currently-not-connected"))
+                   (content (if (:connected t) "Yes" "No")))
 
              [:td.name]
              (content (:name t))
