@@ -75,9 +75,7 @@
     </table>
 
     
-    <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="count" id="users-emails">[get list of emails]</span></h2>
-
-    <span id="emails-list" style="display: none;"></span>
+    <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span></h2>
     
     <table id="users" class="hide-extra">
       <thead>
@@ -171,9 +169,6 @@
      });
 
      $(document).ready(function(){
-       $('#users-emails').click(function(){
-         document.write("<textarea rows='15' cols='100'>" + $('#emails-list').text() + "</textarea>");
-       });
 
        $('.show-all').click(function(){
          var table = $("#" + $(this).data('show-id'));

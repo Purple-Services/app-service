@@ -169,10 +169,6 @@
                                                1000))) ;; i think this is wrong timezone, idk
                                   )
 
-  [:#emails-list] (content (->> (:users x)
-                                (map :email)
-                                (interpose "; ")))
-
   [:#users-count] (content (str "("
                                 (:users-count x)
                                 ")"))
