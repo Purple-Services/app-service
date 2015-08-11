@@ -10,6 +10,7 @@
             [purple.dispatch :as dispatch]
             [purple.coupons :as coupons]
             [purple.pages :as pages]
+            [purple.analytics :as analytics]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -278,6 +279,13 @@
             (defroutes dashboard-routes
               (GET "/" []
                    (wrap-page (response (pages/dashboard (conn)))))
+              (GET "/data-csv" []
+                   (do (analytics/gen-stats-csv)
+                       (header
+                        (header
+                         (response (java.io.File. "data-out/stats.csv"))
+                         "Content-Type:" "text/csv; name=\"stats.csv\"")
+                        "Content-Disposition" "attachment; filename=\"stats.csv\"")))
               (POST "/change-gas-price" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
@@ -290,7 +298,14 @@
             (defroutes stats-routes
               (GET "/" []
                    (wrap-page (response (pages/dashboard (conn)
-                                                         :read-only true)))))
+                                                         :read-only true))))
+              (GET "/data-csv" []
+                   (do (analytics/gen-stats-csv)
+                       (header
+                        (header
+                         (response (java.io.File. "data-out/stats.csv"))
+                         "Content-Type:" "text/csv; name=\"stats.csv\"")
+                        "Content-Disposition" "attachment; filename=\"stats.csv\""))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
