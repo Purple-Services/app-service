@@ -283,7 +283,7 @@
                    (do (analytics/gen-stats-csv)
                        (header
                         (header
-                         (response (java.io.File. "data-out/stats.csv"))
+                         (response (java.io.File. "stats.csv"))
                          "Content-Type:" "text/csv; name=\"stats.csv\"")
                         "Content-Disposition" "attachment; filename=\"stats.csv\"")))
               (POST "/change-gas-price" {body :body}
@@ -303,7 +303,7 @@
                    (do (analytics/gen-stats-csv)
                        (header
                         (header
-                         (response (java.io.File. "data-out/stats.csv"))
+                         (response (java.io.File. "stats.csv"))
                          "Content-Type:" "text/csv; name=\"stats.csv\"")
                         "Content-Disposition" "attachment; filename=\"stats.csv\""))))
             stats-auth?))
