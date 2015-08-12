@@ -241,25 +241,25 @@
                                 (:id %)))
                             couriers)
              :orders (map #(assoc %
-                             
-                             :courier_name
-                             (id->name (:courier_id %))
-                             
-                             :customer_name
-                             (id->name (:user_id %))
+                                  
+                                  :courier_name
+                                  (id->name (:courier_id %))
+                                  
+                                  :customer_name
+                                  (id->name (:user_id %))
 
-                             :was-late
-                             (let [completion-time (-> (str "kludgeFixLater 1|" (:event_log %))
-                                                       (s/split #"\||\s")
-                                                       (->> (apply hash-map))
-                                                       (get "complete"))]
-                               (and completion-time
-                                    (> (Integer. completion-time)
-                                       (:target_time_end %))))
+                                  :was-late
+                                  (let [completion-time (-> (str "kludgeFixLater 1|" (:event_log %))
+                                                            (s/split #"\||\s")
+                                                            (->> (apply hash-map))
+                                                            (get "complete"))]
+                                    (and completion-time
+                                         (> (Integer. completion-time)
+                                            (:target_time_end %))))
 
-                             :vehicle
-                             (id->vehicle (:vehicle_id %)))
-                          (take 500 (orders/get-all (conn))))
+                                  :vehicle
+                                  (id->vehicle (:vehicle_id %)))
+                          (orders/get-all (conn)))
              :users (sort-by
                      #(.getTime (:timestamp_created %))
                      >

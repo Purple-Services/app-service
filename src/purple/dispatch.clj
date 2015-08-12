@@ -120,7 +120,7 @@
                      :service_fee [100 0]}]
      }))
 
-(! (def process-db-conn (conn))) ;; ok to use same conn forever? (have to test..)
+(! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
 (defn available-couriers
   [db-conn]
