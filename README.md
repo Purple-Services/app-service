@@ -42,6 +42,8 @@ Paste the following stub to the top of src/purple/config.clj
 (System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
 ```
 
+**Note**: The value of DB_HOST is the database host used for development. If you have MySQL configured on your machine, you can use the value "localhost" with a DB_PASSWORD that you set. See "Using a local MySQL Database for Development" below about how to configure this.
+
 This stub will give you access to a test database. If you use this stub in config.clj, you will not affect the main site when developing locally.
 
 ### Request addition of your IP address to RDS
@@ -139,10 +141,12 @@ To test out how the courier works, first logout of the Customer Client applicati
 
 After you login as a courier, you will be presented with the 'Orders' page. Test fulfilling the order you just placed.
 
+Note: The courier client will ping the server every ten seconds. The server must have the proper lat lng coordinates. If you do not allow for location tracking when using the browser, lat lng will be null and the server ping will fail.
+
 1. Click on an open order. It will have a dark purple bar on the left.
 2. You will not be able to click 'Accept Order'. Instead you will have to go to the console and type
 ```javascript
-util.ctl('Orders').nextStatus()
+	util.ctl('Orders').nextStatus()
 ```
 3. You will be taken back to orders. Notice that the right hand status bar has started to fill for this order.
 4. In order to 'Start Route' type 'util.ctl('Orders').nextStatus()' into the console again.
@@ -151,7 +155,49 @@ util.ctl('Orders').nextStatus()
 
 The statuses in the Dashboard cycle through as Unassigned -> Assigned -> Accepted -> Enroute -> Servicing -> Complete or Cancelled. Currently we skip Assigned and go straight to Accepted because the courier can choose which ones they want.
 
+### Using a local MySQL Database for Development
 
+The development test server for the MySQL database is used in the stub given above. We have provided SQL files in order to setup a local database for developing. This is a preferred method of development, due to the fact that there can be problems with connection pools being occupied when multiple users are developing on the AWS MySQL server.
+
+There are two files provided in the resources/database dir:
+
+**ebdb_setup.sql** will drop and create the ebdb database locally.
+
+**ebdb.sql** will create the tables in the ebdb database and populate them with test data.
+
+In order to use it, you must obviously have MySQL working on your local machine. It is advisable to also use phpmyadmin.
+
+We have also provided a clojure script that must be run from the command line using the '[lein-exec](https://github.com/kumarshantanu/lein-exec)' plugin. In order to use it, add the following line to your {:user {:plugins }} entry of your ~/.lein/profiles.clj:
+
+{:user {:plugins [[lein-exec "0.3.5"]]}}
+
+In order to run the script, you must provide it with the root password of your MySQL server. This is needed in order to create the permissions for 'purplemaster' needed by the Purple server application.
+
+```bash
+web-service $ lein exec -p resources/scripts/setupdb.clj root_password=your_secret_password
+Creating ebdb database and granting permissions to purplemaster
+Creatings tables and populating them in ebdb as user purplemaster
+(0 0 0 0 0 0 0 1 0 65 0 3 0 43 0 256 226 0 63 0 4 3 6 1 2 1 5 1 7 1 9 7 4 2 6 3 5 1 1 5 7 1 3 1 1 7 1 3 1 1 1 3 4 3 3 4 0 1 1 65 3 43 482 63 118 1 1 482 1 0 0 0)
+web-service $
+```
+
+You will also need to edit the src/purple/config.clj file. The values that should be changed are:
+
+DB_HOST and DB_PASSWORD
+
+```clojure
+;;(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
+(System/setProperty "DB_HOST" "localhost")
+...
+;;(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
+(System/setProperty "DB_PASSWORD" "localpurpledevelopment2015")
+```
+
+**Note:** The password used for puplemaster must be the same across the following files:
+```
+src/purple/config.clj
+resources/database/ebdb_setup.sql
+```
 ## Deploying to Development Server
 
 Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your ~/.lein/profiles.clj with AWS creds):
