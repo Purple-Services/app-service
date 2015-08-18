@@ -15,19 +15,19 @@
 (defn joda->ymd
   "Convert Joda Timestamp object to formatted date string."
   [x]
-  (-> date-formatter
+  (-> ymd-formatter
       (time-format/with-zone (time/time-zone-for-id "America/Los_Angeles"))
       (time-format/unparse x)))
 
 (defn unix->ymd
   "Convert integer unix timestamp to formatted date string."
   [x]
-  (joda->date (time-coerce/from-long (* 1000 x))))
+  (joda->ymd (time-coerce/from-long (* 1000 x))))
 
 (defn users-by-day
   "Get map of all users, in seqs, keyed by date, sorted past -> present."
   [users]
-  (into {} (sort-by first (group-by (comp unix->date
+  (into {} (sort-by first (group-by (comp unix->ymd
                                           int
                                           (partial * 1/1000)
                                           #(.getTime %)
@@ -37,21 +37,23 @@
 (defn orders-by-day
   "Get map of all orders, in seqs, keyed by date, sorted past -> present."
   [orders]
-  (into {} (sort-by first (group-by (comp unix->date :target_time_start)
+  (into {} (sort-by first (group-by (comp unix->ymd :target_time_start)
                                     orders))))
 
 (defn get-first-order-by-user
   "Get the first order made by user. If they never ordered, then nil."
   [user orders] ;; 'orders' is coll of all orders (by any user)
-  (first (filter #(and (= "complete" (:status %))
-                       (= (:user_id %) (:id user)))
-                 orders)))
+  (first (sort-by :target_time_start
+                  <
+                  (filter #(and (= "complete" (:status %))
+                                (= (:user_id %) (:id user)))
+                          orders))))
 
 (defn made-first-order-this-day
   "Is this the date that the user made their first order?"
   [user date orders] ;; 'orders' is coll of all orders (by any user)
   (when-let [first-order-by-user (get-first-order-by-user user orders)]
-    (= date (unix->date (:target_time_start first-order-by-user)))))
+    (= date (unix->ymd (:target_time_start first-order-by-user)))))
 
 (def count-filter (comp count filter))
 
@@ -62,7 +64,7 @@
     (csv/write-csv
      out-file
      (let [db-conn (conn)
-           dates (map joda->date
+           dates (map joda->ymd
                       (take-while #(time/before? % (time/now))
                                   (periodic/periodic-seq  ;; Apr 10th
                                    (time-coerce/from-long 1428708478000)
@@ -108,7 +110,7 @@
                             (count-filter #(made-first-order-this-day %
                                                                       date
                                                                       orders)
-                                          us)]
+                                          users)]
                         (vec [;; date in "1989-08-01" format
                               date
 

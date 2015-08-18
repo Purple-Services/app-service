@@ -102,3 +102,6 @@
 ;; No need to modify them directly here.
 (def gas-price-87 (atom 0))
 (def gas-price-91 (atom 0))
+
+;; Messages
+(def delayed-assignment-message "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you.")

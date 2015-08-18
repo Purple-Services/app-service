@@ -42,8 +42,8 @@
         <tr>
           <td>Status</td>
           <td>Courier</td>
-          <td>Order Placed</td>
-          <td>Deadline</td>
+          <td width="98">Order Placed</td>
+          <td width="98">Deadline</td>
           <td>Customer</td>
           <td>Street</td>
           <td>Gallons</td>
@@ -72,7 +72,7 @@
       </tbody>
     </table>
     
-    <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span></h2>
+    <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span> <span id="send-push-to-active-users" class="fake-link">[send push notification to all active users]</span></h2>
     
     <table id="users" class="hide-extra">
       <thead>
@@ -80,9 +80,10 @@
           <td>Name</td>
           <td>Email</td>
           <td>Phone</td>
-          <td>Credit Card?</td>
+          <td>Card?</td>
+          <td>Push?</td>
           <td>OS</td>
-          <td>App Version</td>
+          <td>Version</td>
           <td>Joined</td>
         </tr>
       </thead>
@@ -92,6 +93,7 @@
           <td class="email"></td>
           <td class="phone_number"></td>
           <td class="has_added_card"></td>
+          <td class="push_set_up"></td>
           <td class="os"></td>
           <td class="app_version"></td>
           <td class="timestamp_created"></td>
@@ -137,7 +139,7 @@
     </div>
 
     <div style="text-align: center; padding-bottom: 20px;">
-        <a href="javascript:window.location+='/data-csv'">Download data.csv</a>
+        <a href="javascript:window.location+='/data-csv';this.onclick=function(){return false;}">Download data.csv</a>
     </div>
     
     <script>
@@ -170,16 +172,43 @@
 
      $(document).ready(function(){
 
-       $('.show-all').click(function(){
-         var table = $("#" + $(this).data('show-id'));
-         if (table.hasClass('showing-all')) {
-           table.removeClass('showing-all');
-           $(this).html('[show all]');
-         } else {
-           table.addClass('showing-all');
-           $(this).html('[hide after 7]');
-         }
-       });
+         $('.show-all').click(function(){
+             var table = $("#" + $(this).data('show-id'));
+             if (table.hasClass('showing-all')) {
+                 table.removeClass('showing-all');
+                 $(this).html('[show all]');
+             } else {
+                 table.addClass('showing-all');
+                 $(this).html('[hide after 7]');
+             }
+         });
+
+         $('#send-push-to-active-users').click(function(){
+             var message = prompt("Push notification message to send to all active users:");
+             if (message == "") {
+                 return false;
+             }
+             if (confirm("!!! Are you sure you want to send this message: " + message)) {
+                 $.ajax({
+                     type: "POST",
+                     url: $("#config").data("base-url") + "dashboard/send-push-to-all-active-users",
+                     data: JSON.stringify(
+                         {
+                             "message": message
+                         }
+                     ),
+                     dataType: "json",
+                     contentType: 'application/json',
+                     success: function(response) {
+                         alert('Sent!');
+                     },
+                     failure: function(response) {
+                         alert('Something went wrong. Push notifications may or may not have been sent. Wait until sure before trying again.');
+                     }
+                 });
+             }
+         });
+         
      });
     </script>
   </body>

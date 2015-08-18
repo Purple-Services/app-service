@@ -155,7 +155,16 @@
                                   (content (:phone_number t))
 
                                   [:td.has_added_card]
-                                  (content (if (:stripe_default_card t) "Yes" "No"))
+                                  (content
+                                   (if (s/blank? (:stripe_default_card t))
+                                     "No"
+                                     "Yes"))
+
+                                  [:td.push_set_up]
+                                  (content
+                                   (if (s/blank? (:arn_endpoint t))
+                                     "No"
+                                     "Yes"))
 
                                   [:td.os]
                                   (content (:os t))
@@ -202,69 +211,45 @@
                                           "display: block; margin: 0px auto;")))
 
 (defn dashboard [db-conn & {:keys [read-only]}]
-  (let [couriers (remove #(in? ["9eadx6i2wCCjUI1leBBr"] ;; remove chriscourier@test.com
-                               (:id %))
-                         (!select db-conn "couriers" ["*"] {}))
-        courier-ids (distinct (map :id couriers))
-        users-by-id (group-by :id
-                              (!select db-conn
-                                       "users"
-                                       [:id
-                                        :name
-                                        :email
-                                        :phone_number
-                                        :os
-                                        :app_version
-                                        :stripe_default_card
-                                        :timestamp_created]
-                                       {}))
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+                          ;; remove chriscourier@test.com
+                          (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
+        courier-ids (distinct (map :id all-couriers))
+        users-by-id (->> (!select db-conn "users"
+                                  [:id :name :email :phone_number :os
+                                   :app_version :stripe_default_card
+                                   :arn_endpoint :timestamp_created] {})
+                         (group-by :id))
         id->name #(:name (first (get users-by-id %)))
-        vehicles-by-id (group-by :id
-                                 (!select db-conn
-                                          "vehicles"
-                                          [:id
-                                           :year
-                                           :make
-                                           :model
-                                           :color
-                                           :gas_type
-                                           :license_plate]
-                                          {}))
+        vehicles-by-id (->> (!select db-conn "vehicles"
+                                     [:id :year :make :model :color :gas_type
+                                      :license_plate] {})
+                            (group-by :id))
         id->vehicle #(first (get vehicles-by-id %))
-        coupons (!select db-conn "coupons" ["*"] {:type "standard"})]
+        all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
+        all-orders (orders/get-all (conn))]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
-             :couriers (map #(assoc %
-                               :name
-                               (id->name
-                                (:id %)))
-                            couriers)
+             :couriers (map #(assoc % :name (id->name (:id %))) all-couriers)
              :orders (map #(assoc %
-                                  
-                                  :courier_name
-                                  (id->name (:courier_id %))
-                                  
-                                  :customer_name
-                                  (id->name (:user_id %))
-
+                                  :courier_name (id->name (:courier_id %))
+                                  :customer_name (id->name (:user_id %))
                                   :was-late
-                                  (let [completion-time (-> (str "kludgeFixLater 1|" (:event_log %))
-                                                            (s/split #"\||\s")
-                                                            (->> (apply hash-map))
-                                                            (get "complete"))]
+                                  (let [completion-time
+                                        (-> (str "kludgeFix 1|" (:event_log %))
+                                            (s/split #"\||\s")
+                                            (->> (apply hash-map))
+                                            (get "complete"))]
                                     (and completion-time
                                          (> (Integer. completion-time)
                                             (:target_time_end %))))
-
-                                  :vehicle
-                                  (id->vehicle (:vehicle_id %)))
-                          (orders/get-all (conn)))
-             :users (sort-by
-                     #(.getTime (:timestamp_created %))
-                     >
-                     (map (comp first val) users-by-id))
-             :coupons coupons
+                                  :vehicle (id->vehicle (:vehicle_id %)))
+                          all-orders)
+             :users (sort-by #(.getTime (:timestamp_created %))
+                             >
+                             (map (comp first val) users-by-id))
+             :coupons all-coupons
              :users-count (count users-by-id)
              :base-url config/base-url
              :gas-price-87 @config/gas-price-87
@@ -280,3 +265,10 @@
        message
        "</Say>"
        "</Response>"))
+
+(defn send-push-to-all-active-users
+  [db-conn message]
+  (do (future (run! #(users/send-push db-conn (:id %) message)
+                    (!select db-conn "ActiveUsers" [:id :name] {})))
+      {:success true}))
+
