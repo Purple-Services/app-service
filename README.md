@@ -157,13 +157,13 @@ The statuses in the Dashboard cycle through as Unassigned -> Assigned -> Accepte
 
 ### Using a local MySQL Database for Development
 
-The development test server for the MySQL database is used in the stub given above. We have provided SQL files in order to setup a local database for developing. This is a preferred method of development, due to the fact that there can be problems with connection pools being occupied when multiple users are developing on the AWS MySQL server.
+The development test server for the MySQL database is used in the stub given above. We have provided SQL files in order to setup a local database for development. This is a preferred method of development, due to the fact that there can be problems with connection pools being occupied when multiple users are developing on the AWS MySQL server. Also, some tests rely on fixtures that use a local database call ebdb_test. Without configuring a local MySQL server, tests which use this fixture will fail.
 
 There are two files provided in the resources/database dir:
 
-**ebdb_setup.sql** will drop and create the ebdb database locally.
+**ebdb_setup.sql** will drop and create the ebdb and ebdb_test database locally.
 
-**ebdb.sql** will create the tables in the ebdb database and populate them with test data.
+**ebdb.sql** will create the tables in the ebdb and ebdb_test database and populate them with test data.
 
 In order to use it, you must obviously have MySQL working on your local machine. It is advisable to also use phpmyadmin.
 
