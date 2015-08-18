@@ -72,7 +72,7 @@
       </tbody>
     </table>
     
-    <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span> <span id="send-push-to-active-users" class="fake-link">[send push notification to all active users]</span></h2>
+    <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span> <span id="send-push-to-active-users" class="fake-link">[send push notification to all active users]</span> <span id="send-push-to-selected-users" class="fake-link">[send push to selected users]</span></h2>
     
     <table id="users" class="hide-extra">
       <thead>
@@ -185,10 +185,10 @@
 
          $('#send-push-to-active-users').click(function(){
              var message = prompt("Push notification message to send to all active users:");
-             if (message == "") {
+             if (!message || message == null || message == "") {
                  return false;
              }
-             if (confirm("!!! Are you sure you want to send this message: " + message)) {
+             if (confirm("!!! Are you sure you want to send this message to all active users?: " + message)) {
                  $.ajax({
                      type: "POST",
                      url: $("#config").data("base-url") + "dashboard/send-push-to-all-active-users",
@@ -204,6 +204,44 @@
                      },
                      failure: function(response) {
                          alert('Something went wrong. Push notifications may or may not have been sent. Wait until sure before trying again.');
+                     }
+                 });
+             }
+         });
+
+         $('#send-push-to-selected-users').click(function(){
+             var users = new Array();
+             $('.send-push-to:checked').each(function(){
+                 users.push($(this).val());
+             });
+
+             if (users.length === 0) {
+                 alert('No users selected.');
+                 return false;
+             }
+
+             var message = prompt("Push notification message to send to selected users (" + users.length + "):");
+             if (!message || message == null || message == "") {
+                 return false;
+             }
+             
+             if (confirm("!!! Are you sure you want to send this message to all selected users?: " + message)) {
+                 $.ajax({
+                     type: "POST",
+                     url: $("#config").data("base-url") + "dashboard/send-push-to-users-list",
+                     data: JSON.stringify({
+                         "message": message,
+                         "user-ids": users
+                     }),
+                     dataType: "json",
+                     contentType: 'application/json',
+                     success: function(response) {
+                         alert('Sent!');
+                         $('.send-push-to:checked').attr('checked', false);
+                     },
+                     failure: function(response) {
+                         alert('Something went wrong. Push notifications may or may not have been sent. Wait until sure before trying again.');
+                         $('.send-push-to:checked').attr('checked', false);
                      }
                  });
              }

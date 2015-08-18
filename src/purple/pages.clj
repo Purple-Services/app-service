@@ -161,10 +161,14 @@
                                      "Yes"))
 
                                   [:td.push_set_up]
-                                  (content
+                                  (html-content
                                    (if (s/blank? (:arn_endpoint t))
                                      "No"
-                                     "Yes"))
+                                     (str "Yes "
+                                          "<input type='checkbox' "
+                                          "value='" (:id t) "' "
+                                          "class='send-push-to' "
+                                          "/>")))
 
                                   [:td.os]
                                   (content (:os t))
@@ -175,7 +179,7 @@
                                   [:td.timestamp_created]
                                   (content (unix->full
                                             (/ (.getTime (:timestamp_created t))
-                                               1000))) ;; i think this is wrong timezone, idk
+                                               1000)))
                                   )
 
   [:#users-count] (content (str "("
@@ -272,3 +276,18 @@
                     (!select db-conn "ActiveUsers" [:id :name] {})))
       {:success true}))
 
+(defn send-push-to-users-list
+  [db-conn message user-ids]
+  (do (future (run! #(users/send-push db-conn (:id %) message)
+                    (!select db-conn
+                             "users"
+                             [:id :name]
+                             {}
+                             :custom-where
+                             (str "id IN (\""
+                                  (->> user-ids
+                                       (map mysql-escape-str)
+                                       (interpose "\",\"")
+                                       (apply str))
+                                  "\")"))))
+      {:success true}))

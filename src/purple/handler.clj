@@ -300,6 +300,12 @@
                      (let [b (keywordize-keys body)]
                        (pages/send-push-to-all-active-users (conn)
                                                             (:message b)))))
+              (POST "/send-push-to-users-list" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)]
+                       (pages/send-push-to-users-list (conn)
+                                                      (:message b)
+                                                      (:user-ids b)))))
               (POST "/change-gas-price" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
