@@ -163,7 +163,7 @@ There are two files provided in the resources/database dir:
 
 **ebdb_setup.sql** will drop and create the ebdb and ebdb_test database locally.
 
-**ebdb.sql** will create the tables in the ebdb and edbn_test database and populate them with test data.
+**ebdb.sql** will create the tables in the ebdb and ebdb_test database and populate them with test data.
 
 In order to use it, you must obviously have MySQL working on your local machine. It is advisable to also use phpmyadmin.
 
