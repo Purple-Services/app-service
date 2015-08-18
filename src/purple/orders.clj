@@ -352,6 +352,7 @@
         (let [charge-result ((resolve 'purple.users/charge-user)
                              db-conn
                              (:user_id o)
+                             (:id o) 
                              (:total_price o)
                              (gen-charge-description db-conn o))]
           (if (:success charge-result)
