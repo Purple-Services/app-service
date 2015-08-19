@@ -1,4 +1,26 @@
-(ns purple.config)
+(ns purple.config
+  (:require [environ.core :refer [env]]))
+
+(if (or (= (env :env) "test") (= (env :env) "dev"))
+  (do
+    (System/setProperty "AWS_ACCESS_KEY_ID" (env :aws-access-key-id))
+    (System/setProperty "AWS_SECRET_KEY" (env :aws-secret-key))
+    (System/setProperty "DB_HOST" (env :db-host))
+    (System/setProperty "DB_NAME" (env :db-name))
+    (System/setProperty "DB_PORT" (env :db-port))
+    (System/setProperty "DB_USER" (env :db-user))
+    (System/setProperty "DB_PASSWORD" (env :db-password))
+    (System/setProperty "EMAIL_USER" (env :email-user))
+    (System/setProperty "EMAIL_PASSWORD" (env :email-password))
+    (System/setProperty "STRIPE_PRIVATE_KEY" (env :stripe-private-key))
+    (System/setProperty "SNS_APP_ARN_APNS" (env :sns-app-arn-apns))
+    (System/setProperty "SNS_APP_ARN_GCM" (env :sns-app-arn-gcm))
+    (System/setProperty "TWILIO_ACCOUNT_SID" (env :twilio-account-sid))
+    (System/setProperty "TWILIO_AUTH_TOKEN" (env :twilio-auto-token))
+    (System/setProperty "TWILIO_FROM_NUMBER" (env :twilio-form-number))
+    (System/setProperty "BASE_URL" (env :base-url))
+    (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
+    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))))
 
 ;;;; Base Url of the web service
 ;; Should include trailing forward-slash (e.g., "http://domain.com/")

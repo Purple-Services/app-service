@@ -18,31 +18,37 @@ This will clone your fork into a local 'web-service' dir on your machine.
 
 ### Configuration
 
-Paste the following stub to the top of src/purple/config.clj
+The file src/purple/config.clj contains all of the information needed for configuration. For local development, <project_root>/profiles.clj is used to define environment variables. However, profiles.clj is included in .gitignore and is not included in the repository. When you first start working on the project, you will have to create profiles.clj in the project root dir using the following template:
 
-```Clojure
-;; stub for local testing DEV DB
-(System/setProperty "AWS_ACCESS_KEY_ID" "AKIAJLB35GOFQUJZCX5A")
-(System/setProperty "AWS_SECRET_KEY" "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")
-(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
-(System/setProperty "DB_NAME" "ebdb")
-(System/setProperty "DB_PORT" "3306")
-(System/setProperty "DB_USER" "purplemaster")
-(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
-(System/setProperty "EMAIL_USER" "no-reply@purpledelivery.com")
-(System/setProperty "EMAIL_PASSWORD" "HJdhj34HJd")
-(System/setProperty "STRIPE_PRIVATE_KEY" "sk_test_6Nbxf0bpbBod335kK11SFGw3")
-(System/setProperty "SNS_APP_ARN_APNS" "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple")
-(System/setProperty "SNS_APP_ARN_GCM" "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple")
-(System/setProperty "TWILIO_ACCOUNT_SID" "AC0a0954acca9ba8c527f628a3bfaf1329")
-(System/setProperty "TWILIO_AUTH_TOKEN" "3da1b036da5fb7716a95008c318ff154")
-(System/setProperty "TWILIO_FROM_NUMBER" "+13239243338")
-(System/setProperty "BASE_URL" "http://localhost:3000/")
-(System/setProperty "BASIC_AUTH_USERNAME" "purpleadmin")
-(System/setProperty "BASIC_AUTH_PASSWORD" "gasdelivery8791")
+```clojure
+{:dev { :env {:aws-access-key-id "AKIAJLB35GOFQUJZCX5A"
+              :aws-secret-key "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"
+              :db-host "localhost" ; AWS host: aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com
+              :db-name "ebdb"
+              :db-port "3306"
+              :db-user "purplemaster"
+              :db-password "localpurpledevelopment2015" ; AWS pwd: HHjdnb873HHjsnhhd
+              :email-user "no-reply@purpledelivery.com"
+              :email-password "HJdhj34HJd"
+              :stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3"
+              :sns-app-arn-apns "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple"
+              :sns-app-arn-gcm  "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple"
+              :twilio-account-sid "AC0a0954acca9ba8c527f628a3bfaf1329"
+              :twilio-auto-token "3da1b036da5fb7716a95008c318ff154"
+              :twilio-form-number "+13239243338"
+              :base-url "http://localhost:3000/"
+              :basic-auth-username "purpleadmin"
+              :basic-auth-password "gasdelivery8791"
+              :env "dev"}
+       :dependencies [[javax.servlet/servlet-api "2.5"]
+                      [ring-mock "0.1.5"]]}}
 ```
 
-**Note**: The value of DB_HOST is the database host used for development. If you have MySQL configured on your machine, you can use the value "localhost" with a DB_PASSWORD that you set. See "Using a local MySQL Database for Development" below about how to configure this.
+Because profiles.clj will override the entires for :profiles in project.clj, the required :dependencies must be included in profiles.clj
+
+**In order to use lein with this environment, you will need to use the lein-environ plug. Add [lein-environ "1.0.0"] to your {:user {:plugins }} entry of your ~/.lein/profiles.clj file**
+
+**Note**: The value of :db-host is the database host used for development. If you have MySQL configured on your machine, you can use the value "localhost" with a :db-password that you set. Otherwise,  you can use the AWS values to access the remote development server. However, you will eventually need to setup a local MySQL server in order to run tests that access the database. See "Using a local MySQL Database for Development" below about how to configure this.
 
 This stub will give you access to a test database. If you use this stub in config.clj, you will not affect the main site when developing locally.
 
@@ -171,7 +177,7 @@ We have also provided a clojure script that must be run from the command line us
 
 {:user {:plugins [[lein-exec "0.3.5"]]}}
 
-In order to run the script, you must provide it with the root password of your MySQL server. This is needed in order to create the permissions for 'purplemaster' needed by the Purple server application.
+You must provide the script with the root password of your MySQL server in order to create the permissions for 'purplemaster' needed by the Purple server application.
 
 ```bash
 web-service $ lein exec -p resources/scripts/setupdb.clj root_password=your_secret_password
@@ -181,24 +187,14 @@ Creatings tables and populating them in ebdb as user purplemaster
 web-service $
 ```
 
-You will also need to edit the src/purple/config.clj file. The values that should be changed are:
-
-DB_HOST and DB_PASSWORD
-
-```clojure
-;;(System/setProperty "DB_HOST" "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com")
-(System/setProperty "DB_HOST" "localhost")
-...
-;;(System/setProperty "DB_PASSWORD" "HHjdnb873HHjsnhhd")
-(System/setProperty "DB_PASSWORD" "localpurpledevelopment2015")
-```
-
 **Note:** The password used for puplemaster must be the same across the following files:
 ```
-src/purple/config.clj
+src/profiles.clj
 resources/database/ebdb_setup.sql
 ```
 ## Deploying to Development Server
+
+The server is manually configured with the required System properties in the AWS console. Therefore, the top entry of src/purple/config.clj only sets vars when the environment is "test" or "dev".
 
 Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your ~/.lein/profiles.clj with AWS creds):
 
