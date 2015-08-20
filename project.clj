@@ -32,7 +32,5 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources"]}
-  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                  [ring-mock "0.1.5"]]}}
   :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
