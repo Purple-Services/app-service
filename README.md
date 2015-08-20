@@ -48,9 +48,7 @@ Because profiles.clj will override the entires for :profiles in project.clj, the
 
 **In order to use lein with this environment, you will need to use the lein-environ plug. Add [lein-environ "1.0.0"] to your {:user {:plugins }} entry of your ~/.lein/profiles.clj file**
 
-**Note**: The value of :db-host is the database host used for development. If you have MySQL configured on your machine, you can use the value "localhost" with a :db-password that you set. Otherwise,  you can use the AWS values to access the remote development server. However, you will eventually need to setup a local MySQL server in order to run tests that access the database. See "Using a local MySQL Database for Development" below about how to configure this.
-
-This stub will give you access to a test database. If you use this stub in config.clj, you will not affect the main site when developing locally.
+**Note**: The value of :db-host is the database host used for development. If you have MySQL configured on your machine, you can use the value "localhost" with a :db-password that you set. Otherwise, you can use the AWS valueshost and pwd values to access the remote development server. You will eventually need to setup a local MySQL server in order to run tests that access the database. See "Using a local MySQL Database for Development" below about how to configure this.
 
 ### Request addition of your IP address to RDS
 
