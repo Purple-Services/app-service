@@ -14,12 +14,13 @@
 
 (defn stripe-req
   [method endpoint & [params headers]]
-  (let [request (-> common-opts
-                    (merge-with merge {:form-params params})
-                    (merge-with merge {:headers headers}))
+  (let [opts (merge-with merge 
+                         common-opts
+                         {:form-params params}
+                         {:headers headers})
         resp ((resolve (symbol "clj-http.client" method))
-               (str config/stripe-api-url endpoint)
-               request)]
+              (str config/stripe-api-url endpoint)
+              opts)]
     (:body resp)))
 
 (defn create-stripe-customer
