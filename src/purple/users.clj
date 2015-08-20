@@ -10,7 +10,8 @@
             [purple.payment :as payment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
-            [clojure.string :as s]))
+            [clojure.string :as s]
+            [environ.core :refer [env]]))
 
 (def safe-authd-user-keys
   "Keys of a user map that are safe to send out to auth'd user."
@@ -156,12 +157,13 @@
                                :referral_code (coupons/create-referral-coupon db-conn
                                                                               (:id user))))]
     (future
-      (send-email ;; debugging purposes, "why sometimes 100's of calls..."
+      (send-admin-email ;; debugging purposes, "why sometimes 100's of calls..."
        {:to "chris@purpledelivery.com"
         :subject "Purple - users/add caleld"
         :body (str user
                    "\nResult:\n"
-                   result)}))
+                   result)}
+       (not (config/test-or-dev-env? env))))
     result))
 
 (defn login
@@ -532,7 +534,8 @@
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
       (do (send-email
-           {:to "chris@purpledelivery.com"
+           {;;:to "chris@purpledelivery.com"
+            :to "jmborden@gmail.com"
             :subject "Purple - Error"
             :body (str "Error charging user, no payment method is set up.")})
           {:success true})
