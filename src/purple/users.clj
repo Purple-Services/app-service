@@ -527,7 +527,7 @@
 
 (defn charge-user
   "Charges user amount (an int in cents) using default payment method."
-  [db-conn user-id amount description]
+  [db-conn user-id order-id amount description]
   (let [u (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
@@ -537,6 +537,7 @@
             :body (str "Error charging user, no payment method is set up.")})
           {:success true})
       (payment/charge-stripe-customer customer-id
+                                      order-id
                                       amount
                                       description
                                       (:email u)))))
