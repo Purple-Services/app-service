@@ -69,11 +69,11 @@
                                   (periodic/periodic-seq  ;; Apr 10th
                                    (time-coerce/from-long 1428708478000)
                                    (time/hours 24))))
-           users (!select db-conn "users" ["*"] {})
+           users (!select db-conn "users" [:timestamp_created :id] {})
            users-by-day (users-by-day users)
-           orders (!select db-conn "orders" ["*"] {})
+           orders (!select db-conn "orders" [:target_time_start :target_time_end :status :coupon_code :user_id] {})
            orders-by-day (orders-by-day orders)
-           coupons (!select db-conn "coupons" ["*"] {})
+           coupons (!select db-conn "coupons" [:type :code] {})
            standard-coupon-codes (->> (filter #(= "standard" (:type %)) coupons)
                                       (map :code))]
        (concat [["Date"
