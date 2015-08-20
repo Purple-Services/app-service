@@ -16,7 +16,8 @@
                                  (:subprotocol config)
                                  ":"
                                  (:subname config)
-                                 "?useLegacyDatetimeCode=false"))
+                                 "?useLegacyDatetimeCode=false"
+                                 "&serverTimezone=America/Los_Angeles"))
                (.setUser (:user config))
                (.setPassword (:password config))
                (.setMaxPoolSize 15)

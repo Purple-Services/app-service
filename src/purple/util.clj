@@ -147,6 +147,12 @@
        (catch Exception e {:success false
                            :message "Message could not be sent to that address."})))
 
+(defn send-admin-email [message-map send?]
+  "Send an email described by message-map if send? is true. Used for toggling admin email messasges in dev and production environments."
+  (if send?
+    (send-email message-map)
+    nil))
+
 (defn send-feedback
   [text & {:keys [user_id]}]
   (send-email {:to "chris@purpledelivery.com"
