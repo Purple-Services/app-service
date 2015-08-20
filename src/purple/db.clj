@@ -15,7 +15,8 @@
                (.setJdbcUrl (str "jdbc:"
                                  (:subprotocol config)
                                  ":"
-                                 (:subname config)))
+                                 (:subname config)
+                                 "?useLegacyDatetimeCode=false"))
                (.setUser (:user config))
                (.setPassword (:password config))
                (.setMaxPoolSize 15)

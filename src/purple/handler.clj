@@ -10,6 +10,7 @@
             [purple.dispatch :as dispatch]
             [purple.coupons :as coupons]
             [purple.pages :as pages]
+            [purple.analytics :as analytics]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -40,6 +41,13 @@
      (do ~@body)
      {:success false
       :message "Something's wrong. Please log out and log back in."}))
+
+(defn redirect-to-app-download
+  [headers]
+  (redirect
+   (if (.contains (str (get headers "user-agent")) "Android")
+     "https://play.google.com/store/apps/details?id=com.purple.app"
+     "https://itunes.apple.com/us/app/purple-services/id970824802")))
 
 (defroutes app-routes
   (context "/user" []
@@ -277,7 +285,27 @@
            (wrap-basic-authentication
             (defroutes dashboard-routes
               (GET "/" []
-                   (wrap-page (response (pages/dashboard (conn)))))
+                   (-> (pages/dashboard (conn))
+                       response
+                       wrap-page))
+              (GET "/data-csv" []
+                   (do (analytics/gen-stats-csv)
+                       (-> (response (java.io.File. "stats.csv"))
+                           (header "Content-Type:"
+                                   "text/csv; name=\"stats.csv\"")
+                           (header "Content-Disposition"
+                                   "attachment; filename=\"stats.csv\""))))
+              (POST "/send-push-to-all-active-users" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)]
+                       (pages/send-push-to-all-active-users (conn)
+                                                            (:message b)))))
+              (POST "/send-push-to-users-list" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)]
+                       (pages/send-push-to-users-list (conn)
+                                                      (:message b)
+                                                      (:user-ids b)))))
               (POST "/change-gas-price" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
@@ -289,23 +317,27 @@
            (wrap-basic-authentication
             (defroutes stats-routes
               (GET "/" []
-                   (wrap-page (response (pages/dashboard (conn)
-                                                         :read-only true)))))
+                   (-> (pages/dashboard (conn) :read-only true)
+                       response
+                       wrap-page))
+              (GET "/data-csv" []
+                   (do (analytics/gen-stats-csv)
+                       (-> (response (java.io.File. "stats.csv"))
+                           (header "Content-Type:"
+                                   "text/csv; name=\"stats.csv\"")
+                           (header "Content-Disposition"
+                                   "attachment; filename=\"stats.csv\"")))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []
-                   (wrap-xml (response (pages/twiml-simple "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you."))))))
+                   (-> (pages/twiml-simple config/delayed-assignment-message)
+                       response
+                       wrap-xml))))
   (GET "/download" {headers :headers}
-       (redirect
-        (if (.contains (str (get headers "user-agent")) "Android")
-          "https://play.google.com/store/apps/details?id=com.purple.app"
-          "https://itunes.apple.com/us/app/purple-services/id970824802")))
+       (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
-       (redirect
-        (if (.contains (str (get headers "user-agent")) "Android")
-          "https://play.google.com/store/apps/details?id=com.purple.app"
-          "https://itunes.apple.com/us/app/purple-services/id970824802")))
+       (redirect-to-app-download headers))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))

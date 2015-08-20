@@ -932,7 +932,8 @@ button {
 	height: 100%;
 	background: #000;
 	background-position-x: 50%;
-	background-image: url(../images/laRoad.png);
+	/* background-image: url(../images/laRoad.png); */
+    background-image: url('//s3-us-west-1.amazonaws.com/purple-services/images/la-road.jpg');
 	opacity: 0.6;
 }
 
