@@ -14,7 +14,7 @@
 
 (defn stripe-req
   [method endpoint & [params headers]]
-  (let [request (-> common-opts
+  (let [request (->> common-opts
                     (merge-with merge {:form-params params})
                     (merge-with merge {:headers headers}))
         resp ((resolve (symbol "clj-http.client" method))
