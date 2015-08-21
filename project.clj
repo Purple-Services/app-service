@@ -22,6 +22,7 @@
                  [ring-cors "0.1.7"]
                  [com.twilio.sdk/twilio-java-sdk "4.2.0"] ;; SMS and Phone Calls
                  [org.clojure/data.csv "0.1.3"]
+                 [environ "1.0.0"] ;; for defining environments used by src/purple/config.clj
                  ]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
@@ -31,7 +32,5 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources"]}
-  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                  [ring-mock "0.1.5"]]}}
   :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
