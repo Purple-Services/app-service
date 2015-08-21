@@ -11,3 +11,5 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 *.#*
+.DS_Store
+profiles.clj

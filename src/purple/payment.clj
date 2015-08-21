@@ -13,10 +13,15 @@
    :coerce :always})
 
 (defn stripe-req
-  [method endpoint & [params]]
-  (:body ((resolve (symbol "clj-http.client" method))
-          (str config/stripe-api-url endpoint)
-          (merge common-opts {:form-params params}))))
+  [method endpoint & [params headers]]
+  (let [opts (merge-with merge 
+                         common-opts
+                         {:form-params params}
+                         {:headers headers})
+        resp ((resolve (symbol "clj-http.client" method))
+              (str config/stripe-api-url endpoint)
+              opts)]
+    (:body resp)))
 
 (defn create-stripe-customer
   [user-id stripe-token]
@@ -48,14 +53,16 @@
 
 ;; Amount is an integer of cents to charge. Semi-sensitive info returned!
 (defn charge-stripe-customer
-  [customer-id amount description receipt-email]
-  (try (let [resp (stripe-req "post"
+  [customer-id order-id amount description receipt-email]
+  (try (let [idempotency-key order-id
+             resp (stripe-req "post"
                               "charges"
                               {:customer customer-id
                                :amount amount
                                :currency config/default-currency
                                :description description
-                               :receipt_email receipt-email})]
+                               :receipt_email receipt-email}
+                              {:Idempotency-Key idempotency-key})]
          (if (:paid resp)
            {:success true
             :charge resp}
