@@ -1,0 +1,21 @@
+{:dev { :env {:aws-access-key-id "AKIAJLB35GOFQUJZCX5A"
+              :aws-secret-key "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"
+              :db-host "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com"
+              :db-name "ebdb"
+              :db-port "3306"
+              :db-user "purplemaster"
+              :db-password "HHjdnb873HHjsnhhd"
+              :email-user "no-reply@purpledelivery.com"
+              :email-password "HJdhj34HJd"
+              :stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3"
+              :sns-app-arn-apns "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple"
+              :sns-app-arn-gcm  "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple"
+              :twilio-account-sid "AC0a0954acca9ba8c527f628a3bfaf1329"
+              :twilio-auto-token "3da1b036da5fb7716a95008c318ff154"
+              :twilio-form-number "+13239243338"
+              :base-url "http://localhost:3000/"
+              :basic-auth-username "purpleadmin"
+              :basic-auth-password "gasdelivery8791"
+              :env "dev"}
+       :dependencies [[javax.servlet/servlet-api "2.5"]
+                      [ring-mock "0.1.5"]]}}
