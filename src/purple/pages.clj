@@ -58,6 +58,10 @@
 
   [:#config] (set-attr :data-base-url (:base-url x))
 
+  [:#last-updated] (content (str "Last Updated: "
+                                 (unix->full (quot (System/currentTimeMillis)
+                                                   1000))))
+
   [:#couriers :tbody :tr]
   (clone-for [t (:couriers x)]
              [:td.connected]
