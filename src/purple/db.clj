@@ -17,7 +17,7 @@
                                  ":"
                                  (:subname config)
                                  "?useLegacyDatetimeCode=false"
-                                 "&serverTimezone=America/Los_Angeles"))
+                                 "&serverTimezone=UTC"))
                (.setUser (:user config))
                (.setPassword (:password config))
                (.setMaxPoolSize 15)
