@@ -288,13 +288,15 @@
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
-              (GET "/data-csv" []
-                   (do (analytics/gen-stats-csv)
-                       (-> (response (java.io.File. "stats.csv"))
-                           (header "Content-Type:"
-                                   "text/csv; name=\"stats.csv\"")
-                           (header "Content-Disposition"
-                                   "attachment; filename=\"stats.csv\""))))
+              (GET "/generate-stats-csv" []
+                   (do (future (analytics/gen-stats-csv))
+                       (response {:success true})))
+              (GET "/download-stats-csv" []
+                   (-> (response (java.io.File. "stats.csv"))
+                       (header "Content-Type:"
+                               "text/csv; name=\"stats.csv\"")
+                       (header "Content-Disposition"
+                               "attachment; filename=\"stats.csv\"")))
               (POST "/send-push-to-all-active-users" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
@@ -320,13 +322,15 @@
                    (-> (pages/dashboard (conn) :read-only true)
                        response
                        wrap-page))
-              (GET "/data-csv" []
-                   (do (analytics/gen-stats-csv)
-                       (-> (response (java.io.File. "stats.csv"))
-                           (header "Content-Type:"
-                                   "text/csv; name=\"stats.csv\"")
-                           (header "Content-Disposition"
-                                   "attachment; filename=\"stats.csv\"")))))
+              (GET "/generate-stats-csv" []
+                   (do (future (analytics/gen-stats-csv))
+                       (response {:success true})))
+              (GET "/download-stats-csv" []
+                   (-> (response (java.io.File. "stats.csv"))
+                       (header "Content-Type:"
+                               "text/csv; name=\"stats.csv\"")
+                       (header "Content-Disposition"
+                               "attachment; filename=\"stats.csv\""))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
