@@ -56,7 +56,8 @@
   [x]
   [:title] (content (:title x))
 
-  [:#config] (set-attr :data-base-url (:base-url x))
+  [:#config] (set-attr :data-base-url (:base-url x)
+                       )
 
   [:#last-updated] (content (str "Last Updated: "
                                  (unix->full (quot (System/currentTimeMillis)
