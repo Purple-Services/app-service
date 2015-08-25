@@ -534,8 +534,7 @@
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
       (do (send-email
-           {;;:to "chris@purpledelivery.com"
-            :to "jmborden@gmail.com"
+           {:to "chris@purpledelivery.com"
             :subject "Purple - Error"
             :body (str "Error charging user, no payment method is set up.")})
           {:success true})
