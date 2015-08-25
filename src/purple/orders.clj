@@ -5,8 +5,7 @@
             [purple.coupons :as coupons]
             [purple.couriers :as couriers]
             [clojure.java.jdbc :as sql]
-            [clojure.string :as s]
-            [environ.core :refer [env]]))
+            [clojure.string :as s]))
 
 ;; Order status definitions
 ;; unassigned - not assigned to any courier yet
@@ -238,10 +237,9 @@
                                              ((resolve 'purple.users/get-users-by-ids)
                                               db-conn (map :id connected-couriers)))
                        id->phone-number #(:phone_number (first (get users-by-id %)))]
-                   (send-admin-email {:to "chris@purpledelivery.com"
-                                      :subject "Purple - New Order"
-                                      :body (str o)}
-                                     (not (config/test-or-dev-env? env)))
+                   (only-prod (send-email {:to "chris@purpledelivery.com"
+                                           :subject "Purple - New Order"
+                                           :body (str o)}))
                    (run! #((resolve 'purple.users/send-push)
                            db-conn (:id %) (str "New order available. "
                                                 "Please press Accept "
