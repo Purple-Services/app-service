@@ -10,8 +10,7 @@
             [purple.payment :as payment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
-            [clojure.string :as s]
-            [environ.core :refer [env]]))
+            [clojure.string :as s]))
 
 (def safe-authd-user-keys
   "Keys of a user map that are safe to send out to auth'd user."
@@ -156,14 +155,13 @@
                                  user)
                                :referral_code (coupons/create-referral-coupon db-conn
                                                                               (:id user))))]
-    (future
-      (send-admin-email ;; debugging purposes, "why sometimes 100's of calls..."
-       {:to "chris@purpledelivery.com"
-        :subject "Purple - users/add caleld"
-        :body (str user
-                   "\nResult:\n"
-                   result)}
-       (not (config/test-or-dev-env? env))))
+    (only-prod (future
+                 (send-email ;; debugging purposes, "why sometimes 100's of calls..."
+                  {:to "chris@purpledelivery.com"
+                   :subject "Purple - users/add caleld"
+                   :body (str user
+                              "\nResult:\n"
+                              result)})))
     result))
 
 (defn login

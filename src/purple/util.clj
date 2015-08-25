@@ -7,7 +7,8 @@
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]
             [clj-aws.core :as aws]
-            [clj-aws.sns :as sns])
+            [clj-aws.sns :as sns]
+            [environ.core :refer [env]])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
@@ -29,7 +30,7 @@
 (defmacro only-prod
   "Only run this code when in production mode."
   [& body]
-  `(when (= config/db-user "purplemasterprod")
+  `(when-not (config/test-or-dev-env? env)
      ~@body))
 
 (defmacro catch-notify
@@ -146,12 +147,6 @@
        {:success true}
        (catch Exception e {:success false
                            :message "Message could not be sent to that address."})))
-
-(defn send-admin-email [message-map send?]
-  "Send an email described by message-map if send? is true. Used for toggling admin email messasges in dev and production environments."
-  (if send?
-    (send-email message-map)
-    nil))
 
 (defn send-feedback
   [text & {:keys [user_id]}]
