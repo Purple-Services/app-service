@@ -89,7 +89,7 @@
 ;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
 ;; the way things are coded, you can't wrap around past midnight
 ;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
-(def service-time-bracket [7 20])
+(def service-time-bracket [7 21])
 
 ;;;; Delivery time guarantee options
 ;; Key is number of minutes till deadline
