@@ -129,7 +129,7 @@
   [db-conn o]
   (if (< (:time-limit o) 180)
     (and (> (unix->hour-of-day (:target_time_start o))
-            9)
+            9) ;; no 1-hour orders before 10am
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)

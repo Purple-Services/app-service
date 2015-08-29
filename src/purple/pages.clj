@@ -204,10 +204,7 @@
              (content (unix->fuller (:expiration_time t)))
 
              [:td.times_used]
-             (content (str (-> (:used_by_license_plates t)
-                               (s/split #",")
-                               (->> (remove s/blank?))
-                               count)))
+             (content (str (:times-used t)))
 
              [:td.only_for_first_orders]
              (content (if (:only_for_first_orders t) "Yes" "No")))
@@ -227,7 +224,8 @@
         users-by-id (->> (!select db-conn "users"
                                   [:id :name :email :phone_number :os
                                    :app_version :stripe_default_card
-                                   :arn_endpoint :timestamp_created] {})
+                                   :arn_endpoint :timestamp_created]
+                                  {})
                          (group-by :id))
         id->name #(:name (first (get users-by-id %)))
         vehicles-by-id (->> (!select db-conn "vehicles"
@@ -236,7 +234,11 @@
                             (group-by :id))
         id->vehicle #(first (get vehicles-by-id %))
         all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
-        all-orders (orders/get-all (conn))]
+        all-orders (!select db-conn
+                            "orders"
+                            ["*"]
+                            {}
+                            :append "ORDER BY target_time_start DESC LIMIT 50")]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
@@ -258,7 +260,14 @@
              :users (sort-by #(.getTime (:timestamp_created %))
                              >
                              (map (comp first val) users-by-id))
-             :coupons all-coupons
+             :coupons (sort-by :times-used
+                               >
+                               (map #(assoc % :times-used
+                                            (-> (:used_by_license_plates %)
+                                                (s/split #",")
+                                                (->> (remove s/blank?))
+                                                count))
+                                    all-coupons))
              :users-count (count users-by-id)
              :base-url config/base-url
              :gas-price-87 @config/gas-price-87
