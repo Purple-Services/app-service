@@ -101,7 +101,7 @@
      ;; if unavailable, this is the explanation:
      :unavailable-reason
      (if good-zip?
-       "Sorry, our service hours are 7:30am to 10:00pm today." ;every day."
+       "Sorry, we only accept orders between 7:30am to 10:30pm every day."
        "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")
      :user (select-keys user [:referral_gallons :referral_code])
      
@@ -232,7 +232,7 @@
     (run! #(send-sms % "There are orders, but no available couriers.")
           (concat [] ;; put your number in here when dev'ing
                   (only-prod ["3235782263"     ;; Bruno
-                              "3106919061"     ;; JP
+                              ;; "3106919061"     ;; JP
                               "8589228571"]))) ;; Lee
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
