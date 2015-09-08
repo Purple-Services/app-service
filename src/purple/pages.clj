@@ -145,7 +145,11 @@
              (content (str (:coupon_code t)))
              
              [:td.total_price]
-             (content (str "$" (cents->dollars (:total_price t)))))
+             (do-> (if (and (not (:paid t))
+                            (= (:status t) "complete"))
+                     (add-class "late") ;; Payment failed!
+                     (add-class "not-late"))
+                   (content (str "$" (cents->dollars (:total_price t))))))
 
   
   [:#users :tbody :tr] (clone-for [t (:users x)]
