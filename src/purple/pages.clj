@@ -146,7 +146,8 @@
              
              [:td.total_price]
              (do-> (if (and (not (:paid t))
-                            (= (:status t) "complete"))
+                            (= (:status t) "complete")
+                            (not= 0 (:total_price t)))
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
                    (content (str "$" (cents->dollars (:total_price t))))))
@@ -191,7 +192,9 @@
                                   )
 
   [:#users-count] (content (str "("
-                                (:users-count x)
+                                (if (:all x)
+                                  (:users-count x)
+                                  "?")
                                 ")"))
 
   [:#coupons :tbody :tr]
@@ -214,34 +217,66 @@
 
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
   [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x))
+
+  [:#mainStyleSheet] (set-attr :href (str (:base-url x)
+                                          "css/main.css"))
   
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
                                           "display: block; margin: 0px auto;")))
 
-(defn dashboard [db-conn & {:keys [read-only]}]
+
+;; If it's 'all' then we get 'all' the data from db
+;; When 'all' is false, then we only get the first 50 orders and then we get
+;; only the users and vehicles that are being referenced in those orders,
+;; and the user accounts that are references by the couriers
+
+(defn dashboard [db-conn & {:keys [read-only all]}]
   (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
         courier-ids (distinct (map :id all-couriers))
-        users-by-id (->> (!select db-conn "users"
-                                  [:id :name :email :phone_number :os
-                                   :app_version :stripe_default_card
-                                   :arn_endpoint :timestamp_created]
-                                  {})
-                         (group-by :id))
-        id->name #(:name (first (get users-by-id %)))
-        vehicles-by-id (->> (!select db-conn "vehicles"
-                                     [:id :year :make :model :color :gas_type
-                                      :license_plate] {})
-                            (group-by :id))
-        id->vehicle #(first (get vehicles-by-id %))
-        all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
         all-orders (!select db-conn
                             "orders"
                             ["*"]
                             {}
-                            :append "ORDER BY target_time_start DESC LIMIT 50")]
+                            :append
+                            (str "ORDER BY target_time_start DESC"
+                                 (when (not all) " LIMIT 50")))
+        
+        users-by-id
+        (->> (!select db-conn "users"
+                      [:id :name :email :phone_number :os
+                       :app_version :stripe_default_card
+                       :arn_endpoint :timestamp_created]
+                      {}
+                      :custom-where
+                      (when (not all)
+                        (let [customer-ids (distinct (map :user_id all-orders))]
+                          (str "id IN (\""
+                               (s/join "\",\"" (distinct
+                                                (concat customer-ids
+                                                        courier-ids)))
+                               "\")"))))
+             (group-by :id))
+        
+        id->name #(:name (first (get users-by-id %)))
+
+        vehicles-by-id
+        (->> (!select db-conn "vehicles"
+                      [:id :year :make :model :color :gas_type
+                       :license_plate]
+                      {}
+                      :custom-where
+                      (let [vehicle-ids (distinct (map :vehicle_id all-orders))]
+                        (str "id IN (\""
+                             (s/join "\",\"" vehicle-ids)
+                             "\")")))
+             (group-by :id))
+        
+        id->vehicle #(first (get vehicles-by-id %))
+        all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
+        ]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
@@ -275,7 +310,8 @@
              :base-url config/base-url
              :gas-price-87 @config/gas-price-87
              :gas-price-91 @config/gas-price-91
-             :read-only read-only}))))
+             :read-only read-only
+             :all all}))))
 
 (defn twiml-simple
   [message]
