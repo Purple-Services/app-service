@@ -288,6 +288,10 @@
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
+              (GET "/all" []
+                   (-> (pages/dashboard (conn) :all true)
+                       response
+                       wrap-page))
               (GET "/data-csv" []
                    (do (analytics/gen-stats-csv)
                        (-> (response (java.io.File. "stats.csv"))
@@ -318,6 +322,12 @@
             (defroutes stats-routes
               (GET "/" []
                    (-> (pages/dashboard (conn) :read-only true)
+                       response
+                       wrap-page))
+              (GET "/all" []
+                   (-> (pages/dashboard (conn)
+                                        :read-only true
+                                        :all true)
                        response
                        wrap-page))
               (GET "/data-csv" []
