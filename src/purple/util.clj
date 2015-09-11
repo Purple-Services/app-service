@@ -163,10 +163,18 @@
   (send-email {:to "chris@purpledelivery.com"
                :subject "Purple Feedback Form Response"
                :body (if-not (nil? user_id)
-                       (str "From User ID: "
-                            user_id
-                            "\n\n"
-                            text)
+                       (let [user ((resolve 'purple.users/get-user-by-id)
+                                   (conn) user_id)]
+                         (str "From User ID: "
+                              user_id
+                              "\n\n"
+                              "Name: "
+                              (:name user)
+                              "\n\n"
+                              "Email: "
+                              (:email user)
+                              "\n\n"
+                              text))
                        text)}))
 
 

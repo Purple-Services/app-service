@@ -71,7 +71,6 @@
        (catch Exception e ;; not ideal, it assumes any bad status code is this
          (send-email
           {:to "chris@purpledelivery.com"
-           :cc "bruno@purpledelivery.com"
            :subject "Failed Stripe Payment"
            :body (str "Failed payment details:\n\n"
                       "Description: \n"
