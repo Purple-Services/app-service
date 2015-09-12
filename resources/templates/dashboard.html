@@ -141,10 +141,22 @@
         </div>
 
         <div style="text-align: center; padding-bottom: 20px;">
-            <a href="javascript:window.location+='/data-csv';this.onclick=function(){return false;}">Download data.csv</a>
+            stats.csv
+            <span id="generate-stats-csv" class="fake-link">[initiate a refresh]</span>
+            <span id="download-stats-csv" class="fake-link">[download]</span>
         </div>
         
         <script>
+         $("#generate-stats-csv").click(function(){
+             
+         });
+
+         $("#download-stats-csv").click(function(){
+             window.location = $("#config").data("base-url") +
+                               $("#config").data("uri-segment") +
+                               "download-stats-csv";
+         });
+         
          $("#configForm").submit(function(e){
              e.preventDefault();
              var price87 = $("#gasPriceDollars87").val();
