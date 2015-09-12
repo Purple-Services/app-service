@@ -242,7 +242,7 @@
                             {}
                             :append
                             (str "ORDER BY target_time_start DESC"
-                                 (when (not all) " LIMIT 50")))
+                                 (when (not all) " LIMIT 100")))
         
         users-by-id
         (->> (!select db-conn "users"
