@@ -292,7 +292,10 @@
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
-<<<<<<< HEAD
+              (GET "/all" []
+                   (-> (pages/dashboard (conn) :all true)
+                       response
+                       wrap-page))
               (GET "/generate-stats-csv" []
                    (do (future (analytics/gen-stats-csv))
                        (response {:success true})))
@@ -302,19 +305,6 @@
                                "text/csv; name=\"stats.csv\"")
                        (header "Content-Disposition"
                                "attachment; filename=\"stats.csv\"")))
-=======
-              (GET "/all" []
-                   (-> (pages/dashboard (conn) :all true)
-                       response
-                       wrap-page))
-              (GET "/data-csv" []
-                   (do (analytics/gen-stats-csv)
-                       (-> (response (java.io.File. "stats.csv"))
-                           (header "Content-Type:"
-                                   "text/csv; name=\"stats.csv\"")
-                           (header "Content-Disposition"
-                                   "attachment; filename=\"stats.csv\""))))
->>>>>>> dev
               (POST "/send-push-to-all-active-users" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
@@ -340,7 +330,12 @@
                    (-> (pages/dashboard (conn) :read-only true)
                        response
                        wrap-page))
-<<<<<<< HEAD
+              (GET "/all" []
+                   (-> (pages/dashboard (conn)
+                                        :read-only true
+                                        :all true)
+                       response
+                       wrap-page))
               (GET "/generate-stats-csv" []
                    (do (future (analytics/gen-stats-csv))
                        (response {:success true})))
@@ -350,21 +345,6 @@
                                "text/csv; name=\"stats.csv\"")
                        (header "Content-Disposition"
                                "attachment; filename=\"stats.csv\""))))
-=======
-              (GET "/all" []
-                   (-> (pages/dashboard (conn)
-                                        :read-only true
-                                        :all true)
-                       response
-                       wrap-page))
-              (GET "/data-csv" []
-                   (do (analytics/gen-stats-csv)
-                       (-> (response (java.io.File. "stats.csv"))
-                           (header "Content-Type:"
-                                   "text/csv; name=\"stats.csv\"")
-                           (header "Content-Disposition"
-                                   "attachment; filename=\"stats.csv\"")))))
->>>>>>> dev
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
