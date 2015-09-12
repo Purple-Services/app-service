@@ -84,12 +84,16 @@
 (def twilio-auth-token (System/getProperty "TWILIO_AUTH_TOKEN"))
 (def twilio-from-number (System/getProperty "TWILIO_FROM_NUMBER"))
 
-;;;; Service Hours (time bracket to allow orders to be placed)
-;; hour of day, start and end (in PST/PDT), both are inclusive
-;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
-;; the way things are coded, you can't wrap around past midnight
+;;;; Service Hours
+;; Time bracket to allow orders to be placed
+;; Minute of day, start and end (in PST/PDT)
+;; e.g., [(* 60 8) (* 60 19)] service available from 8:00:00am to 7:59:59pm
+;; The way things are coded, you can't wrap around past midnight.
 ;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
-(def service-time-bracket [7 21])
+(def service-time-bracket [(+ (* 60 7) 30)
+                           (+ (* 60 22) 30)]) ; 7:30am 10:30pm
+;; Minute of day when one-hour orders start being allowed for that day.
+(def one-hour-orders-allowed (* 60 10)) ; 10:00am
 
 ;;;; Delivery time guarantee options
 ;; Key is number of minutes till deadline
