@@ -542,6 +542,17 @@
                                       description
                                       (:email u)))))
 
+(defn unpaid-balance
+  [db-conn user-id]
+  (reduce +
+          (map :total_price
+               (!select db-conn
+                        "orders"
+                        [:total_price]
+                        {:user_id user-id
+                         :status "complete"
+                         :paid 0}))))
+
 (defn send-push
   "Sends a push notification to user."
   [db-conn user-id message]
