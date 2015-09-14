@@ -400,7 +400,7 @@
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))
                              {:success false
-                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds."})
+                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
                 "enroute" (if (= user-id (:courier_id order))
                             (begin-route db-conn order)
                             {:success false

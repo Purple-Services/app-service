@@ -296,6 +296,10 @@
                    (-> (pages/dashboard (conn) :all true)
                        response
                        wrap-page))
+              (GET "/declined" []
+                   (-> (pages/declined (conn))
+                       response
+                       wrap-page))
               (GET "/generate-stats-csv" []
                    (do (future (analytics/gen-stats-csv))
                        (response {:success true})))
