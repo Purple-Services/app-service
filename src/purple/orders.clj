@@ -33,7 +33,7 @@
            :append "ORDER BY target_time_start DESC"))
 
 (defn get-by-id
-  "Gets a user from db by user-id."
+  "Gets an order from db by order's id."
   [db-conn id]
   (first (!select db-conn
                   "orders"
@@ -150,8 +150,13 @@
       "87"))) ;; if we can't find it then assume 87
 
 (defn new-order-text
-  [o]
+  [db-conn o]
   (str "New order:"
+       (let [unpaid-balance ((resolve 'purple.users/unpaid-balance)
+                             db-conn (:user_id o))]
+         (when (> unpaid-balance 0)
+           (str "\n!UNPAID BALANCE: $"
+                (cents->dollars unpaid-balance))))
        "\nDue: " (unix->full
                   (:target_time_end o))
        "\n" (:address_street o) ", "
@@ -245,7 +250,7 @@
                                                 "Please press Accept "
                                                 "Order ASAP."))
                          available-couriers)
-                   (run! #(send-sms % (new-order-text o))
+                   (run! #(send-sms % (new-order-text db-conn o))
                          (concat (map (comp id->phone-number :id)
                                       connected-couriers)
                                  (only-prod ["3235782263" ;; Bruno
