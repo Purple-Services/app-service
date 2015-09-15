@@ -56,7 +56,8 @@
   [x]
   [:title] (content (:title x))
 
-  [:#config] (set-attr :data-base-url (:base-url x))
+  [:#config] (set-attr :data-base-url (:base-url x)
+                       )
 
   [:#last-updated] (content (str "Last Updated: "
                                  (unix->full (quot (System/currentTimeMillis)
@@ -145,8 +146,12 @@
              (content (str (:coupon_code t)))
              
              [:td.total_price]
-             (content (str "$" (cents->dollars (:total_price t)))))
-
+             (do-> (if (and (not (:paid t))
+                            (= (:status t) "complete")
+                            (not= 0 (:total_price t)))
+                     (add-class "late") ;; Payment failed!
+                     (add-class "not-late"))
+                   (content (str "$" (cents->dollars (:total_price t))))))
   
   [:#users :tbody :tr] (clone-for [t (:users x)]
                                   [:td.name]
@@ -187,7 +192,9 @@
                                   )
 
   [:#users-count] (content (str "("
-                                (:users-count x)
+                                (if (:all x)
+                                  (:users-count x)
+                                  "?")
                                 ")"))
 
   [:#coupons :tbody :tr]
@@ -203,39 +210,84 @@
              (content (unix->fuller (:expiration_time t)))
 
              [:td.times_used]
-             (content (str (-> (:used_by_license_plates t)
-                               (s/split #",")
-                               (->> (remove s/blank?))
-                               count)))
+             (content (str (:times-used t)))
 
              [:td.only_for_first_orders]
              (content (if (:only_for_first_orders t) "Yes" "No")))
 
   [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
   [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x))
+
+  [:#mainStyleSheet] (set-attr :href (str (:base-url x)
+                                          "css/main.css"))
   
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
-                                          "display: block; margin: 0px auto;")))
+                                          "display: block; margin: 0px auto;"))
+  
+  [:body] (if (:only-show-orders x)
+            (add-class "only-show-orders")
+            (add-class "standard"))
+  [:#orders] (if (:only-show-orders x)
+               (remove-class "hide-extra")
+               (add-class "hide-extra"))
+  [:#orders-heading] (if (:only-show-orders x)
+                       (content "Declined Payments")
+                       (add-class "standard"))
+  )
 
-(defn dashboard [db-conn & {:keys [read-only]}]
+
+;; If it's 'all' then we get 'all' the data from db
+;; When 'all' is false, then we only get the first 50 orders and then we get
+;; only the users and vehicles that are being referenced in those orders,
+;; and the user accounts that are references by the couriers
+
+(defn dashboard [db-conn & {:keys [read-only all]}]
   (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
         courier-ids (distinct (map :id all-couriers))
-        users-by-id (->> (!select db-conn "users"
-                                  [:id :name :email :phone_number :os
-                                   :app_version :stripe_default_card
-                                   :arn_endpoint :timestamp_created] {})
-                         (group-by :id))
+        all-orders (!select db-conn
+                            "orders"
+                            ["*"]
+                            {}
+                            :append
+                            (str "ORDER BY target_time_start DESC"
+                                 (when (not all) " LIMIT 100")))
+        
+        users-by-id
+        (->> (!select db-conn "users"
+                      [:id :name :email :phone_number :os
+                       :app_version :stripe_default_card
+                       :arn_endpoint :timestamp_created]
+                      {}
+                      :custom-where
+                      (when (not all)
+                        (let [customer-ids (distinct (map :user_id all-orders))]
+                          (str "id IN (\""
+                               (s/join "\",\"" (distinct
+                                                (concat customer-ids
+                                                        courier-ids)))
+                               "\")"))))
+             (group-by :id))
+        
         id->name #(:name (first (get users-by-id %)))
-        vehicles-by-id (->> (!select db-conn "vehicles"
-                                     [:id :year :make :model :color :gas_type
-                                      :license_plate] {})
-                            (group-by :id))
+
+        vehicles-by-id
+        (->> (!select db-conn "vehicles"
+                      [:id :year :make :model :color :gas_type
+                       :license_plate]
+                      {}
+                      :custom-where
+                      (let [vehicle-ids (distinct (map :vehicle_id all-orders))]
+                        (str "id IN (\""
+                             (s/join "\",\"" vehicle-ids)
+                             "\")")))
+             (group-by :id))
+        
         id->vehicle #(first (get vehicles-by-id %))
         all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
-        all-orders (orders/get-all (conn))]
+        ]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
@@ -257,12 +309,84 @@
              :users (sort-by #(.getTime (:timestamp_created %))
                              >
                              (map (comp first val) users-by-id))
-             :coupons all-coupons
+             :coupons (sort-by :times-used
+                               >
+                               (map #(assoc % :times-used
+                                            (-> (:used_by_license_plates %)
+                                                (s/split #",")
+                                                (->> (remove s/blank?))
+                                                count))
+                                    all-coupons))
              :users-count (count users-by-id)
              :base-url config/base-url
              :gas-price-87 @config/gas-price-87
              :gas-price-91 @config/gas-price-91
-             :read-only read-only}))))
+             :read-only read-only
+             :all all}))))
+
+(defn declined [db-conn]
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+                          ;; remove chriscourier@test.com
+                          (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
+        courier-ids (distinct (map :id all-couriers))
+        all-orders (!select db-conn
+                            "orders"
+                            ["*"]
+                            {:paid 0
+                             :status "complete"}
+                            :append
+                            "AND total_price > 0 ORDER BY target_time_start DESC")
+        
+        users-by-id
+        (->> (!select db-conn "users"
+                      [:id :name :email :phone_number :os
+                       :app_version :stripe_default_card
+                       :arn_endpoint :timestamp_created]
+                      {}
+                      :custom-where
+                      (let [customer-ids (distinct (map :user_id all-orders))]
+                        (str "id IN (\""
+                             (s/join "\",\"" (distinct
+                                              (concat customer-ids
+                                                      courier-ids)))
+                             "\")")))
+             (group-by :id))
+        
+        id->name #(:name (first (get users-by-id %)))
+
+        vehicles-by-id
+        (->> (!select db-conn "vehicles"
+                      [:id :year :make :model :color :gas_type
+                       :license_plate]
+                      {}
+                      :custom-where
+                      (let [vehicle-ids (distinct (map :vehicle_id all-orders))]
+                        (str "id IN (\""
+                             (s/join "\",\"" vehicle-ids)
+                             "\")")))
+             (group-by :id))
+        
+        id->vehicle #(first (get vehicles-by-id %))
+        ]
+    (apply str
+           (dashboard-template
+            {:title "Purple - Declined Payments"
+             :orders (map #(assoc %
+                                  :courier_name (id->name (:courier_id %))
+                                  :customer_name (id->name (:user_id %))
+                                  :was-late
+                                  (let [completion-time
+                                        (-> (str "kludgeFix 1|" (:event_log %))
+                                            (s/split #"\||\s")
+                                            (->> (apply hash-map))
+                                            (get "complete"))]
+                                    (and completion-time
+                                         (> (Integer. completion-time)
+                                            (:target_time_end %))))
+                                  :vehicle (id->vehicle (:vehicle_id %)))
+                          all-orders)
+             :base-url config/base-url
+             :only-show-orders true}))))
 
 (defn twiml-simple
   [message]

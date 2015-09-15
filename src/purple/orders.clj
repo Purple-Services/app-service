@@ -33,7 +33,7 @@
            :append "ORDER BY target_time_start DESC"))
 
 (defn get-by-id
-  "Gets a user from db by user-id."
+  "Gets an order from db by order's id."
   [db-conn id]
   (first (!select db-conn
                   "orders"
@@ -128,8 +128,8 @@
   "Check if the Time choice is truly available."
   [db-conn o]
   (if (< (:time-limit o) 180)
-    (and (> (unix->hour-of-day (:target_time_start o))
-            9)
+    (and (>= (unix->minute-of-day (:target_time_start o))
+             config/one-hour-orders-allowed)
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
@@ -150,8 +150,13 @@
       "87"))) ;; if we can't find it then assume 87
 
 (defn new-order-text
-  [o]
+  [db-conn o]
   (str "New order:"
+       (let [unpaid-balance ((resolve 'purple.users/unpaid-balance)
+                             db-conn (:user_id o))]
+         (when (> unpaid-balance 0)
+           (str "\n!UNPAID BALANCE: $"
+                (cents->dollars unpaid-balance))))
        "\nDue: " (unix->full
                   (:target_time_end o))
        "\n" (:address_street o) ", "
@@ -245,7 +250,7 @@
                                                 "Please press Accept "
                                                 "Order ASAP."))
                          available-couriers)
-                   (run! #(send-sms % (new-order-text o))
+                   (run! #(send-sms % (new-order-text db-conn o))
                          (concat (map (comp id->phone-number :id)
                                       connected-couriers)
                                  (only-prod ["3235782263" ;; Bruno
@@ -395,7 +400,7 @@
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))
                              {:success false
-                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds."})
+                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
                 "enroute" (if (= user-id (:courier_id order))
                             (begin-route db-conn order)
                             {:success false

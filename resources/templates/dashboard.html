@@ -2,7 +2,7 @@
     <head>
         <title>Purple</title>
         <link href='//fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
-        <link href='css/main.css' rel='stylesheet' type='text/css' />
+        <link id='mainStyleSheet' href='css/main.css' rel='stylesheet' type='text/css' />
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     </head>
     <body>
@@ -37,9 +37,9 @@
             </tbody>
         </table>
 
-        <h2>Orders <span class="show-all" data-show-id="orders">[show all]</span></h2>
+        <h2 class="part-of-orders" id="orders-heading">Orders <span class="show-all" data-show-id="orders">[show all]</span> <a href="/dashboard/declined" class="fake-link">[view all declined payments]</a></h2>
         
-        <table id="orders" class="hide-extra">
+        <table id="orders" class="part-of-orders hide-extra">
             <thead>
                 <tr>
                     <td>Status</td>
@@ -141,10 +141,22 @@
         </div>
 
         <div style="text-align: center; padding-bottom: 20px;">
-            <a href="javascript:window.location+='/data-csv';this.onclick=function(){return false;}">Download data.csv</a>
+            stats.csv
+            <span id="generate-stats-csv" class="fake-link">[initiate a refresh]</span>
+            <span id="download-stats-csv" class="fake-link">[download]</span>
         </div>
         
         <script>
+         $("#generate-stats-csv").click(function(){
+             
+         });
+
+         $("#download-stats-csv").click(function(){
+             window.location = $("#config").data("base-url") +
+                               $("#config").data("uri-segment") +
+                               "download-stats-csv";
+         });
+         
          $("#configForm").submit(function(e){
              e.preventDefault();
              var price87 = $("#gasPriceDollars87").val();
