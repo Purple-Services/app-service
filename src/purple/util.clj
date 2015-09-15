@@ -30,7 +30,7 @@
 (defmacro only-prod
   "Only run this code when in production mode."
   [& body]
-  `(when-not (config/test-or-dev-env? env)
+  `(when (= config/db-user "purplemasterprod")
      ~@body))
 
 (defmacro catch-notify
