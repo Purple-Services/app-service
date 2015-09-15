@@ -155,13 +155,13 @@
                                  user)
                                :referral_code (coupons/create-referral-coupon db-conn
                                                                               (:id user))))]
-    (future
-      (send-email ;; debugging purposes, "why sometimes 100's of calls..."
-       {:to "chris@purpledelivery.com"
-        :subject "Purple - users/add caleld"
-        :body (str user
-                   "\nResult:\n"
-                   result)}))
+    (only-prod (future
+                 (send-email ;; debugging purposes, "why sometimes 100's of calls..."
+                  {:to "chris@purpledelivery.com"
+                   :subject "Purple - users/add caleld"
+                   :body (str user
+                              "\nResult:\n"
+                              result)})))
     result))
 
 (defn login
