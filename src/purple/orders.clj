@@ -242,9 +242,9 @@
                                              ((resolve 'purple.users/get-users-by-ids)
                                               db-conn (map :id connected-couriers)))
                        id->phone-number #(:phone_number (first (get users-by-id %)))]
-                   (send-email {:to "chris@purpledelivery.com"
-                                :subject "Purple - New Order"
-                                :body (str o)})
+                   (only-prod (send-email {:to "chris@purpledelivery.com"
+                                           :subject "Purple - New Order"
+                                           :body (str o)}))
                    (run! #((resolve 'purple.users/send-push)
                            db-conn (:id %) (str "New order available. "
                                                 "Please press Accept "

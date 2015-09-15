@@ -7,7 +7,8 @@
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]
             [clj-aws.core :as aws]
-            [clj-aws.sns :as sns])
+            [clj-aws.sns :as sns]
+            [environ.core :refer [env]])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
@@ -29,7 +30,7 @@
 (defmacro only-prod
   "Only run this code when in production mode."
   [& body]
-  `(when (= config/db-user "purplemasterprod")
+  `(when-not (config/test-or-dev-env? env)
      ~@body))
 
 (defmacro catch-notify
