@@ -153,43 +153,44 @@
                      (add-class "not-late"))
                    (content (str "$" (cents->dollars (:total_price t))))))
   
-  [:#users :tbody :tr] (clone-for [t (:users x)]
-                                  [:td.name]
-                                  (content (:name t))
+  [:#users :tbody :tr]
+  (clone-for [t (:users x)]
+                   [:td.name]
+                   (content (:name t))
 
-                                  [:td.email]
-                                  (content (:email t))
+                   [:td.email]
+                   (content (:email t))
 
-                                  [:td.phone_number]
-                                  (content (:phone_number t))
+                   [:td.phone_number]
+                   (content (:phone_number t))
 
-                                  [:td.has_added_card]
-                                  (content
-                                   (if (s/blank? (:stripe_default_card t))
-                                     "No"
-                                     "Yes"))
+                   [:td.has_added_card]
+                   (content
+                    (if (s/blank? (:stripe_default_card t))
+                      "No"
+                      "Yes"))
 
-                                  [:td.push_set_up]
-                                  (html-content
-                                   (if (s/blank? (:arn_endpoint t))
-                                     "No"
-                                     (str "Yes "
-                                          "<input type='checkbox' "
-                                          "value='" (:id t) "' "
-                                          "class='send-push-to' "
-                                          "/>")))
+                   [:td.push_set_up]
+                   (html-content
+                    (if (s/blank? (:arn_endpoint t))
+                      "No"
+                      (str "Yes "
+                           "<input type='checkbox' "
+                           "value='" (:id t) "' "
+                           "class='send-push-to' "
+                           "/>")))
 
-                                  [:td.os]
-                                  (content (:os t))
+                   [:td.os]
+                   (content (:os t))
 
-                                  [:td.app_version]
-                                  (content (:app_version t))
+                   [:td.app_version]
+                   (content (:app_version t))
 
-                                  [:td.timestamp_created]
-                                  (content (unix->full
-                                            (/ (.getTime (:timestamp_created t))
-                                               1000)))
-                                  )
+                   [:td.timestamp_created]
+                   (content (unix->full
+                             (/ (.getTime (:timestamp_created t))
+                                1000)))
+                   )
 
   [:#users-count] (content (str "("
                                 (if (:all x)
