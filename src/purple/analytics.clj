@@ -43,7 +43,9 @@
 (defn orders-up-to-day
   "Get all orders up to date where date is in YYYY-MM-dd format."
   [orders ^String date]
-  (filter #(<= (time-coerce/to-long (time-coerce/from-string (first %))) (time-coerce/to-long (time-coerce/from-string date))) (orders-by-day orders)))
+  (filter #(<= (time-coerce/to-long (time-coerce/from-string (first %)))
+               (time-coerce/to-long (time-coerce/from-string date)))
+          (orders-by-day orders)))
 
 (defn user-count
   "Given a vector of orders, get the amount of orders each user made"
