@@ -6,7 +6,7 @@
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     </head>
     <body>
-        <span id="config" data-base-url=""></span>
+        <span id="config" data-base-url="" data-uri-segment=""></span>
 
         <div id="last-updated" style="width: 100%; text-align: center;"></div>
 
@@ -148,7 +148,18 @@
         
         <script>
          $("#generate-stats-csv").click(function(){
-             
+             $.ajax({
+                 type: "GET",
+                 url: $("#config").data("base-url") +
+                      $("#config").data("uri-segment") +
+                      "generate-stats-csv",
+                 contentType: 'application/json',
+                 success: function(response) {
+                     if (response.success === true) {
+                         alert("stats.csv generation initiated. Please refresh the page in 30 seconds or so. The date on the [download] link will update when generation is finished.");
+                     }
+                 }
+             });
          });
 
          $("#download-stats-csv").click(function(){

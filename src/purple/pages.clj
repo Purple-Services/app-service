@@ -57,7 +57,7 @@
   [:title] (content (:title x))
 
   [:#config] (set-attr :data-base-url (:base-url x)
-                       )
+                       :data-uri-segment (:uri-segment x))
 
   [:#last-updated] (content (str "Last Updated: "
                                  (unix->full (quot (System/currentTimeMillis)
@@ -221,6 +221,12 @@
 
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
                                           "css/main.css"))
+
+  [:#download-stats-csv]
+  (content (str "[download "
+                (unix->full (quot (.lastModified (java.io.File. "stats.csv"))
+                                  1000))
+                "]"))
   
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
@@ -320,6 +326,7 @@
                                     all-coupons))
              :users-count (count users-by-id)
              :base-url config/base-url
+             :uri-segment (if read-only "stats/" "dashboard/")
              :gas-price-87 @config/gas-price-87
              :gas-price-91 @config/gas-price-91
              :read-only read-only
