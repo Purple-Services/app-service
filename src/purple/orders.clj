@@ -463,10 +463,14 @@
                      "orders"
                      {:coupon_code ""}
                      {:id order-id}))
+          ;; let the courier know the order has been cancelled
           (when-not (s/blank? (:courier_id o))
             (set-courier-busy db-conn (:courier_id o) false)
             ((resolve 'purple.users/send-push) db-conn (:courier_id o)
              "The current order has been cancelled."))
+          ;; let the user know the order has been cancelled
+          ((resolve 'purple.users/send-push) db-conn user-id
+           "The current order has been cancelled.")
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})

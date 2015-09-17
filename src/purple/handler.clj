@@ -325,7 +325,16 @@
                      (let [b (keywordize-keys body)]
                        (dispatch/change-gas-price (conn)
                                                   (:gas-price-87 b)
-                                                  (:gas-price-91 b))))))
+                                                  (:gas-price-91 b)))))
+              ;; Dashboard admin cancels order
+              (POST "/cancel-order" {body :body}
+                    ;; cancel the order
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (conn)]
+                      (orders/cancel db-conn
+                                     (:user_id b)
+                                     (:order_id b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication

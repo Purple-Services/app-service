@@ -107,6 +107,19 @@
   
   [:#orders :tbody :tr]
   (clone-for [t (:orders x)]
+             [:td.cancel]
+             (if (not (or (= (:status t)
+                             "complete")
+                          (= (:status t)
+                             "cancelled")
+                          ))
+               (content (html [:input {:type "submit" :class "cancel-order"
+                                       :value "Cancel Order"
+                                       :data-id (:id t)
+                                       :data-user-id (:user_id t)}]))
+               (content)
+               )
+             ;;(content (str (:id t)))
              [:td.status]
              (do-> (if (:was-late t)
                      (add-class "late")
