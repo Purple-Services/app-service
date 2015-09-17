@@ -439,7 +439,7 @@
       ((resolve 'purple.users/details) db-conn user-id)))
 
 (defn cancel
-  [db-conn user-id order-id]
+  [db-conn user-id order-id & {:keys [notify-customer]}]
   (if-let [o (get-by-id db-conn order-id)]
     (if (in? config/cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
@@ -469,8 +469,10 @@
             ((resolve 'purple.users/send-push) db-conn (:courier_id o)
              "The current order has been cancelled."))
           ;; let the user know the order has been cancelled
-          ((resolve 'purple.users/send-push) db-conn user-id
-           "The current order has been cancelled.")
+          (when notify-customer
+            ((resolve 'purple.users/send-push)
+             db-conn user-id
+             "Your order has been cancelled via adminstrator action."))
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})
