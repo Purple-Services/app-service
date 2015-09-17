@@ -472,7 +472,7 @@
           (when notify-customer
             ((resolve 'purple.users/send-push)
              db-conn user-id
-             "Your order has been cancelled via adminstrator action."))
+             "Your order has been cancelled. If you have any questions, please email us at info@purpledelivery.com."))
           ((resolve 'purple.users/details) db-conn user-id))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})
