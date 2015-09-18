@@ -456,6 +456,60 @@
     {:success false
      :message "An order with that ID could not be found."}))
 
+(defn update-status-by-admin
+  [db-conn order-id]
+  (if-let [order (get-by-id db-conn order-id)]
+    (let [advanced-status (next-status (:status order))]
+      ;; Orders with "complete", "cancelled" or "unassigned" statuses can not be
+      ;; advanced. These orders should not be modifiable in the dashboard
+      ;; console, however this is checked on the server below.
+      (cond
+        (or (= (:status order)
+               "complete")
+            (= (:status order)
+               "cancelled")
+            (= (:status order)
+               "unassigned"))
+        {:success false
+         :message "An order's status can not be advanced if it already complete, cancelled, or unassigned"}
+        ;; Likewise, the dashboard user should not be allowed to advanced
+        ;; to "assigned" or "accepted", but we check it on the server anyway.
+        (or (= advanced-status "assigned")
+            (= advanced-status "accepted"))
+        {:success false
+         :message "An order's status can not be advanced to assigned or acccepted. Please assign a courier to this order in order to advance this order. "}
+        ;; update the status to "enroute"
+        (= advanced-status "enroute")
+        (do (begin-route db-conn order)
+            ;; let the courier know
+            ((resolve 'purple.users/send-push) db-conn (:courier_id order)
+             "Your order status has been advanced to enroute.")
+            {:success true
+             :message advanced-status})
+        ;; update the status to "servicing"
+        (= advanced-status "servicing")
+        (do (service db-conn order)
+            ;; let the courier know
+            ((resolve 'purple.users/send-push) db-conn (:courier_id order)
+             "Your order status has been advanced to servicing.")
+            {:success true
+             :message advanced-status})
+        ;; update the order to "complete"
+        (= advanced-status "complete")
+        (do (complete db-conn order)
+            ;; let the courier know
+            ((resolve 'purple.users/send-push) db-conn (:courier_id order)
+             "Your order status has been advanced to complete.")
+            {:success true
+             :message advanced-status})
+        ;; something wasn't caught
+        :else {:success false
+               :message "An unknown error occured."
+               :status advanced-status}))
+    ;; the order was not found on the server
+    {:success false
+     :message "An order with that ID could not be found."}))
+
 (defn update-rating
   "Assumed to have been auth'd properly already."
   [db-conn order-id number-rating text-rating]
