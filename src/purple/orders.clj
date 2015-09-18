@@ -423,7 +423,7 @@
         {:success false
          :message (if (= status "assigned")
                     "Oops... it looks like another courier accepted that order before you."
-                    "Your app seems to be out of sync. Try closing the app completely and restarting it.")}
+                    "Your app seems to be out of sync. Try going back to the Orders list and pulling down to refresh it. Or, you might need to close the app completely and restart it.")}
         (let [update-result
               (case status
                 "assigned" (if (in? (map :id
