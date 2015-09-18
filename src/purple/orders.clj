@@ -471,7 +471,7 @@
       ((resolve 'purple.users/details) db-conn user-id)))
 
 (defn cancel
-  [db-conn user-id order-id]
+  [db-conn user-id order-id & {:keys [notify-customer suppress-user-details]}]
   (if-let [o (get-by-id db-conn order-id)]
     (if (in? config/cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
@@ -496,10 +496,16 @@
                        "orders"
                        {:coupon_code ""}
                        {:id order-id}))
+            ;; let the courier know the order has been cancelled
             (when-not (s/blank? (:courier_id o))
               (set-courier-busy db-conn (:courier_id o) false)
               ((resolve 'purple.users/send-push) db-conn (:courier_id o)
                "The current order has been cancelled."))
+            ;; let the user know the order has been cancelled
+            (when notify-customer
+              ((resolve 'purple.users/send-push)
+               db-conn user-id
+               "Your order has been cancelled. If you have any questions, please email us at info@purpledelivery.com."))
             (when-not (s/blank? (:stripe_charge_id o))
               (let [refund-result (payment/refund-stripe-charge
                                    (:stripe_charge_id o))]
@@ -507,7 +513,9 @@
                   (stamp-with-refund db-conn
                                      order-id
                                      (:refund refund-result))))))
-          ((resolve 'purple.users/details) db-conn user-id))
+          (if suppress-user-details
+            {:success true}
+            ((resolve 'purple.users/details) db-conn user-id)))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})
     {:success false
