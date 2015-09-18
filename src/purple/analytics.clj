@@ -50,7 +50,8 @@
 (defn user-count
   "Given a vector of orders, get the amount of orders each user made"
   [orders]
-  (map (fn [orders] {:user_id (first orders) :count (count (second orders))}) (group-by :user_id orders)))
+  (map #(hash-map :user_id (first %) :count (count (second %)))
+       (group-by :user_id orders)))
 
 (defn user-order-count-by-day
   "Get a map of {:user_id <id> :count <order_count>} given orders and date in YYYY-MM-dd format."
