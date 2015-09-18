@@ -525,7 +525,7 @@
                        {:subject "Invitation to Try Purple"
                         :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
 
-(defn charge-user
+(defn auth-charge-user
   "Charges user amount (an int in cents) using default payment method."
   [db-conn user-id order-id amount description]
   (let [u (get-user-by-id db-conn user-id)
@@ -534,13 +534,13 @@
       (do (send-email
            {:to "chris@purpledelivery.com"
             :subject "Purple - Error"
-            :body (str "Error charging user, no payment method is set up.")})
+            :body (str "Error authing charge on user, no payment method is set up.")})
           {:success true})
-      (payment/charge-stripe-customer customer-id
-                                      order-id
-                                      amount
-                                      description
-                                      (:email u)))))
+      (payment/auth-charge-stripe-customer customer-id
+                                           order-id
+                                           amount
+                                           description
+                                           (:email u)))))
 
 (defn unpaid-balance
   [db-conn user-id]
@@ -551,7 +551,8 @@
                         [:total_price]
                         {:user_id user-id
                          :status "complete"
-                         :paid 0}))))
+                         :paid 0}
+                        :append "AND total_price > 0")))) ; $0 order = no charge
 
 (defn send-push
   "Sends a push notification to user."
