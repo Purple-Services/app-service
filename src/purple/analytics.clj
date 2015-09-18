@@ -71,7 +71,7 @@
   "Given a list of orders and a date, run a filter predicate to determine cumulative orders.
   Example predicate to get all users who have ordered exactly once: (fn [x] (= x 1))"
   [orders date pred]
-  (count (filter pred (map :count (user-order-count-by-day orders date))))  )
+  (count-filter pred (map :count (user-order-count-by-day orders date))))
 
 (defn made-first-order-this-day
   "Is this the date that the user made their first order?"
