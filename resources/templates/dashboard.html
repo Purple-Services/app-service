@@ -58,7 +58,7 @@
             </thead>
             <tbody>
                 <tr>
-		    <td class="cancel"></td>
+		            <td class="cancel"></td>
                     <td class="status"></td>
                     <td class="courier_name"></td>
                     <td class="target_time_start"></td>
@@ -158,7 +158,7 @@
                  contentType: 'application/json',
                  success: function(response) {
                      if (response.success === true) {
-                         alert("stats.csv generation initiated. Please refresh the page in 30 seconds or so. The date on the [download] link will update when generation is finished.");
+                         alert("stats.csv generation initiated. Please refresh the page in a minute or so, then try to download the CSV file..");
                      }
                  }
              });
@@ -275,9 +275,9 @@
              });
 
              $('.cancel-order').click(function(){
-                 if (confirm("Are you sure you want to cancel this order?")) {
-		     /// to get the element inside of success statement
-		     var self = this;
+                 if (confirm("Are you sure you want to cancel this order? (this cannot be undone) (customer will be notified via push notification)")) {
+		             // to get the element inside of success statement
+		             var self = this;
                      $.ajax({
                          type: "POST",
                          url: "dashboard/cancel-order",
@@ -288,22 +288,22 @@
                          dataType: "json",
                          contentType: 'application/json',
                          success: function(response) {
-		             if (!response.success) {
-				 alert('The order could not be cancelled!\n' +
-				       'Server Message: '
-				       + response.message);
-			     } else {
-				 // remove the cancel order button and mark the
-				 // order has cancelled
-				 $(self).parent().parent().find("td.status").html("cancelled");
-				 $(self).parent().empty();
-				 alert('Order cancelled!');
-			     }
+		                     if (!response.success) {
+				                 alert('The order could not be cancelled!\n' +
+				                       'Server Message: '
+				                     + response.message);
+			                 } else {
+				                 // remove the cancel order button and mark the
+				                 // order has cancelled
+				                 $(self).parent().parent().find("td.status").html("cancelled");
+				                 $(self).parent().empty();
+				                 alert('Order cancelled!');
+			                 }
                          },
                          failure: function(response) {
-			     alert('Something went wrong. Order has NOT ' +
-				   'been cancelled!');
-			     console.log(response);
+			                 alert('Something went wrong. Order has NOT ' +
+				                   'been cancelled!');
+			                 console.log(response);
                          }
                      });
                  }
