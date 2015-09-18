@@ -335,7 +335,8 @@
                       (orders/cancel db-conn
                                      (:user_id b)
                                      (:order_id b)
-                                     :notify-customer true)))))
+                                     :notify-customer true
+                                     :suppress-user-details true)))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
