@@ -308,6 +308,54 @@
                      });
                  }
              });
+             $('td.status').on("click", function(){
+                 if (confirm("Are you sure you want to advance this order's " +
+                             "status? (this cannot be undone) (customer will " +
+                             "be notified via push notification)")) {
+                     // to get the element inside of success statement
+                     var self = this;
+                     // used to cache the input.advance-status
+                     // element below
+                     var cache;
+                     $.ajax({
+                         type: "POST",
+                         url: "dashboard/update-status-by-admin",
+                         data: JSON.stringify({
+                             "order_id": $(this).children().data("id"),
+                         }),
+                         dataType: "json",
+                         contentType: 'application/json',
+                         success: function(response) {
+                             if (!response.success) {
+                                 alert('The order could not be cancelled!\n' +
+                                       'Server Message: '
+                                       + response.message);
+                             } else {
+
+                                 // should be input.advance-status
+                                 cache = $(self).children();
+
+                                 // input.cancel and input.advance-status
+                                 // elements are removed when message is
+                                 // "complete"
+                                 if (response.message === "complete") {
+                                     $(self).parent().find(".cancel").empty();
+                                     $(self).text(response.message);
+                                 }
+                                 else {
+                                     // update the order's status
+                                     $(self).text(response.message).append(cache);
+                                 }
+                             }
+                         },
+                         failure: function(response) {
+                             alert('Something went wrong. Order was NOT ' +
+                                   'advanced!');
+                             console.log(response);
+                         }
+                     });
+                 }
+             });
          });
         </script>
     </body>
