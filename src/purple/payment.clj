@@ -83,7 +83,7 @@
                       "Stripe Customer ID: " customer-id "\n"
                       "Customer Email Address: " receipt-email "\n"
                       "Additional details: " (.getMessage e))})
-         {:success true})))
+         {:success false})))
 
 (defn capture-stripe-charge
   "Captures an authorized charge."
@@ -100,7 +100,7 @@
            :body (str "Failed charge capture details:\n\n"
                       "Charge ID: " charge-id "\n"
                       "Additional details: " (.getMessage e))})
-         {:success true})))
+         {:success false})))
 
 (defn refund-stripe-charge
   "Refunds a Stripe charge. Use on auth'd charges whether or not captured."
@@ -117,4 +117,4 @@
            :body (str "Failed charge refund details:\n\n"
                       "Refund ID: " charge-id "\n"
                       "Additional details: " (.getMessage e))})
-         {:success true})))
+         {:success false})))
