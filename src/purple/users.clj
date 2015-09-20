@@ -535,7 +535,7 @@
            {:to "chris@purpledelivery.com"
             :subject "Purple - Error"
             :body (str "Error authing charge on user, no payment method is set up.")})
-          {:success true})
+          {:success false})
       (payment/auth-charge-stripe-customer customer-id
                                            order-id
                                            amount
