@@ -10,6 +10,8 @@
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]))
 
+(def count-filter (comp count filter))
+
 (def ymd-formatter (time-format/formatter "yyyy-MM-dd"))
 
 (defn joda->ymd
@@ -78,8 +80,6 @@
   [user date orders] ;; 'orders' is coll of all orders (by any user)
   (when-let [first-order-by-user (get-first-order-by-user user orders)]
     (= date (unix->ymd (:target_time_start first-order-by-user)))))
-
-(def count-filter (comp count filter))
 
 (defn gen-stats-csv
   "Generates and saves a CSV file with some statistics."
