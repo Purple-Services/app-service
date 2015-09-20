@@ -96,6 +96,7 @@
 ;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
 (def service-time-bracket [(+ (* 60 7) 30)
                            (+ (* 60 22) 30)]) ; 7:30am 10:30pm
+
 ;; Minute of day when one-hour orders start being allowed for that day.
 (def one-hour-orders-allowed (* 60 10)) ; 10:00am
 

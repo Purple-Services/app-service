@@ -278,6 +278,7 @@
                  if (confirm("Are you sure you want to cancel this order? (this cannot be undone) (customer will be notified via push notification)")) {
                      // to get the element inside of success statement
                      var self = this;
+                     $(self).attr("disabled", true);
                      $.ajax({
                          type: "POST",
                          url: "dashboard/cancel-order",
@@ -288,6 +289,7 @@
                          dataType: "json",
                          contentType: 'application/json',
                          success: function(response) {
+                             $(self).removeAttr("disabled");
                              if (!response.success) {
                                  alert('The order could not be cancelled!\n' +
                                        'Server Message: '
@@ -301,6 +303,7 @@
                              }
                          },
                          failure: function(response) {
+                             $(self).removeAttr("disabled");
                              alert('Something went wrong. Order has NOT ' +
                                    'been cancelled!');
                              console.log(response);
