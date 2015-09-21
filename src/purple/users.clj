@@ -484,17 +484,16 @@
                  "users"
                  {:reset_key reset-key}
                  {:id (:id user)})
-        (only-prod
-         (send-email {:to platform-id
-                      :subject "Purple Account - Reset Password"
-                      :body (str "Hello " (:name user) ","
-                                 "\n\nPlease click the link below to reset "
-                                 "your password:"
-                                 "\n\n"
-                                 config/base-url
-                                 "user/reset-password/" reset-key
-                                 "\n\nThanks,"
-                                 "\nPurple")}))
+        (send-email {:to platform-id
+                     :subject "Purple Account - Reset Password"
+                     :body (str "Hello " (:name user) ","
+                                "\n\nPlease click the link below to reset "
+                                "your password:"
+                                "\n\n"
+                                config/base-url
+                                "user/reset-password/" reset-key
+                                "\n\nThanks,"
+                                "\nPurple")})
         {:success true
          :message (str "An email has been sent to "
                        platform-id
@@ -520,14 +519,13 @@
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
-  (only-prod
-   (send-email (merge {:to email-address}
-                      (if-not (nil? user_id)
-                        (let [user (get-user-by-id db-conn user_id)]
-                          {:subject (str (:name user) " invites you to try Purple")
-                           :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
-                        {:subject "Invitation to Try Purple"
-                         :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})))))
+  (send-email (merge {:to email-address}
+                     (if-not (nil? user_id)
+                       (let [user (get-user-by-id db-conn user_id)]
+                         {:subject (str (:name user) " invites you to try Purple")
+                          :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
+                       {:subject "Invitation to Try Purple"
+                        :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
 
 (defn auth-charge-user
   "Charges user amount (an int in cents) using default payment method."
