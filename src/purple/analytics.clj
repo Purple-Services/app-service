@@ -95,7 +95,7 @@
                                    (time/hours 24))))
            users (!select db-conn "users" [:timestamp_created :id] {})
            users-by-day (users-by-day users)
-           orders (!select db-conn "orders" [:target_time_start
+           orders (!select db-conn "orders" [:target_time_start :event_log
                                              :target_time_end :status
                                              :coupon_code :user_id] {})
            completed-orders (filter #(= "complete" (:status %)) orders)
