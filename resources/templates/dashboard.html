@@ -328,8 +328,8 @@
                      });
                  }
              });
-             $('td.status').on("click", function(){
-                 var current_status = $(this).text();
+             $('td.status').on("click", ".advance-status", function(){
+                 var current_status = $(this).parent().text();
                  console.log(current_status);
                  if (confirm("Are you sure you want to mark this order as " +
                              capitalizeFirstLetter(status_to_next_status[current_status]) +
@@ -345,7 +345,7 @@
                          type: "POST",
                          url: "dashboard/update-status",
                          data: JSON.stringify({
-                             "order_id": $(this).children().data("id"),
+                             "order_id": $(this).data("id"),
                          }),
                          dataType: "json",
                          contentType: 'application/json',
@@ -356,7 +356,7 @@
                                        + response.message);
                              } else {
                                  // grab the input.advance-status element..
-                                 cache = $(self).children();
+                                 cache = $(self);
                                  // ..and modify it's value to relfect the
                                  // status that it would be updated to
                                  cache.val(status_to_input_value[status_to_next_status[current_status]]);
@@ -365,12 +365,12 @@
                                  // elements are removed when message is
                                  // "complete"
                                  if (response.message === "complete") {
-                                     $(self).parent().find(".cancel").empty();
-                                     $(self).text(response.message);
+                                     $(self).parent().parent().find(".cancel").empty();
+                                     $(self).parent().text(response.message);
                                  }
                                  else {
                                      // update the order's status
-                                     $(self).text(response.message).append(cache);
+                                     $(self).parent().text(response.message).append(cache);
                                  }
                              }
                          },
