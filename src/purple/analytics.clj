@@ -117,7 +117,8 @@
                                   (map (fn [date]
                                          (let [us (get users-by-day date)
                                                os (get orders-by-day date)
-                                               
+
+                                               completed-orders (filter #(= "complete" (:status %)) orders)
                                                num-complete ;; Number of complete orders that day
                                                (count-filter #(= "complete" (:status %)) os)
                                                
@@ -179,11 +180,11 @@
                                                  num-complete-late
 
                                                  ;; cumulatively ordered once
-                                                 (users-ordered-to-date orders date (fn [x] (= x 1)))
+                                                 (users-ordered-to-date completed-orders date (fn [x] (= x 1)))
                                                  ;; cumulatively ordered twice
-                                                 (users-ordered-to-date orders date (fn [x] (= x 2)))
+                                                 (users-ordered-to-date completed-orders date (fn [x] (= x 2)))
                                                  ;; cumulatively ordered three or more times
-                                                 (users-ordered-to-date orders date (fn [x] (>= x 3)))
+                                                 (users-ordered-to-date completed-orders date (fn [x] (>= x 3)))
                                                  ])))
                                        dates)
                                   ))))))
