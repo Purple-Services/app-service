@@ -96,6 +96,7 @@
            users (!select db-conn "users" ["*"] {})
            users-by-day (users-by-day users)
            orders (!select db-conn "orders" ["*"] {})
+           completed-orders (filter #(= "complete" (:status %)) orders)
            orders-by-day (orders-by-day orders)
            coupons (!select db-conn "coupons" ["*"] {})
            standard-coupon-codes (->> (filter #(= "standard" (:type %)) coupons)
@@ -118,7 +119,6 @@
                                          (let [us (get users-by-day date)
                                                os (get orders-by-day date)
 
-                                               completed-orders (filter #(= "complete" (:status %)) orders)
                                                num-complete ;; Number of complete orders that day
                                                (count-filter #(= "complete" (:status %)) os)
                                                
