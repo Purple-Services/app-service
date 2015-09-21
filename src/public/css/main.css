@@ -52,3 +52,9 @@ td.late {
     font-weight: normal;
     cursor: pointer;
 }
+
+.only-show-orders h2:not(.part-of-orders),
+.only-show-orders table:not(.part-of-orders),
+.only-show-orders div:not(.part-of-orders){
+    display: none;
+}
