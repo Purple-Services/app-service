@@ -95,7 +95,10 @@
                                    (time/hours 24))))
            users (!select db-conn "users" [:timestamp_created :id] {})
            users-by-day (users-by-day users)
-           orders (!select db-conn "orders" [:target_time_start :target_time_end :status :coupon_code :user_id] {})
+           orders (!select db-conn "orders" [:target_time_start
+                                             :target_time_end :status
+                                             :coupon_code :user_id] {})
+           completed-orders (filter #(= "complete" (:status %)) orders)
            orders-by-day (orders-by-day orders)
            coupons (!select db-conn "coupons" [:type :code] {})
            standard-coupon-codes (->> (filter #(= "standard" (:type %)) coupons)
@@ -117,7 +120,7 @@
                                   (map (fn [date]
                                          (let [us (get users-by-day date)
                                                os (get orders-by-day date)
-                                               
+
                                                num-complete ;; Number of complete orders that day
                                                (count-filter #(= "complete" (:status %)) os)
                                                
@@ -179,11 +182,11 @@
                                                  num-complete-late
 
                                                  ;; cumulatively ordered once
-                                                 (users-ordered-to-date orders date (fn [x] (= x 1)))
+                                                 (users-ordered-to-date completed-orders date (fn [x] (= x 1)))
                                                  ;; cumulatively ordered twice
-                                                 (users-ordered-to-date orders date (fn [x] (= x 2)))
+                                                 (users-ordered-to-date completed-orders date (fn [x] (= x 2)))
                                                  ;; cumulatively ordered three or more times
-                                                 (users-ordered-to-date orders date (fn [x] (>= x 3)))
+                                                 (users-ordered-to-date completed-orders date (fn [x] (>= x 3)))
                                                  ])))
                                        dates)
                                   ))))))
