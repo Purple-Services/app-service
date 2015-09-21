@@ -124,7 +124,7 @@
              (do-> (if (:was-late t)
                      (add-class "late")
                      (add-class "not-late"))
-                   (if-not (contains? #{"complete" "cancelled" "unassgined"}
+                   (if-not (contains? #{"complete" "cancelled" "unassigned"}
                                       (:status t))
                      (content (:status t)
                               (html [:input
