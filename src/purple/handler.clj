@@ -336,7 +336,14 @@
                                      (:user_id b)
                                      (:order_id b)
                                      :notify-customer true
-                                     :suppress-user-details true)))))
+                                     :suppress-user-details true))))
+              ;; admin updates status of order (e.g., Enroute -> Servicing)
+              (POST "/update-status" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/update-status-by-admin db-conn
+                                                      (:order_id b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
