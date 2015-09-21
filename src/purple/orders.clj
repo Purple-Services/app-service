@@ -464,18 +464,12 @@
       ;; advanced. These orders should not be modifiable in the dashboard
       ;; console, however this is checked on the server below.
       (cond
-        (or (= (:status order)
-               "complete")
-            (= (:status order)
-               "cancelled")
-            (= (:status order)
-               "unassigned"))
+        (contains? #{"complete" "cancelled" "unassigned"} (:status order))
         {:success false
          :message "An order's status can not be advanced if it already complete, cancelled, or unassigned"}
         ;; Likewise, the dashboard user should not be allowed to advanced
         ;; to "assigned" or "accepted", but we check it on the server anyway.
-        (or (= advanced-status "assigned")
-            (= advanced-status "accepted"))
+        (contains? #{"assigned" "accepted"} advanced-status)
         {:success false
          :message "An order's status can not be advanced to assigned or acccepted. Please assign a courier to this order in order to advance this order. "}
         ;; update the status to "enroute"

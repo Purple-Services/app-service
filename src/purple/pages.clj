@@ -124,17 +124,16 @@
              (do-> (if (:was-late t)
                      (add-class "late")
                      (add-class "not-late"))
-                   (if (not (or (= (:status t)
-                                   "complete")
-                                (= (:status t)
-                                   "cancelled")
-                                (= (:status t)
-                                   "unassigned")))
+                   (if-not (contains? #{"complete" "cancelled" "unassgined"}
+                                      (:status t))
                      (content (:status t)
                               (html [:input
                                      {:type "submit"
                                       :class "advance-status"
-                                      :value "Advance to Next Status"
+                                      :value ({"accepted" "Start Route"
+                                               "enroute" "Begin Servicing"
+                                               "servicing" "Complete Order"}
+                                              (:status t))
                                       :data-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
