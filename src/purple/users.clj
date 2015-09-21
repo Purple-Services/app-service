@@ -187,11 +187,12 @@
                                    :name (:name fb-user)
                                    :gender (:gender fb-user)
                                    :type "facebook"}
-                                  (do (send-email
-                                       {:to "chris@purpledelivery.com"
-                                        :subject "Purple - Error"
-                                        :body (str "Facebook user didn't provide email: "
-                                                   (str "fb" (:id fb-user)))})
+                                  (do (only-prod
+                                       (send-email
+                                        {:to "chris@purpledelivery.com"
+                                         :subject "Purple - Error"
+                                         :body (str "Facebook user didn't provide email: "
+                                                    (str "fb" (:id fb-user)))}))
                                       (throw (Exception. "No email.")))))
                    "google" (let [google-user (get-user-from-google auth-key)
                                   authd-email (-> (:emails google-user)
@@ -205,11 +206,12 @@
                                  :name (:displayName google-user)
                                  :gender (:gender google-user)
                                  :type "google"}
-                                (do (send-email
-                                     {:to "chris@purpledelivery.com"
-                                      :subject "Purple - Error"
-                                      :body (str "Google user didn't provide email: "
-                                                 (str "g" (:id google-user)))})
+                                (do (only-prod
+                                     (send-email
+                                      {:to "chris@purpledelivery.com"
+                                       :subject "Purple - Error"
+                                       :body (str "Google user didn't provide email: "
+                                                  (str "g" (:id google-user)))}))
                                     (throw (Exception. "No email.")))))
                    (throw (Exception. "Invalid login."))))
             (login db-conn type platform-id auth-key :client-ip client-ip)))
@@ -482,16 +484,17 @@
                  "users"
                  {:reset_key reset-key}
                  {:id (:id user)})
-        (send-email {:to platform-id
-                     :subject "Purple Account - Reset Password"
-                     :body (str "Hello " (:name user) ","
-                                "\n\nPlease click the link below to reset "
-                                "your password:"
-                                "\n\n"
-                                config/base-url
-                                "user/reset-password/" reset-key
-                                "\n\nThanks,"
-                                "\nPurple")})
+        (only-prod
+         (send-email {:to platform-id
+                      :subject "Purple Account - Reset Password"
+                      :body (str "Hello " (:name user) ","
+                                 "\n\nPlease click the link below to reset "
+                                 "your password:"
+                                 "\n\n"
+                                 config/base-url
+                                 "user/reset-password/" reset-key
+                                 "\n\nThanks,"
+                                 "\nPurple")}))
         {:success true
          :message (str "An email has been sent to "
                        platform-id
@@ -517,13 +520,14 @@
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
-  (send-email (merge {:to email-address}
-                     (if-not (nil? user_id)
-                       (let [user (get-user-by-id db-conn user_id)]
-                         {:subject (str (:name user) " invites you to try Purple")
-                          :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
-                       {:subject "Invitation to Try Purple"
-                        :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
+  (only-prod
+   (send-email (merge {:to email-address}
+                      (if-not (nil? user_id)
+                        (let [user (get-user-by-id db-conn user_id)]
+                          {:subject (str (:name user) " invites you to try Purple")
+                           :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
+                        {:subject "Invitation to Try Purple"
+                         :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})))))
 
 (defn auth-charge-user
   "Charges user amount (an int in cents) using default payment method."
@@ -531,10 +535,11 @@
   (let [u (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
-      (do (send-email
-           {:to "chris@purpledelivery.com"
-            :subject "Purple - Error"
-            :body (str "Error authing charge on user, no payment method is set up.")})
+      (do (only-prod
+           (send-email
+            {:to "chris@purpledelivery.com"
+             :subject "Purple - Error"
+             :body (str "Error authing charge on user, no payment method is set up.")}))
           {:success false})
       (payment/auth-charge-stripe-customer customer-id
                                            order-id
