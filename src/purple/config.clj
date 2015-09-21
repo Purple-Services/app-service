@@ -1,7 +1,11 @@
 (ns purple.config
   (:require [environ.core :refer [env]]))
 
-(if (or (= (env :env) "test") (= (env :env) "dev"))
+(defn test-or-dev-env? [env]
+  "Given env, return true if we are in test or dev"
+  (if (or (= (env :env) "test") (= (env :env) "dev")) true false))
+
+(if (test-or-dev-env? env)
   (do
     (System/setProperty "AWS_ACCESS_KEY_ID" (env :aws-access-key-id))
     (System/setProperty "AWS_SECRET_KEY" (env :aws-secret-key))
@@ -84,12 +88,17 @@
 (def twilio-auth-token (System/getProperty "TWILIO_AUTH_TOKEN"))
 (def twilio-from-number (System/getProperty "TWILIO_FROM_NUMBER"))
 
-;;;; Service Hours (time bracket to allow orders to be placed)
-;; hour of day, start and end (in PST/PDT), both are inclusive
-;; e.g., [8 19] service available from 8:00:00am to 7:59:59pm
-;; the way things are coded, you can't wrap around past midnight
+;;;; Service Hours
+;; Time bracket to allow orders to be placed
+;; Minute of day, start and end (in PST/PDT)
+;; e.g., [(* 60 8) (* 60 19)] service available from 8:00:00am to 7:59:59pm
+;; The way things are coded, you can't wrap around past midnight.
 ;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
-(def service-time-bracket [7 20])
+(def service-time-bracket [(+ (* 60 7) 30)
+                           (+ (* 60 22) 30)]) ; 7:30am 10:30pm
+
+;; Minute of day when one-hour orders start being allowed for that day.
+(def one-hour-orders-allowed (* 60 10)) ; 10:00am
 
 ;;;; Delivery time guarantee options
 ;; Key is number of minutes till deadline

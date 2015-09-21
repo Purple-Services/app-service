@@ -7,7 +7,8 @@
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]
             [clj-aws.core :as aws]
-            [clj-aws.sns :as sns])
+            [clj-aws.sns :as sns]
+            [environ.core :refer [env]])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
@@ -37,9 +38,9 @@
   [& body]
   `(try ~@body
         (catch Exception e#
-          (send-email {:to "chris@purpledelivery.com"
-                       :subject "Purple - Exception Caught"
-                       :body (str e#)}))))
+          (only-prod (send-email {:to "chris@purpledelivery.com"
+                                  :subject "Purple - Exception Caught"
+                                  :body (str e#)})))))
 
 (defmacro unless-p
   "Use x unless the predicate is true for x, then use y instead."
@@ -59,14 +60,14 @@
          flatten
          (apply str))))
 
+(def time-zone (time/time-zone-for-id "America/Los_Angeles"))
+
 (def full-formatter (time-format/formatter "M/d h:mm a"))
 (defn unix->full
   "Convert integer unix timestamp to formatted date string."
   [x]
   (time-format/unparse
-   (time-format/with-zone
-     full-formatter
-     (time/time-zone-for-id "America/Los_Angeles"))
+   (time-format/with-zone full-formatter time-zone)
    (time-coerce/from-long (* 1000 x))))
 
 (def fuller-formatter (time-format/formatter "M/d/y h:mm a"))
@@ -74,9 +75,7 @@
   "Convert integer unix timestamp to formatted date string."
   [x]
   (time-format/unparse
-   (time-format/with-zone
-     fuller-formatter
-     (time/time-zone-for-id "America/Los_Angeles"))
+   (time-format/with-zone fuller-formatter time-zone)
    (time-coerce/from-long (* 1000 x))))
 
 (def hour-formatter (time-format/formatter "H"))
@@ -85,10 +84,23 @@
   [x]
   (Integer.
    (time-format/unparse
-    (time-format/with-zone
-      hour-formatter
-      (time/time-zone-for-id "America/Los_Angeles"))
+    (time-format/with-zone hour-formatter time-zone)
     (time-coerce/from-long (* 1000 x)))))
+
+(def minute-formatter (time-format/formatter "m"))
+(defn unix->minute-of-hour
+  "Convert integer unix timestamp to integer minute of hour."
+  [x]
+  (Integer.
+   (time-format/unparse
+    (time-format/with-zone minute-formatter time-zone)
+    (time-coerce/from-long (* 1000 x)))))
+
+(defn unix->minute-of-day
+  "How many minutes (int) since beginning of day?"
+  [x]
+  (+ (* (unix->hour-of-day x) 60)
+     (unix->minute-of-hour x)))
 
 (defn in? 
   "true if seq contains elm"
@@ -149,14 +161,23 @@
 
 (defn send-feedback
   [text & {:keys [user_id]}]
-  (send-email {:to "chris@purpledelivery.com"
-               :subject "Purple Feedback Form Response"
-               :body (if-not (nil? user_id)
-                       (str "From User ID: "
-                            user_id
-                            "\n\n"
-                            text)
-                       text)}))
+  (only-prod
+   (send-email {:to "chris@purpledelivery.com"
+                :subject "Purple Feedback Form Response"
+                :body (if-not (nil? user_id)
+                        (let [user ((resolve 'purple.users/get-user-by-id)
+                                    (conn) user_id)]
+                                    (str "From User ID: "
+                                         user_id
+                                         "\n\n"
+                                         "Name: "
+                                         (:name user)
+                                         "\n\n"
+                                         "Email: "
+                                         (:email user)
+                                         "\n\n"
+                                         text))
+                                  text)})))
 
 
 ;; Amazon SNS (Push Notifications)
@@ -178,13 +199,13 @@
       (.setPlatformApplicationArn req sns-app-arn)
       (.getEndpointArn (.createPlatformEndpoint client req)))
     (catch Exception e
-      (send-email {:to "chris@purpledelivery.com"
-                   :subject "Purple - Error"
-                   :body (str "AWS SNS Create Endpoint Exception: "
-                              (.getMessage e)
-                              "\n\n"
-                              "user-id: "
-                              user-id)})
+      (only-prod (send-email {:to "chris@purpledelivery.com"
+                              :subject "Purple - Error"
+                              :body (str "AWS SNS Create Endpoint Exception: "
+                                         (.getMessage e)
+                                         "\n\n"
+                                         "user-id: "
+                                         user-id)}))
       "")))
 
 (defn sns-publish
@@ -202,15 +223,15 @@
       (.setTargetArn req target-arn)
       (.publish client req))
     (catch Exception e
-      (send-email {:to "chris@purpledelivery.com"
-                   :subject "Purple - Error"
-                   :body (str "AWS SNS Publish Exception: "
-                              (.getMessage e)
-                              "\n\n"
-                              "target-arn: "
-                              target-arn
-                              "\nmessage: "
-                              message)}))))
+      (only-prod (send-email {:to "chris@purpledelivery.com"
+                              :subject "Purple - Error"
+                              :body (str "AWS SNS Publish Exception: "
+                                         (.getMessage e)
+                                         "\n\n"
+                                         "target-arn: "
+                                         target-arn
+                                         "\nmessage: "
+                                         message)})))))
 
 
 ;; Twilio (SMS & Phone Calls)

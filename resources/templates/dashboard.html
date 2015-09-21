@@ -2,11 +2,11 @@
     <head>
         <title>Purple</title>
         <link href='//fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
-        <link href='css/main.css' rel='stylesheet' type='text/css' />
+        <link id='mainStyleSheet' href='css/main.css' rel='stylesheet' type='text/css' />
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     </head>
     <body>
-        <span id="config" data-base-url=""></span>
+        <span id="config" data-base-url="" data-uri-segment=""></span>
 
         <div id="last-updated" style="width: 100%; text-align: center;"></div>
 
@@ -37,11 +37,12 @@
             </tbody>
         </table>
 
-        <h2>Orders <span class="show-all" data-show-id="orders">[show all]</span></h2>
+        <h2 class="part-of-orders" id="orders-heading">Orders <span class="show-all" data-show-id="orders">[show all]</span> <a href="/dashboard/declined" class="fake-link">[view all declined payments]</a></h2>
         
-        <table id="orders" class="hide-extra">
+        <table id="orders" class="part-of-orders hide-extra">
             <thead>
                 <tr>
+                    <td></td>
                     <td>Status</td>
                     <td>Courier</td>
                     <td width="98">Order Placed</td>
@@ -57,6 +58,7 @@
             </thead>
             <tbody>
                 <tr>
+                    <td class="cancel"></td>
                     <td class="status"></td>
                     <td class="courier_name"></td>
                     <td class="target_time_start"></td>
@@ -141,10 +143,33 @@
         </div>
 
         <div style="text-align: center; padding-bottom: 20px;">
-            <a href="javascript:window.location+='/data-csv';this.onclick=function(){return false;}">Download data.csv</a>
+            stats.csv
+            <span id="generate-stats-csv" class="fake-link">[initiate a refresh]</span>
+            <span id="download-stats-csv" class="fake-link">[download]</span>
         </div>
         
         <script>
+         $("#generate-stats-csv").click(function(){
+             $.ajax({
+                 type: "GET",
+                 url: $("#config").data("base-url") +
+                      $("#config").data("uri-segment") +
+                      "generate-stats-csv",
+                 contentType: 'application/json',
+                 success: function(response) {
+                     if (response.success === true) {
+                         alert("stats.csv generation initiated. Please refresh the page in a minute or so, then try to download the CSV file..");
+                     }
+                 }
+             });
+         });
+
+         $("#download-stats-csv").click(function(){
+             window.location = $("#config").data("base-url") +
+                               $("#config").data("uri-segment") +
+                               "download-stats-csv";
+         });
+         
          $("#configForm").submit(function(e){
              e.preventDefault();
              var price87 = $("#gasPriceDollars87").val();
@@ -248,7 +273,44 @@
                      });
                  }
              });
-             
+
+             $('.cancel-order').click(function(){
+                 if (confirm("Are you sure you want to cancel this order? (this cannot be undone) (customer will be notified via push notification)")) {
+                     // to get the element inside of success statement
+                     var self = this;
+                     $(self).attr("disabled", true);
+                     $.ajax({
+                         type: "POST",
+                         url: "dashboard/cancel-order",
+                         data: JSON.stringify({
+                             "order_id": $(this).data("id"),
+                             "user_id": $(this).data("user-id")
+                         }),
+                         dataType: "json",
+                         contentType: 'application/json',
+                         success: function(response) {
+                             $(self).removeAttr("disabled");
+                             if (!response.success) {
+                                 alert('The order could not be cancelled!\n' +
+                                       'Server Message: '
+                                     + response.message);
+                             } else {
+                                 // remove the cancel order button and mark the
+                                 // order has cancelled
+                                 $(self).parent().parent().find("td.status").html("cancelled");
+                                 $(self).parent().empty();
+                                 alert('Order cancelled!');
+                             }
+                         },
+                         failure: function(response) {
+                             $(self).removeAttr("disabled");
+                             alert('Something went wrong. Order has NOT ' +
+                                   'been cancelled!');
+                             console.log(response);
+                         }
+                     });
+                 }
+             });
          });
         </script>
     </body>

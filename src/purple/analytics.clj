@@ -10,6 +10,8 @@
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]))
 
+(def count-filter (comp count filter))
+
 (def ymd-formatter (time-format/formatter "yyyy-MM-dd"))
 
 (defn joda->ymd
@@ -71,15 +73,13 @@
   "Given a list of orders and a date, run a filter predicate to determine cumulative orders.
   Example predicate to get all users who have ordered exactly once: (fn [x] (= x 1))"
   [orders date pred]
-  (count (filter pred (map :count (user-order-count-by-day orders date))))  )
+  (count-filter pred (map :count (user-order-count-by-day orders date))))
 
 (defn made-first-order-this-day
   "Is this the date that the user made their first order?"
   [user date orders] ;; 'orders' is coll of all orders (by any user)
   (when-let [first-order-by-user (get-first-order-by-user user orders)]
     (= date (unix->ymd (:target_time_start first-order-by-user)))))
-
-(def count-filter (comp count filter))
 
 (defn gen-stats-csv
   "Generates and saves a CSV file with some statistics."
@@ -93,12 +93,14 @@
                                   (periodic/periodic-seq  ;; Apr 10th
                                    (time-coerce/from-long 1428708478000)
                                    (time/hours 24))))
-           users (!select db-conn "users" ["*"] {})
+           users (!select db-conn "users" [:timestamp_created :id] {})
            users-by-day (users-by-day users)
-           orders (!select db-conn "orders" ["*"] {})
+           orders (!select db-conn "orders" [:target_time_start
+                                             :target_time_end :status
+                                             :coupon_code :user_id] {})
            completed-orders (filter #(= "complete" (:status %)) orders)
            orders-by-day (orders-by-day orders)
-           coupons (!select db-conn "coupons" ["*"] {})
+           coupons (!select db-conn "coupons" [:type :code] {})
            standard-coupon-codes (->> (filter #(= "standard" (:type %)) coupons)
                                       (map :code))]
        (apply mapv vector (concat [["Date"

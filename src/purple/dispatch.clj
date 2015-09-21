@@ -71,8 +71,8 @@
                     (apply hash-map))})
 
 (defn available
-  [good-zip? good-time? octane]
-  (let [good-times (filter #(and good-zip? (good-time? (/ % 60)))
+  [good-zip? good-time?-fn octane]
+  (let [good-times (filter #(and good-zip? (good-time?-fn %))
                            (keys config/delivery-times))]
     {:octane octane
      :gallons 15 ;; for now, we always assume 15 is available
@@ -83,39 +83,39 @@
   "Get courier availability for given constraints."
   [db-conn zip-code user-id]
   (let [good-zip? (seq (filter #(in? (:zip_codes %) zip-code) zones))
-        opening-hour (first config/service-time-bracket)
-        closing-hour (last config/service-time-bracket)
-        current-hour (.getHourOfDay
-                      (DateTime. (DateTimeZone/forID "America/Los_Angeles")))
-        good-time? (fn [hours-needed]
-                     (<= opening-hour
-                         current-hour
-                         ;;(- closing-hour hours-needed)
+        opening-minute (first config/service-time-bracket)
+        closing-minute (last config/service-time-bracket)
+        current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
+                                                  1000))
+        good-time?-fn (fn [minutes-needed]
+                     (<= opening-minute
+                         current-minute
+                         ;;(- closing-minute minutes-needed)
                          ;; removed the check for enough time
-                         closing-hour))
+                         ;; because our end time just means we accept orders
+                         ;; until then (regardless of deadline)
+                         closing-minute))
         user (users/get-user-by-id db-conn user-id)]
     {:success true
-     :availabilities (map (partial available good-zip? good-time?) ["87" "91"])
+     :availabilities (map (partial available good-zip? good-time?-fn) ["87" "91"])
      ;; if unavailable, this is the explanation:
      :unavailable-reason
      (if good-zip?
-       "Sorry, our service hours are 7am to 9pm every day."
+       "Sorry, we only accept orders between 7:30am to 10:30pm every day."
        "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")
      :user (select-keys user [:referral_gallons :referral_code])
      
      ;; we're still sending this for old versions of the app
      :availability [{:octane "87"
-                     :gallons (if (and good-zip?
-                                       (not (empty? (filter good-time? [1 3]))))
+                     :gallons (if good-zip?
                                 15 0) ;; just assume 15 gallons
-                     :time (filter good-time? [1 3])
+                     :time [1 3]
                      :price_per_gallon @config/gas-price-87
                      :service_fee [100 0]}
                     {:octane "91"
-                     :gallons (if (and good-zip?
-                                       (not (empty? (filter good-time? [1 3]))))
+                     :gallons (if good-zip?
                                 15 0)
-                     :time (filter good-time? [1 3])
+                     :time [1 3]
                      :price_per_gallon @config/gas-price-91
                      :service_fee [100 0]}]
      }))
@@ -232,7 +232,7 @@
     (run! #(send-sms % "There are orders, but no available couriers.")
           (concat [] ;; put your number in here when dev'ing
                   (only-prod ["3235782263"     ;; Bruno
-                              "3106919061"     ;; JP
+                              ;; "3106919061"     ;; JP
                               "8589228571"]))) ;; Lee
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 

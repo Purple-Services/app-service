@@ -155,13 +155,13 @@
                                  user)
                                :referral_code (coupons/create-referral-coupon db-conn
                                                                               (:id user))))]
-    (future
-      (send-email ;; debugging purposes, "why sometimes 100's of calls..."
-       {:to "chris@purpledelivery.com"
-        :subject "Purple - users/add caleld"
-        :body (str user
-                   "\nResult:\n"
-                   result)}))
+    (only-prod (future
+                 (send-email ;; debugging purposes, "why sometimes 100's of calls..."
+                  {:to "chris@purpledelivery.com"
+                   :subject "Purple - users/add caleld"
+                   :body (str user
+                              "\nResult:\n"
+                              result)})))
     result))
 
 (defn login
@@ -187,11 +187,12 @@
                                    :name (:name fb-user)
                                    :gender (:gender fb-user)
                                    :type "facebook"}
-                                  (do (send-email
-                                       {:to "chris@purpledelivery.com"
-                                        :subject "Purple - Error"
-                                        :body (str "Facebook user didn't provide email: "
-                                                   (str "fb" (:id fb-user)))})
+                                  (do (only-prod
+                                       (send-email
+                                        {:to "chris@purpledelivery.com"
+                                         :subject "Purple - Error"
+                                         :body (str "Facebook user didn't provide email: "
+                                                    (str "fb" (:id fb-user)))}))
                                       (throw (Exception. "No email.")))))
                    "google" (let [google-user (get-user-from-google auth-key)
                                   authd-email (-> (:emails google-user)
@@ -205,11 +206,12 @@
                                  :name (:displayName google-user)
                                  :gender (:gender google-user)
                                  :type "google"}
-                                (do (send-email
-                                     {:to "chris@purpledelivery.com"
-                                      :subject "Purple - Error"
-                                      :body (str "Google user didn't provide email: "
-                                                 (str "g" (:id google-user)))})
+                                (do (only-prod
+                                     (send-email
+                                      {:to "chris@purpledelivery.com"
+                                       :subject "Purple - Error"
+                                       :body (str "Google user didn't provide email: "
+                                                  (str "g" (:id google-user)))}))
                                     (throw (Exception. "No email.")))))
                    (throw (Exception. "Invalid login."))))
             (login db-conn type platform-id auth-key :client-ip client-ip)))
@@ -525,22 +527,35 @@
                        {:subject "Invitation to Try Purple"
                         :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
 
-(defn charge-user
+(defn auth-charge-user
   "Charges user amount (an int in cents) using default payment method."
   [db-conn user-id order-id amount description]
   (let [u (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id u)]
     (if (s/blank? customer-id)
-      (do (send-email
-           {:to "chris@purpledelivery.com"
-            :subject "Purple - Error"
-            :body (str "Error charging user, no payment method is set up.")})
-          {:success true})
-      (payment/charge-stripe-customer customer-id
-                                      order-id
-                                      amount
-                                      description
-                                      (:email u)))))
+      (do (only-prod
+           (send-email
+            {:to "chris@purpledelivery.com"
+             :subject "Purple - Error"
+             :body (str "Error authing charge on user, no payment method is set up.")}))
+          {:success false})
+      (payment/auth-charge-stripe-customer customer-id
+                                           order-id
+                                           amount
+                                           description
+                                           (:email u)))))
+
+(defn unpaid-balance
+  [db-conn user-id]
+  (reduce +
+          (map :total_price
+               (!select db-conn
+                        "orders"
+                        [:total_price]
+                        {:user_id user-id
+                         :status "complete"
+                         :paid 0}
+                        :append "AND total_price > 0")))) ; $0 order = no charge
 
 (defn send-push
   "Sends a push notification to user."

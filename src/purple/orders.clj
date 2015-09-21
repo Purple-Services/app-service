@@ -4,6 +4,7 @@
   (:require [purple.config :as config]
             [purple.coupons :as coupons]
             [purple.couriers :as couriers]
+            [purple.payment :as payment]
             [clojure.java.jdbc :as sql]
             [clojure.string :as s]))
 
@@ -33,7 +34,7 @@
            :append "ORDER BY target_time_start DESC"))
 
 (defn get-by-id
-  "Gets a user from db by user-id."
+  "Gets an order from db by order's id."
   [db-conn id]
   (first (!select db-conn
                   "orders"
@@ -91,6 +92,34 @@
             (first (get vehicles (:vehicle_id %))))
          orders)))
 
+(defn gen-charge-description
+  [db-conn order]
+  (str "Delivery of up to "
+       (:gallons order) " Gallons of Gasoline ("
+       (->> (!select db-conn
+                     "vehicles"
+                     [:gas_type]
+                     {:id (:vehicle_id order)})
+            first
+            :gas_type)
+       " Octane)\n" "Where: "
+       (:address_street order)
+       "\n" "When: "
+       (unix->fuller
+        (quot (System/currentTimeMillis) 1000))))
+
+(defn stamp-with-charge
+  "Give it a charge object from Stripe."
+  [db-conn order-id charge]
+  (!update db-conn
+           "orders"
+           {:paid (:captured charge)
+            :stripe_charge_id (:id charge)
+            :stripe_customer_id_charged (:customer charge)
+            :stripe_balance_transaction_id (:balance_transaction charge)
+            :time_paid (:created charge)}
+           {:id order-id}))
+
 (defn calculate-cost
   "Calculate cost of order based on current prices."
   [db-conn
@@ -128,8 +157,8 @@
   "Check if the Time choice is truly available."
   [db-conn o]
   (if (< (:time-limit o) 180)
-    (and (> (unix->hour-of-day (:target_time_start o))
-            9)
+    (and (>= (unix->minute-of-day (:target_time_start o))
+             config/one-hour-orders-allowed)
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
@@ -150,8 +179,16 @@
       "87"))) ;; if we can't find it then assume 87
 
 (defn new-order-text
-  [o]
+  [db-conn o charge-authorized?]
   (str "New order:"
+       (if charge-authorized?
+         "\nCharge Authorized."
+         "\n!CHARGE FAILED TO AUTHORIZE!")
+       (let [unpaid-balance ((resolve 'purple.users/unpaid-balance)
+                             db-conn (:user_id o))]
+         (when (> unpaid-balance 0)
+           (str "\n!UNPAID BALANCE: $"
+                (cents->dollars unpaid-balance))))
        "\nDue: " (unix->full
                   (:target_time_end o))
        "\n" (:address_street o) ", "
@@ -233,19 +270,42 @@
                                       (:user_id o)))
          (future (let [connected-couriers (couriers/get-all-connected db-conn)
                        available-couriers (remove :busy connected-couriers)
-                       users-by-id (group-by :id
-                                             ((resolve 'purple.users/get-users-by-ids)
-                                              db-conn (map :id connected-couriers)))
-                       id->phone-number #(:phone_number (first (get users-by-id %)))]
-                   (send-email {:to "chris@purpledelivery.com"
-                                :subject "Purple - New Order"
-                                :body (str o)})
+
+                       users-by-id
+                       (group-by :id
+                                 ((resolve 'purple.users/get-users-by-ids)
+                                  db-conn (map :id connected-couriers)))
+                       
+                       id->phone-number
+                       #(:phone_number (first (get users-by-id %)))
+                       
+                       auth-charge-result
+                       (if (zero? (:total_price o))
+                         {:success true}
+                         ((resolve 'purple.users/auth-charge-user)
+                          db-conn
+                          (:user_id o)
+                          (:id o)
+                          (:total_price o)
+                          (gen-charge-description db-conn o)))
+                       
+                       charge-authorized? (:success auth-charge-result)]
+                   (when (and charge-authorized?
+                              (not (zero? (:total_price o))))
+                     (stamp-with-charge db-conn
+                                        (:id o)
+                                        (:charge auth-charge-result)))
+                   (only-prod (send-email {:to "chris@purpledelivery.com"
+                                           :subject "Purple - New Order"
+                                           :body (str o)}))
                    (run! #((resolve 'purple.users/send-push)
                            db-conn (:id %) (str "New order available. "
                                                 "Please press Accept "
                                                 "Order ASAP."))
                          available-couriers)
-                   (run! #(send-sms % (new-order-text o))
+                   (run! #(send-sms % (new-order-text db-conn
+                                                      o
+                                                      charge-authorized?))
                          (concat (map (comp id->phone-number :id)
                                       connected-couriers)
                                  (only-prod ["3235782263" ;; Bruno
@@ -308,16 +368,12 @@
   ;; all assignments
   (accept db-conn order-id courier-id))
 
-(defn stamp-with-charge
-  "Give it a charge object from Stripe."
-  [db-conn order-id charge]
+(defn stamp-with-refund
+  "Give it a refund object from Stripe."
+  [db-conn order-id refund]
   (!update db-conn
            "orders"
-           {:paid true
-            :stripe_charge_id (:id charge)
-            :stripe_customer_id_charged (:customer charge)
-            :stripe_balance_transaction_id (:balance_transaction charge)
-            :time_paid (:created charge)}
+           {:stripe_refund_id (:id refund)}
            {:id order-id}))
 
 (defn after-payment
@@ -326,39 +382,20 @@
       ((resolve 'purple.users/send-push) db-conn (:user_id order)
        "Your delivery has been completed. Thank you!")))
 
-(defn gen-charge-description
-  [db-conn order]
-  (str "Delivery of up to "
-       (:gallons order) " Gallons of Gasoline ("
-       (->> (!select db-conn
-                     "vehicles"
-                     [:gas_type]
-                     {:id (:vehicle_id order)})
-            first
-            :gas_type)
-       " Octane)\n" "Where: "
-       (:address_street order)
-       "\n" "When: "
-       (unix->fuller
-        (quot (System/currentTimeMillis) 1000))))
-
 (defn complete
   "Completes order and charges user."
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
       (set-courier-busy db-conn (:courier_id o) false)
-      (if (zero? (:total_price o))
+      (if (or (zero? (:total_price o))
+              (s/blank? (:stripe_charge_id o)))
         (after-payment db-conn o)
-        (let [charge-result ((resolve 'purple.users/charge-user)
-                             db-conn
-                             (:user_id o)
-                             (:id o) 
-                             (:total_price o)
-                             (gen-charge-description db-conn o))]
-          (if (:success charge-result)
-            (do (stamp-with-charge db-conn (:id o) (:charge charge-result))
+        (let [capture-result (payment/capture-stripe-charge
+                              (:stripe_charge_id o))]
+          (if (:success capture-result)
+            (do (stamp-with-charge db-conn (:id o) (:charge capture-result))
                 (after-payment db-conn o))
-            charge-result)))))
+            capture-result)))))
 
 (defn begin-route
   "This is a courier action."
@@ -386,7 +423,7 @@
         {:success false
          :message (if (= status "assigned")
                     "Oops... it looks like another courier accepted that order before you."
-                    "Your app seems to be out of sync. Try closing the app completely and restarting it.")}
+                    "Your app seems to be out of sync. Try going back to the Orders list and pulling down to refresh it. Or, you might need to close the app completely and restart it.")}
         (let [update-result
               (case status
                 "assigned" (if (in? (map :id
@@ -395,7 +432,7 @@
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))
                              {:success false
-                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds."})
+                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
                 "enroute" (if (= user-id (:courier_id order))
                             (begin-route db-conn order)
                             {:success false
@@ -434,35 +471,51 @@
       ((resolve 'purple.users/details) db-conn user-id)))
 
 (defn cancel
-  [db-conn user-id order-id]
+  [db-conn user-id order-id & {:keys [notify-customer suppress-user-details]}]
   (if-let [o (get-by-id db-conn order-id)]
     (if (in? config/cancellable-statuses (:status o))
       (do (update-status db-conn order-id "cancelled")
           ((resolve 'purple.dispatch/remove-order-from-zq) o)
-          ;; return any free gallons that may have been used
-          (when (not= 0 (:referral_gallons_used o))
-            (coupons/mark-gallons-as-unused db-conn
-                                            (:user_id o)
-                                            (:referral_gallons_used o))
-            (!update db-conn
-                     "orders"
-                     {:referral_gallons_used 0}
-                     {:id order-id}))
-          ;; free up that coupon code for that vehicle
-          (when-not (s/blank? (:coupon_code o))
-            (coupons/mark-code-as-unused db-conn
-                                         (:coupon_code o)
-                                         (:vehicle_id o)
-                                         (:user_id o))
-            (!update db-conn
-                     "orders"
-                     {:coupon_code ""}
-                     {:id order-id}))
-          (when-not (s/blank? (:courier_id o))
-            (set-courier-busy db-conn (:courier_id o) false)
-            ((resolve 'purple.users/send-push) db-conn (:courier_id o)
-             "The current order has been cancelled."))
-          ((resolve 'purple.users/details) db-conn user-id))
+          (future
+            ;; return any free gallons that may have been used
+            (when (not= 0 (:referral_gallons_used o))
+              (coupons/mark-gallons-as-unused db-conn
+                                              (:user_id o)
+                                              (:referral_gallons_used o))
+              (!update db-conn
+                       "orders"
+                       {:referral_gallons_used 0}
+                       {:id order-id}))
+            ;; free up that coupon code for that vehicle
+            (when-not (s/blank? (:coupon_code o))
+              (coupons/mark-code-as-unused db-conn
+                                           (:coupon_code o)
+                                           (:vehicle_id o)
+                                           (:user_id o))
+              (!update db-conn
+                       "orders"
+                       {:coupon_code ""}
+                       {:id order-id}))
+            ;; let the courier know the order has been cancelled
+            (when-not (s/blank? (:courier_id o))
+              (set-courier-busy db-conn (:courier_id o) false)
+              ((resolve 'purple.users/send-push) db-conn (:courier_id o)
+               "The current order has been cancelled."))
+            ;; let the user know the order has been cancelled
+            (when notify-customer
+              ((resolve 'purple.users/send-push)
+               db-conn user-id
+               "Your order has been cancelled. If you have any questions, please email us at info@purpledelivery.com."))
+            (when-not (s/blank? (:stripe_charge_id o))
+              (let [refund-result (payment/refund-stripe-charge
+                                   (:stripe_charge_id o))]
+                (when (:success refund-result)
+                  (stamp-with-refund db-conn
+                                     order-id
+                                     (:refund refund-result))))))
+          (if suppress-user-details
+            {:success true}
+            ((resolve 'purple.users/details) db-conn user-id)))
       {:success false
        :message "Sorry, it is too late for this order to be cancelled."})
     {:success false
