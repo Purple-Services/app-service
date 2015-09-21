@@ -73,16 +73,16 @@
            {:success false
             :message (:failure_message resp)}))
        (catch Exception e ;; not ideal, it assumes any bad status code is this
-         (send-email
-          {:to "chris@purpledelivery.com"
-           :subject "Failed Stripe Charge Authorization"
-           :body (str "Failed charge auth details:\n\n"
-                      "Description: \n"
-                      description "\n"
-                      "Order ID: " order-id "\n"
-                      "Stripe Customer ID: " customer-id "\n"
-                      "Customer Email Address: " receipt-email "\n"
-                      "Additional details: " (.getMessage e))})
+         (only-prod (send-email
+                     {:to "chris@purpledelivery.com"
+                      :subject "Failed Stripe Charge Authorization"
+                      :body (str "Failed charge auth details:\n\n"
+                                 "Description: \n"
+                                 description "\n"
+                                 "Order ID: " order-id "\n"
+                                 "Stripe Customer ID: " customer-id "\n"
+                                 "Customer Email Address: " receipt-email "\n"
+                                 "Additional details: " (.getMessage e))}))
          {:success false})))
 
 (defn capture-stripe-charge
@@ -94,12 +94,12 @@
             :charge resp}
            {:success false}))
        (catch Exception e ;; not ideal, it assumes any bad status code is this
-         (send-email
-          {:to "chris@purpledelivery.com"
-           :subject "Failed Stripe Charge Capture"
-           :body (str "Failed charge capture details:\n\n"
-                      "Charge ID: " charge-id "\n"
-                      "Additional details: " (.getMessage e))})
+         (only-prod (send-email
+                     {:to "chris@purpledelivery.com"
+                      :subject "Failed Stripe Charge Capture"
+                      :body (str "Failed charge capture details:\n\n"
+                                 "Charge ID: " charge-id "\n"
+                                 "Additional details: " (.getMessage e))}))
          {:success false})))
 
 (defn refund-stripe-charge
@@ -111,10 +111,10 @@
             :refund resp}
            {:success false}))
        (catch Exception e ;; not ideal, it assumes any bad status code is this
-         (send-email
-          {:to "chris@purpledelivery.com"
-           :subject "Failed Stripe Charge Refund"
-           :body (str "Failed charge refund details:\n\n"
-                      "Refund ID: " charge-id "\n"
-                      "Additional details: " (.getMessage e))})
+         (only-prod (send-email
+                     {:to "chris@purpledelivery.com"
+                      :subject "Failed Stripe Charge Refund"
+                      :body (str "Failed charge refund details:\n\n"
+                                 "Refund ID: " charge-id "\n"
+                                 "Additional details: " (.getMessage e))}))
          {:success false})))
