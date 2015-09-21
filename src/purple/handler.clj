@@ -338,7 +338,7 @@
                                      :notify-customer true
                                      :suppress-user-details true))))
               ;; admin updates status of order (e.g., Enroute -> Servicing)
-              (POST "/update-status-by-admin" {body :body}
+              (POST "/update-status" {body :body}
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
