@@ -351,6 +351,13 @@
            {:busy busy}
            {:id courier-id}))
 
+(defn update-courier-busy [db-conn courier-id]
+  "Determine if courier-id is busy and toggle the appropriate state. A courier
+is considered busy if there are orders that have not been completed or cancelled
+and their id matches the order's courier_id"
+  (let [busy? (courier-busy? db-conn courier-id)]
+    (set-courier-busy db-conn courier-id busy?)))
+
 (defn accept
   "There should be exactly one or zero orders in 'accepted' state, per courier."
   [db-conn order-id courier-id]
@@ -386,7 +393,7 @@
   "Completes order and charges user."
   [db-conn o]
   (do (update-status db-conn (:id o) "complete")
-      (set-courier-busy db-conn (:courier_id o) false)
+      (update-courier-busy db-conn (:courier_id o))
       (if (or (zero? (:total_price o))
               (s/blank? (:stripe_charge_id o)))
         (after-payment db-conn o)
@@ -504,6 +511,34 @@
     {:success false
      :message "An order with that ID could not be found."}))
 
+(defn assign-to-courier-by-admin
+  "Assign order-id to courier-id and alert the courier"
+  [db-conn order-id courier-id]
+  (let [order (get-by-id db-conn order-id)]
+    ;; check to make sure that the status is unassigned
+    (cond
+      (not= (:status order) "unassigned")
+      {:success false
+       :message (str "An order with status of " (:status order) " can not "
+                     "be assigned to a courier!")}
+      (= (:status order) "unassigned")
+      (do
+        ;; because the accept fn sets the couriers busy status to true,
+        ;; there is no need to further update the courier's status
+        (accept db-conn order-id courier-id)
+        ;; remove the order from the queue
+        ((resolve 'purple.dispatch/remove-order-from-zq) order)
+        ;; notify courier that they have been assigned an order
+        ((resolve 'purple.users/send-push) db-conn courier-id
+         (str "You have been assigned a new order, please check your "
+              "Orders to view it"))
+        ;; response
+        {:success true
+         :message (str order-id " has been assigned to " courier-id)})
+      :else
+      {:success false
+       :message "An unknown error occured."})))
+
 (defn update-rating
   "Assumed to have been auth'd properly already."
   [db-conn order-id number-rating text-rating]
@@ -546,7 +581,7 @@
                        {:id order-id}))
             ;; let the courier know the order has been cancelled
             (when-not (s/blank? (:courier_id o))
-              (set-courier-busy db-conn (:courier_id o) false)
+              (update-courier-busy db-conn (:courier_id o))
               ((resolve 'purple.users/send-push) db-conn (:courier_id o)
                "The current order has been cancelled."))
             ;; let the user know the order has been cancelled
