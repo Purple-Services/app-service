@@ -134,10 +134,23 @@
                                                "enroute" "Begin Servicing"
                                                "servicing" "Complete Order"}
                                               (:status t))
-                                      :data-id (:id t)}]))
+                                      :data-order-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
-             (content (:courier_name t))
+             (if (= (:status t)
+                    "unassigned")
+               (content (html [:select {:class "assign-courier"}
+                               [:option "Assign to Courier"]
+                               (map
+                                (fn [x] (html
+                                         [:option {:value (:id x)} (:name x) ]))
+                                (:couriers t))]
+                              [:input {:type "submit"
+                                       :class "assign-courier"
+                                       :value "Save"
+                                       :data-order-id (:id t)
+                                       :disabled true}]))
+               (content (:courier_name t)))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
@@ -334,7 +347,11 @@
                                     (and completion-time
                                          (> (Integer. completion-time)
                                             (:target_time_end %))))
-                                  :vehicle (id->vehicle (:vehicle_id %)))
+                                  :vehicle (id->vehicle (:vehicle_id %))
+                                  :couriers (map (fn [x]
+                                                   (assoc x :name
+                                                          (id->name (:id x))))
+                                                 all-couriers))
                           all-orders)
              :users (sort-by #(.getTime (:timestamp_created %))
                              >

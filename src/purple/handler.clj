@@ -343,7 +343,15 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        (orders/update-status-by-admin db-conn
-                                                      (:order_id b))))))
+                                                      (:order_id b)))))
+              ;; admin assigns courier to an order
+              (POST "/assign-order" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/assign-to-courier-by-admin db-conn
+                                                          (:order_id b)
+                                                          (:courier_id b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
