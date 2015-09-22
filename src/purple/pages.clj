@@ -142,9 +142,9 @@
                (content (html [:select {:class "assign-courier"}
                                [:option "Assign to Courier"]
                                (map
-                                (fn [x] (html
-                                         [:option {:value (:id x)} (:name x) ]))
-                                (:couriers t))]
+                                #(html
+                                  [:option {:value (:id %)} (:name %) ])
+                                (:couriers x))]
                               [:input {:type "submit"
                                        :class "assign-courier"
                                        :value "Save"
@@ -347,11 +347,7 @@
                                     (and completion-time
                                          (> (Integer. completion-time)
                                             (:target_time_end %))))
-                                  :vehicle (id->vehicle (:vehicle_id %))
-                                  :couriers (map (fn [x]
-                                                   (assoc x :name
-                                                          (id->name (:id x))))
-                                                 all-couriers))
+                                  :vehicle (id->vehicle (:vehicle_id %)))
                           all-orders)
              :users (sort-by #(.getTime (:timestamp_created %))
                              >
