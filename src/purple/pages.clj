@@ -169,8 +169,9 @@
              (content (str (:coupon_code t)))
              
              [:td.total_price]
-             (do-> (if (and (not (:paid t))
-                            (= (:status t) "complete")
+             (do-> (if (and (or (s/blank? (:stripe_charge_id t))
+                                (and (not (:paid t))
+                                     (= (:status t) "complete")))
                             (not= 0 (:total_price t)))
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
@@ -215,11 +216,8 @@
                                 1000)))
                    )
 
-  [:#users-count] (content (str "("
-                                (if (:all x)
-                                  (:users-count x)
-                                  "?")
-                                ")"))
+  [:#users-count] (content
+                   (str "(" (:users-count x) ")"))
 
   [:#coupons :tbody :tr]
   (clone-for [t (:coupons x)]
@@ -347,7 +345,13 @@
                                                 (->> (remove s/blank?))
                                                 count))
                                     all-coupons))
-             :users-count (count users-by-id)
+             :users-count (if all
+                            (count users-by-id) ;; we already have correct total
+                            (-> (!select db-conn "users" ;; need to get total
+                                         ["COUNT(*) as total"]
+                                         {})
+                                first
+                                :total))
              :base-url config/base-url
              :uri-segment (if read-only "stats/" "dashboard/")
              :gas-price-87 @config/gas-price-87
