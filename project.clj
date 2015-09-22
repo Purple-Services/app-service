@@ -1,4 +1,4 @@
-(defproject purple "1.1.0-SNAPSHOT"
+(defproject purple "1.2.0-SNAPSHOT"
   :description "Purple"
   :url "http://purpledelivery.com"
   :dependencies [[org.clojure/clojure "1.7.0"]

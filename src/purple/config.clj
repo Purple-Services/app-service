@@ -1,7 +1,11 @@
 (ns purple.config
   (:require [environ.core :refer [env]]))
 
-(if (or (= (env :env) "test") (= (env :env) "dev"))
+(defn test-or-dev-env? [env]
+  "Given env, return true if we are in test or dev"
+  (if (or (= (env :env) "test") (= (env :env) "dev")) true false))
+
+(if (test-or-dev-env? env)
   (do
     (System/setProperty "AWS_ACCESS_KEY_ID" (env :aws-access-key-id))
     (System/setProperty "AWS_SECRET_KEY" (env :aws-secret-key))
@@ -92,6 +96,7 @@
 ;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
 (def service-time-bracket [(+ (* 60 7) 30)
                            (+ (* 60 22) 30)]) ; 7:30am 10:30pm
+
 ;; Minute of day when one-hour orders start being allowed for that day.
 (def one-hour-orders-allowed (* 60 10)) ; 10:00am
 

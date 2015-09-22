@@ -296,6 +296,10 @@
                    (-> (pages/dashboard (conn) :all true)
                        response
                        wrap-page))
+              (GET "/declined" []
+                   (-> (pages/declined (conn))
+                       response
+                       wrap-page))
               (GET "/generate-stats-csv" []
                    (do (future (analytics/gen-stats-csv))
                        (response {:success true})))
@@ -321,7 +325,25 @@
                      (let [b (keywordize-keys body)]
                        (dispatch/change-gas-price (conn)
                                                   (:gas-price-87 b)
-                                                  (:gas-price-91 b))))))
+                                                  (:gas-price-91 b)))))
+              ;; Dashboard admin cancels order
+              (POST "/cancel-order" {body :body}
+                    ;; cancel the order
+                   (response
+                    (let [b (keywordize-keys body)
+                          db-conn (conn)]
+                      (orders/cancel db-conn
+                                     (:user_id b)
+                                     (:order_id b)
+                                     :notify-customer true
+                                     :suppress-user-details true))))
+              ;; admin updates status of order (e.g., Enroute -> Servicing)
+              (POST "/update-status" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/update-status-by-admin db-conn
+                                                      (:order_id b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -334,6 +356,10 @@
                    (-> (pages/dashboard (conn)
                                         :read-only true
                                         :all true)
+                       response
+                       wrap-page))
+              (GET "/declined" []
+                   (-> (pages/declined (conn))
                        response
                        wrap-page))
               (GET "/generate-stats-csv" []
