@@ -134,10 +134,23 @@
                                                "enroute" "Begin Servicing"
                                                "servicing" "Complete Order"}
                                               (:status t))
-                                      :data-id (:id t)}]))
+                                      :data-order-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
-             (content (:courier_name t))
+             (if (= (:status t)
+                    "unassigned")
+               (content (html [:select {:class "assign-courier"}
+                               [:option "Assign to Courier"]
+                               (map
+                                #(html
+                                  [:option {:value (:id %)} (:name %) ])
+                                (:couriers x))]
+                              [:input {:type "submit"
+                                       :class "assign-courier"
+                                       :value "Save"
+                                       :data-order-id (:id t)
+                                       :disabled true}]))
+               (content (:courier_name t)))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
