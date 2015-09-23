@@ -555,9 +555,13 @@ and their id matches the order's courier_id"
       ((resolve 'purple.users/details) db-conn user-id)))
 
 (defn cancel
-  [db-conn user-id order-id & {:keys [notify-customer suppress-user-details]}]
+  [db-conn user-id order-id & {:keys [notify-customer
+                                      suppress-user-details
+                                      override-cancellable-statuses]}]
   (if-let [o (get-by-id db-conn order-id)]
-    (if (in? config/cancellable-statuses (:status o))
+    (if (in? (or override-cancellable-statuses
+                 config/cancellable-statuses)
+             (:status o))
       (do (update-status db-conn order-id "cancelled")
           ((resolve 'purple.dispatch/remove-order-from-zq) o)
           (future

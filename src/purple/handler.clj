@@ -332,11 +332,14 @@
                    (response
                     (let [b (keywordize-keys body)
                           db-conn (conn)]
-                      (orders/cancel db-conn
-                                     (:user_id b)
-                                     (:order_id b)
-                                     :notify-customer true
-                                     :suppress-user-details true))))
+                      (orders/cancel
+                       db-conn
+                       (:user_id b)
+                       (:order_id b)
+                       :notify-customer true
+                       :suppress-user-details true
+                       :override-cancellable-statuses
+                       (conj config/cancellable-statuses "servicing")))))
               ;; admin updates status of order (e.g., Enroute -> Servicing)
               (POST "/update-status" {body :body}
                     (response
