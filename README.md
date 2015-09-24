@@ -190,6 +190,24 @@ web-service $
 src/profiles.clj
 resources/database/ebdb_setup.sql
 ```
+
+## Running Selenium functional tests
+
+There are functioal tests (test/purple/dashboard.clj) that use [clj-webdriver](https://github.com/semperos/clj-webdriver), a clojure Selenium WebDriver library. These tests automatically control a Chrome web browser and ensure proper app behavior. Before these tests can be run successfully, you need to first install Chrome and its [ChromeDriver](https://code.google.com/p/selenium/wiki/ChromeDriver). You can download the Mac version of ChromeDriver [here](https://sites.google.com/a/chromium.org/chromedriver/downloads). After unzipping the file, move it to a place that is on your PATH. For example, /opt/local/bin/chromedriver.
+
+You will also need to add entries required by the functional tests to {:dev {:dependencies}}. Because we have already created a profiles.clj file, we need to add the selenium dependencies there. We also need to add ring-jetty-adapter because the functional tests run the app server on a test port so that the tests can be run without having a dev server running locally. Modify profiles.clj and add these requirements:
+
+```clojure
+:dependencies [[javax.servlet/servlet-api "2.5"]
+               [ring-mock "0.1.5"]
+               [clj-webdriver "0.7.2"]
+               [org.seleniumhq.selenium/selenium-java "2.47.0"]
+               [ring/ring-jetty-adapter "1.4.0"]
+               ]
+```
+
+These modifications should allow the tests to run properly with ChromeDriver 2.19.
+
 ## Deploying to Development Server
 
 The server is manually configured with the required System properties in the AWS console. Therefore, the top entry of src/purple/config.clj only sets vars when the environment is "test" or "dev".
