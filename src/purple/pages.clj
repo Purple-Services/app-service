@@ -134,10 +134,23 @@
                                                "enroute" "Begin Servicing"
                                                "servicing" "Complete Order"}
                                               (:status t))
-                                      :data-id (:id t)}]))
+                                      :data-order-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
-             (content (:courier_name t))
+             (if (= (:status t)
+                    "unassigned")
+               (content (html [:select {:class "assign-courier"}
+                               [:option "Assign to Courier"]
+                               (map
+                                #(html
+                                  [:option {:value (:id %)} (:name %) ])
+                                (:couriers x))]
+                              [:input {:type "submit"
+                                       :class "assign-courier"
+                                       :value "Save"
+                                       :data-order-id (:id t)
+                                       :disabled true}]))
+               (content (:courier_name t)))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
@@ -169,8 +182,9 @@
              (content (str (:coupon_code t)))
              
              [:td.total_price]
-             (do-> (if (and (not (:paid t))
-                            (= (:status t) "complete")
+             (do-> (if (and (or (s/blank? (:stripe_charge_id t))
+                                (and (not (:paid t))
+                                     (= (:status t) "complete")))
                             (not= 0 (:total_price t)))
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
@@ -215,11 +229,8 @@
                                 1000)))
                    )
 
-  [:#users-count] (content (str "("
-                                (if (:all x)
-                                  (:users-count x)
-                                  "?")
-                                ")"))
+  [:#users-count] (content
+                   (str "(" (:users-count x) ")"))
 
   [:#coupons :tbody :tr]
   (clone-for [t (:coupons x)]
@@ -347,7 +358,13 @@
                                                 (->> (remove s/blank?))
                                                 count))
                                     all-coupons))
-             :users-count (count users-by-id)
+             :users-count (if all
+                            (count users-by-id) ;; we already have correct total
+                            (-> (!select db-conn "users" ;; need to get total
+                                         ["COUNT(*) as total"]
+                                         {})
+                                first
+                                :total))
              :base-url config/base-url
              :uri-segment (if read-only "stats/" "dashboard/")
              :gas-price-87 @config/gas-price-87
