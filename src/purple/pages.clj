@@ -161,6 +161,9 @@
              [:td.customer_name]
              (content (:customer_name t))
              
+             [:td.customer_phone_number]
+             (content (:customer_phone_number t))
+             
              [:td.address_street :a]
              (content (:address_street t))
              [:td.address_street :a]
@@ -336,6 +339,11 @@
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))
+                                  
+                                  :customer_phone_number
+                                  (:phone_number
+                                   (first (get users-by-id (:user_id %))))
+                                  
                                   :was-late
                                   (let [completion-time
                                         (-> (str "kludgeFix 1|" (:event_log %))
@@ -422,6 +430,11 @@
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))
+                                  
+                                  :customer_phone_number
+                                  (:phone_number
+                                   (first (get users-by-id (:user_id %))))
+                                  
                                   :was-late
                                   (let [completion-time
                                         (-> (str "kludgeFix 1|" (:event_log %))
