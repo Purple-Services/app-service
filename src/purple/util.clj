@@ -8,7 +8,8 @@
             [clj-time.format :as time-format]
             [clj-aws.core :as aws]
             [clj-aws.sns :as sns]
-            [environ.core :refer [env]])
+            [environ.core :refer [env]]
+            [ardoq.analytics-clj :as segment])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
@@ -176,6 +177,8 @@
                                 text)}
                        (when user
                          [:reply-to (:email user)]))))))
+
+(! (def segment-client (segment/initialize (System/getProperty "SEGMENT_WRITE_KEY"))))
 
 ;; Amazon SNS (Push Notifications)
 (! (do

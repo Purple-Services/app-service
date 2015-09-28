@@ -18,10 +18,10 @@
 
 (def db-config
   "Configuration file for connecting to the local database"
-  (let [db-host "localhost"
+  (let [db-host "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com"
         db-port "3306"
         db-name "ebdb"
-        db-password "localpurpledevelopment2015"
+        db-password "HHjdnb873HHjsnhhd"
         db-user "purplemaster"
         db-config {:classname "com.mysql.jdbc.Driver"
                    :subprotocol "mysql"
@@ -91,7 +91,7 @@
 (defn sleep
   "Sleep for ms."
   [& [ms]]
-  (let [default-ms 500
+  (let [default-ms 1000 ;500
         time (or ms default-ms)]
     (Thread/sleep time)))
 
@@ -154,7 +154,7 @@
     (click "input.assign-courier")
     (sleep)
     (accept)
-    (sleep 700)
+    (sleep 1500)
     (accept)
     courier-id))
 
