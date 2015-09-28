@@ -8,6 +8,7 @@
             [purple.orders :as orders]
             [purple.coupons :as coupons]
             [purple.payment :as payment]
+            [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
             [clojure.string :as s]))
@@ -133,6 +134,12 @@
              {:user_id (:id user)
               :token token
               :ip (or client-ip "")})
+    (segment/track segment-client
+                   (:id user)
+                   "Login"
+                   {}
+                   nil
+                   {:ip (or client-ip "")}) ;; TODO, this doesn't do anything?
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -155,6 +162,14 @@
                                  user)
                                :referral_code (coupons/create-referral-coupon db-conn
                                                                               (:id user))))]
+    (when (:success result)
+      (segment/identify segment-client (:id user)
+                        {:email (:email user)
+                         :name (:name user)
+                         :phone (:phone_number user)
+                         :referral_code (:referral_code user)
+                         :gender (:gender user)})
+      (segment/track segment-client (:id user) "Sign Up"))
     (only-prod (future
                  (send-email ;; debugging purposes, "why sometimes 100's of calls..."
                   {:to "chris@purpledelivery.com"
@@ -235,10 +250,13 @@
   (boolean (re-matches #"^.{6,100}$" password)))
 
 (defn valid-phone-number
-  "Given a phone-number string, check whether or not it is a valid phone number with a 10 digit code.
-  Returns true if it is valid, false otherwise. See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507 for more information about the regex used"
+  "Given a phone-number string, check whether or not it is a valid phone number
+  with a 10 digit code. Returns true if it is valid, false otherwise.
+  See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507
+  for more information about the regex used"
   [phone-number]
-  (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$" phone-number)))
+  (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$"
+                       phone-number)))
 
 (defn valid-name
   "Given a name, make sure that it has a space in it"
