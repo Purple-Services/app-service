@@ -354,7 +354,17 @@
                            db-conn (conn)]
                        (orders/assign-to-courier-by-admin db-conn
                                                           (:order_id b)
-                                                          (:courier_id b))))))
+                                                          (:courier_id b)))))
+              ;; update a zones description. Currently only supports
+              ;; updating fuel_prices and service_fees
+              (POST "/update-zone" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (dispatch/update-zone db-conn
+                                             (:id b)
+                                             (:fuel_prices b)
+                                             (:service_fees b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication

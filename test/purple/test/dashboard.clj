@@ -1,8 +1,10 @@
 (ns purple.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
             [purple.handler :refer [app]]
-            [purple.orders :as orders]
             [purple.db :refer [!select conn]]
+            [purple.dispatch :as dispatch]
+            [purple.test.db :refer [db-config]]
+            [purple.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-webdriver.taxi :refer :all]))
 
@@ -15,20 +17,6 @@
 (def user "purpleadmin")
 (def password "gasdelivery8791")
 (def test-base-url (str "http://" test-host ":" test-port "/"))
-
-(def db-config
-  "Configuration file for connecting to the local database"
-  (let [db-host "localhost"
-        db-port "3306"
-        db-name "ebdb"
-        db-password "localpurpledevelopment2015"
-        db-user "purplemaster"
-        db-config {:classname "com.mysql.jdbc.Driver"
-                   :subprotocol "mysql"
-                   :subname (str "//" db-host ":" db-port "/" db-name)
-                   :user db-user
-                   :password db-password}]
-    db-config))
 
 ;; the fixtures setup are based off of
 ;; https://semaphoreci.com/community/tutorials/testing-clojure-web-applications-with-selenium
@@ -57,33 +45,6 @@
   (t)
   (stop-browser))
 
-(defn add-order
-  "Add an order to the database"
-  []
-  (let [test-user (first (!select db-config "users" ["*"]
-                                  {:email "test@test.com"}))
-        user-id   (:id test-user)
-        vehicle-id (:id
-                    (first
-                     (sort-by :timestamp_created
-                              (!select db-config "vehicles" ["*"]
-                                       {:user_id user-id
-                                        :active 1}))))
-        order {:time "180"
-               :vehicle_id vehicle-id
-               :address_street "383-399 Civic Center Dr"
-               :special_instructions ""
-               :service_fee 0
-               :total_price 3550
-               :coupon_code ""
-               :gas_price 355
-               :gallons 10
-               :gas_type "87"
-               :lat "34.074606839269514"
-               :lng "-118.39825344813232"
-               :address_zip "90210"}]
-    (orders/add db-config user-id order)))
-
 ;; this function is used to slow down clojure so the browser has time to catch
 ;; up. If you are having problems with tests passing, particuarly if they appear
 ;; to randomly fail, try increasing the amount of sleep time before the call
@@ -91,7 +52,7 @@
 (defn sleep
   "Sleep for ms."
   [& [ms]]
-  (let [default-ms 500
+  (let [default-ms 700
         time (or ms default-ms)]
     (Thread/sleep time)))
 
@@ -180,13 +141,13 @@
 ;; complete or cancelled
 (deftest add-order-and-cancel-it
   (testing "Add an order an cancel it in the dashboard"
-    (add-order)
+    (orders/add-order orders/test-order1)
     (go-to-dashboard)
     (cancel-order)))
 
 (deftest add-order-assign-and-cancel
   (testing "Add an order, assign it a courier and then cancel it"
-    (add-order)
+    (orders/add-order orders/test-order1)
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (sleep)
@@ -198,7 +159,7 @@
 (deftest order-is-added-assigned-and-cycled
   (testing "An order is added, assigned to 'Test Courier1' and
 the status cycled through. Courier is checked for proper busy status"
-    (add-order)
+    (orders/add-order orders/test-order1)
     (go-to-dashboard)
     ;; assign the courier
     (assign-courier "Test Courier1")
@@ -219,8 +180,8 @@ the status cycled through. Courier is checked for proper busy status"
   (testing "Two orders are added, two are assigned to 'Test Courier1',
 both are cycled and the busy status of the courier is checked"
     ;; add two orders
-    (add-order)
-    (add-order)
+    (orders/add-order orders/test-order1)
+    (orders/add-order orders/test-order1)
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (sleep)

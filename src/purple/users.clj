@@ -571,8 +571,8 @@
   "Sends an SMS message to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (send-sms (:phone_number user)
-              message)
+    (only-prod (send-sms (:phone_number user)
+                         message))
     {:success true}))
 
 (defn call-user
