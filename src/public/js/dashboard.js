@@ -360,7 +360,5 @@ $('#zones').on('click','input.save-zones', function() {
         var textInputFields = $("table#zones").find('input:text');
         textInputFields.map(function(index,el)
                             {el.setAttribute("disabled",true);});
-
     }
-    
 });
