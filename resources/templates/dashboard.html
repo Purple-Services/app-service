@@ -127,320 +127,36 @@
                 </tr>
             </tbody>
         </table>
-        
-        <div style="margin-top: 75px;">
-            <form id="configForm">
-                <h3>Gas Price Per Gallon</h3>
-                87 Octane (in cents) <input type="text" id="gasPriceDollars87" value="" />
-                <br />
-                91 Octane (in cents) <input type="text" id="gasPriceDollars91" value="" />
-                
-                <br /><br /><input type="submit" id="configFormSubmit" name="configFormSubmit" value="Save Changes" />
-            </form>
-            <div id="successMessage" style="display: none">
-                Changed successfully.
-            </div>
-        </div>
 
+        <h2 id="zones">Zones <input type="submit" class="edit-zones" value="Edit"></input></h2>
+        <table id="zones" class="hide-extra">
+            <thead>
+                <tr>
+                    <td>Zip Codes</td>
+                    <td>Color</td>
+                    <td>87 Price</td>
+                    <td>91 Price</td>
+                    <td>1 Hour Fee</td>
+                    <td>3+ Hour Fee</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="zips"></td>
+                    <td class="color"></td>
+                    <td class="87-price"></td>
+                    <td class="91-price"></td>
+                    <td class="1-hr-fee"></td>
+                    <td class="3-hr-fee"></td>
+                </tr>
+            </tbody>
+         </table>
         <div style="text-align: center; padding-bottom: 20px;">
             stats.csv
             <span id="generate-stats-csv" class="fake-link">[initiate a refresh]</span>
             <span id="download-stats-csv" class="fake-link">[download]</span>
         </div>
         
-        <script>
-         // object that defines the flow of an order's status state.
-         // null means status can't be changed
-         var status_to_next_status = {
-             unassigned: "assigned",
-             assigned: "accepted",
-             accepted: "enroute",
-             enroute: "servicing",
-             servicing: "complete",
-             complete: null,
-             cancelled: null
-         };
-         // object that defines the input.value of the input.advance-status
-         var status_to_input_value = {
-             accepted: "Start Route",
-             enroute: "Begin Servicing",
-             servicing: "Complete Order"
-         }
-         function capitalizeFirstLetter(string) {
-             return string.charAt(0).toUpperCase() + string.slice(1);
-         }
-         $("#generate-stats-csv").click(function(){
-             $.ajax({
-                 type: "GET",
-                 url: $("#config").data("base-url") +
-                      $("#config").data("uri-segment") +
-                      "generate-stats-csv",
-                 contentType: 'application/json',
-                 success: function(response) {
-                     if (response.success === true) {
-                         alert("stats.csv generation initiated. Please refresh the page in a minute or so, then try to download the CSV file..");
-                     }
-                 }
-             });
-         });
-
-         $("#download-stats-csv").click(function(){
-             window.location = $("#config").data("base-url") +
-                               $("#config").data("uri-segment") +
-                               "download-stats-csv";
-         });
-         
-         $("#configForm").submit(function(e){
-             e.preventDefault();
-             var price87 = $("#gasPriceDollars87").val();
-             var price91 = $("#gasPriceDollars91").val();
-             var priceInCents87 = parseInt(price87.replace('$','').replace('.',''));
-             var priceInCents91 = parseInt(price91.replace('$','').replace('.',''));
-             $.ajax({
-                 type: "POST",
-                 url: $("#config").data("base-url") + "dashboard/change-gas-price",
-                 data: JSON.stringify(
-                     {
-                         "gas-price-87": priceInCents87,
-                         "gas-price-91": priceInCents91
-                     }
-                 ),
-                 dataType: "json",
-                 contentType: 'application/json',
-                 success: function(response) {
-                     if (response.success === true) {
-                         $("#configForm").fadeOut(400, function(){
-                             $("#successMessage").fadeIn(400);
-                         });
-                     }
-                 }
-             });
-         });
-
-         $(document).ready(function(){
-
-             $('.show-all').click(function(){
-                 var table = $("#" + $(this).data('show-id'));
-                 if (table.hasClass('showing-all')) {
-                     table.removeClass('showing-all');
-                     $(this).html('[show all]');
-                 } else {
-                     table.addClass('showing-all');
-                     $(this).html('[hide after 7]');
-                 }
-             });
-
-             $('#send-push-to-active-users').click(function(){
-                 var message = prompt("Push notification message to send to all active users:");
-                 if (!message || message == null || message == "") {
-                     return false;
-                 }
-                 if (confirm("!!! Are you sure you want to send this message to all active users?: " + message)) {
-                     $.ajax({
-                         type: "POST",
-                         url: $("#config").data("base-url") + "dashboard/send-push-to-all-active-users",
-                         data: JSON.stringify(
-                             {
-                                 "message": message
-                             }
-                         ),
-                         dataType: "json",
-                         contentType: 'application/json',
-                         success: function(response) {
-                             alert('Sent!');
-                         },
-                         failure: function(response) {
-                             alert('Something went wrong. Push notifications may or may not have been sent. Wait until sure before trying again.');
-                         }
-                     });
-                 }
-             });
-
-             $('#send-push-to-selected-users').click(function(){
-                 var users = new Array();
-                 $('.send-push-to:checked').each(function(){
-                     users.push($(this).val());
-                 });
-
-                 if (users.length === 0) {
-                     alert('No users selected.');
-                     return false;
-                 }
-
-                 var message = prompt("Push notification message to send to selected users (" + users.length + "):");
-                 if (!message || message == null || message == "") {
-                     return false;
-                 }
-                 
-                 if (confirm("!!! Are you sure you want to send this message to all selected users?: " + message)) {
-                     $.ajax({
-                         type: "POST",
-                         url: $("#config").data("base-url") + "dashboard/send-push-to-users-list",
-                         data: JSON.stringify({
-                             "message": message,
-                             "user-ids": users
-                         }),
-                         dataType: "json",
-                         contentType: 'application/json',
-                         success: function(response) {
-                             alert('Sent!');
-                             $('.send-push-to:checked').attr('checked', false);
-                         },
-                         failure: function(response) {
-                             alert('Something went wrong. Push notifications may or may not have been sent. Wait until sure before trying again.');
-                             $('.send-push-to:checked').attr('checked', false);
-                         }
-                     });
-                 }
-             });
-
-             $('.cancel-order').click(function(){
-                 if (confirm("Are you sure you want to cancel this order? (this cannot be undone) (customer will be notified via push notification)")) {
-                     // to get the element inside of success statement
-                     var self = this;
-                     $(self).attr("disabled", true);
-                     $.ajax({
-                         type: "POST",
-                         url: "dashboard/cancel-order",
-                         data: JSON.stringify({
-                             "order_id": $(this).data("id"),
-                             "user_id": $(this).data("user-id")
-                         }),
-                         dataType: "json",
-                         contentType: 'application/json',
-                         success: function(response) {
-                             $(self).removeAttr("disabled");
-                             if (!response.success) {
-                                 alert('The order could not be cancelled!\n' +
-                                       'Server Message: ' +
-                                       response.message);
-                             } else {
-                                 // remove the cancel order button and mark the
-                                 // order has cancelled
-                                 alert('Order cancelled!');
-                                 location.reload();
-                             }
-                         },
-                         failure: function(response) {
-                             $(self).removeAttr("disabled");
-                             alert('Something went wrong. Order has NOT ' +
-                                   'been cancelled!');
-                             console.log(response);
-                         }
-                     });
-                 }
-             });
-             $('td.status').on("click", ".advance-status", function(){
-                 var current_status = $(this).parent().text();
-                 console.log(current_status);
-                 if (confirm("Are you sure you want to mark this order as " +
-                             capitalizeFirstLetter(status_to_next_status[current_status]) +
-                             "? (this" +
-                             " cannot be undone) (customer will " +
-                             "be notified via push notification)")) {
-                     // to get the element inside of success statement
-                     var self = this;
-                     // used to cache the input.advance-status
-                     // element below
-                     var cache;
-                     $.ajax({
-                         type: "POST",
-                         url: "dashboard/update-status",
-                         data: JSON.stringify({
-                             "order_id": $(this).data("order-id"),
-                         }),
-                         dataType: "json",
-                         contentType: 'application/json',
-                         success: function(response) {
-                             if (!response.success) {
-                                 alert('The order could not be advanced!\n' +
-                                       'Server Message: '
-                                       + response.message);
-                             } else {
-                                 // grab the input.advance-status element..
-                                 cache = $(self);
-                                 // ..and modify it's value to relfect the
-                                 // status that it would be updated to
-                                 if (status_to_input_value[status_to_next_status[current_status]])
-                                 {
-                                     // the new input value is non-null
-                                     cache.val(status_to_input_value[status_to_next_status[current_status]]);
-                                 }
-
-                                 // when an order is marked as complete
-                                 // the page should be refreshed so that
-                                 // the Busy? column of the courier table
-                                 // is updated
-                                 if (response.message === "complete") {
-                                     alert("The order has been marked as " +
-                                           "Complete. Refreshing page.");
-                                     location.reload();
-                                 }
-                                 else {
-                                     // update the order's status
-                                     $(self).parent().text(response.message).append(cache);
-                                 }
-                             }
-                         },
-                         failure: function(response) {
-                             alert('Something went wrong. Order was NOT ' +
-                                   'advanced!');
-                             console.log(response);
-                         }
-                     });
-                 }
-             });
-         });
-         $('select.assign-courier').change(function(){
-             var courier_id = $(this).val();
-             var input_button = $(this).parent().find("input.assign-courier");
-             if (courier_id != "Assign to Courier") {
-                 input_button.attr("disabled",false);
-             } else {
-                 input_button.attr("disabled",true);
-             }
-         });
-         $('input.assign-courier').click(function(){
-             var selected_courier = $(this).parent().find("select option:selected").text();
-             if (confirm("Are you sure you want to assign this order to " +
-                         selected_courier +
-                         "? (this cannot be undone) " +
-                         " (courier will be notified via push notification)")) {
-                     // to get the element inside of success statement
-                     var self = this;
-                     $(this).attr("disabled",true);
-                     $.ajax({
-                         type: "POST",
-                         url: "dashboard/assign-order",
-                         data: JSON.stringify({
-                             "order_id": $(this).data("order-id"),
-                             "courier_id": $(this).parent().find("select").val()
-                         }),
-                         dataType: "json",
-                         contentType: 'application/json',
-                         success: function(response) {
-                             if (!response.success) {
-                                 alert('The order could not be assigned!\n' +
-                                       'Server Message: ' +
-                                       response.message);
-                                 $(self).attr("disabled",false);
-                             } else {
-                                 // send alert
-                                 alert("This order has been assigned to "
-                                     + selected_courier);
-                                 // reload page
-                                 location.reload();
-                             }
-                         },
-                         failure: function(response) {
-                             alert('Something went wrong. Order was NOT ' +
-                                   'advanced!');
-                             $(self).attr("disabled",false);
-                             console.log(response);
-                         }
-                     });
-             }
-         });
-        </script>
+        <script src="js/dashboard.js"></script>
     </body>
 </html>
