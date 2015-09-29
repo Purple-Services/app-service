@@ -18,8 +18,14 @@
   (!select db-conn "zones" ["*"] {}))
 
 ;; holds all zone definitions in local memory, some parsing in there too
-(! (def zones (map #(update-in % [:zip_codes] split-on-comma)
-                   (get-all-zones (conn)))))
+(! (def zones (atom (map #(update-in % [:zip_codes] split-on-comma)
+                         (get-all-zones (conn))))))
+
+(defn update-zones
+  "Update the zones var held in memory with that in the database"
+  []
+  (reset! zones (map #(update-in % [:zip_codes] split-on-comma)
+                     (get-all-zones (conn)))))
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
@@ -29,18 +35,54 @@
 ;; of the zone that the destination resides in.
 
 ;; a map of all zones, each with a priority-map to hold their orders
-(! (def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) zones))))
+(! (def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) @zones))))
 
 (defn order->zone-id
   "Determine which zone the order is in; gives the zone id."
   [order]
   (let [zip-code (subs (:address_zip order) 0 5)]
     (:id (first (filter #(in? (:zip_codes %) zip-code)
-                        zones)))))
+                        @zones)))))
 
 (defn get-map-by-zone-id
   [zone-id]
   (get zq zone-id))
+
+(defn get-zone-by-zip-code
+  "Given a zip code, return the corresponding zone"
+  [zip-code]
+  (-> (filter #(= (:id %) (order->zone-id {:address_zip zip-code})) @zones)
+      first))
+
+(defn get-fuel-prices
+  "Given a zip code, return the fuel prices for that zone"
+  [zip-code]
+  (-> zip-code
+      (get-zone-by-zip-code)
+      :fuel_prices
+      (read-string)))
+
+(defn get-service-fees
+  "Given a zip-code, return the service fees for that zone"
+  [zip-code]
+  (-> zip-code
+      (get-zone-by-zip-code)
+      :service_fees
+      (read-string)))
+
+(defn get-service-time-bracket
+  "Given a zip-code, return the service time bracket for that zone"
+  [zip-code]
+  (-> zip-code
+      (get-zone-by-zip-code)
+      :service_time_bracket
+      (read-string)))
+
+(defn get-gas-prices
+  "Given a zip-code, return the "
+  [zip-code]
+  {:success true
+   :gas_prices (get-fuel-prices zip-code)})
 
 (defn priority-score
   "Compute the priority score (an int) of the order."
@@ -63,28 +105,32 @@
 (! (run! add-order-to-zq
          (orders/get-all-unassigned (conn))))
 
-(defn get-gas-prices
-  [zip-code]
-  {:success true
-   :gas_prices (->> (map (juxt identity octane->gas-price) ["87" "91"])
-                    flatten
-                    (apply hash-map))})
-
 (defn available
-  [good-zip? good-time?-fn octane]
-  (let [good-times (filter #(and good-zip? (good-time?-fn %))
-                           (keys config/delivery-times))]
+  [good-zip? good-time?-fn zip-code octane]
+  (let [service-fees (get-service-fees zip-code)
+        delivery-times {180 {:service_fee (:180 service-fees)
+                             :text "within 3 hours (free)"
+                             :order 0}
+                        60 {:service_fee (:60 service-fees)
+                            :text (str "within 1 hour ($"
+                                       (cents->dollars
+                                        (:60 service-fees)) ")")
+                            :order 1}}
+        good-times (filter #(and good-zip? (good-time?-fn %))
+                           ;;(keys config/delivery-times)
+                           (keys delivery-times)
+                           )]
     {:octane octane
      :gallons 15 ;; for now, we always assume 15 is available
-     :price_per_gallon (octane->gas-price octane)
-     :times (into {} (map (juxt identity config/delivery-times) good-times))}))
+     :price_per_gallon ((keyword octane) (get-fuel-prices zip-code))
+     :times (into {} (map (juxt identity delivery-times) good-times))}))
 
 (defn availability
   "Get courier availability for given constraints."
   [db-conn zip-code user-id]
-  (let [good-zip? (seq (filter #(in? (:zip_codes %) zip-code) zones))
-        opening-minute (first config/service-time-bracket)
-        closing-minute (last config/service-time-bracket)
+  (let [good-zip? (seq (filter #(in? (:zip_codes %) zip-code) @zones))
+        opening-minute (first (get-service-time-bracket zip-code))
+        closing-minute (last  (get-service-time-bracket zip-code))
         current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
                                                   1000))
         good-time?-fn (fn [minutes-needed]
@@ -97,7 +143,8 @@
                          closing-minute))
         user (users/get-user-by-id db-conn user-id)]
     {:success true
-     :availabilities (map (partial available good-zip? good-time?-fn) ["87" "91"])
+     :availabilities (map (partial available good-zip? good-time?-fn zip-code)
+                          ["87" "91"])
      ;; if unavailable, this is the explanation:
      :unavailable-reason
      (if good-zip?
@@ -110,15 +157,14 @@
                      :gallons (if good-zip?
                                 15 0) ;; just assume 15 gallons
                      :time [1 3]
-                     :price_per_gallon @config/gas-price-87
+                     :price_per_gallon (:87 (get-fuel-prices zip-code))
                      :service_fee [100 0]}
                     {:octane "91"
                      :gallons (if good-zip?
                                 15 0)
                      :time [1 3]
-                     :price_per_gallon @config/gas-price-91
-                     :service_fee [100 0]}]
-     }))
+                     :price_per_gallon (:91 (get-fuel-prices zip-code))
+                     :service_fee [100 0]}]}))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
@@ -150,9 +196,9 @@
         ;; as user rows
         expired-couriers (users/get-users-by-ids db-conn expired-courier-ids)]
     (when-not (empty? expired-couriers)
-      (run! #(send-sms (:phone_number %)
-                       "You have just disconnected from the Purple Courier App.")
-            expired-couriers)
+      (only-prod (run! #(send-sms (:phone_number %)
+                                  "You have just disconnected from the Purple Courier App.")
+                       expired-couriers))
       (sql/with-connection db-conn
         (sql/update-values
          "couriers"
@@ -229,11 +275,11 @@
              (< (* 60 20) ;; only warn every 20 minutes
                 (- (quot (System/currentTimeMillis) 1000)
                    @last-orphan-warning)))
-    (run! #(send-sms % "There are orders, but no available couriers.")
-          (concat [] ;; put your number in here when dev'ing
-                  (only-prod ["3235782263"     ;; Bruno
-                              ;; "3106919061"     ;; JP
-                              "8589228571"]))) ;; Lee
+    (only-prod (run! #(send-sms % "There are orders, but no available couriers.")
+                     (concat [] ;; put your number in here when dev'ing
+                             (only-prod ["3235782263"     ;; Bruno
+                                         ;; "3106919061"     ;; JP
+                                         "8589228571"])))) ;; Lee
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
 
@@ -279,3 +325,32 @@
                {:gas_price_87 gas-price-87
                 :gas_price_91 gas-price-91}
                {:id 1})))
+
+(defn update-zone
+  "Update a zone's fuel_prices and service_fees. fuel-prices is an edn string
+of the format {:87 <integer cents> :91 <integer cents>}. service-fees is an edn
+string of the format {:60 <integer cents> :180 <integer cents>}"
+  [db-conn id fuel-prices service-fees]
+  (!update db-conn "zones"
+           {:fuel_prices fuel-prices
+            :service_fees service-fees}
+           {:id id})
+  ;; updat the zones as well
+  (update-zones))
+
+(defn get-courier-zips
+  "Given a courier-id, get all of the zip-codes that a courier is assigned to"
+  [db-conn courier-id]
+  (let [courier-assigned-zones (into
+                               #{}
+                               (map read-string
+                                    (split-on-comma
+                                     (:zones (first
+                                      (!select db-conn
+                                               "couriers"
+                                               [:zones]
+                                               {:id courier-id}))))))
+        courier-zones (filter #(contains? courier-assigned-zones (:id %))
+                              @zones)
+        zip-codes (apply concat (map :zip_codes courier-zones))]
+    (into #{} zip-codes)))
