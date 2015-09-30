@@ -66,8 +66,9 @@
                              (- (quot (System/currentTimeMillis) 1000)
                                 (* 60 60 24 16)) ;; 16 days
                              ") OR status = \"unassigned\" ORDER BY target_time_end DESC"))
-        orders (filter #(contains? courier-zip-codes (:address_zip %))
-                       all-orders)
+        orders (remove #(and (= (:status %) "unassigned")
+                             (not (contains? courier-zip-codes
+                                             (:address_zip %)))) all-orders)
         customer-ids (distinct (map :user_id orders))
         customers (group-by :id
                             (!select db-conn
@@ -89,10 +90,10 @@
                                          (s/join "\",\"" vehicle-ids)
                                          "\")")))]
     (map #(assoc %
-            :customer
-            (first (get customers (:user_id %)))
-            :vehicle
-            (first (get vehicles (:vehicle_id %))))
+                 :customer
+                 (first (get customers (:user_id %)))
+                 :vehicle
+                 (first (get vehicles (:vehicle_id %))))
          orders)))
 
 (defn gen-charge-description
