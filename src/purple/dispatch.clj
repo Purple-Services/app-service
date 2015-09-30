@@ -78,6 +78,15 @@
       :service_time_bracket
       (read-string)))
 
+(defn get-one-hour-orders-allowed
+  "Given a zip-code, return the time in minutes that one hour orders are
+  allowed."
+  [zip-code]
+  (-> zip-code
+      (get-service-time-bracket)
+      first
+      (+ (* 60 3))))
+
 (defn get-gas-prices
   "Given a zip-code, return the "
   [zip-code]

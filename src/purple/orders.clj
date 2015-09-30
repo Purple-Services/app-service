@@ -167,7 +167,8 @@
   [db-conn o]
   (if (< (:time-limit o) 180)
     (and (>= (unix->minute-of-day (:target_time_start o))
-             config/one-hour-orders-allowed)
+             ((resolve 'purple.dispatch/get-one-hour-orders-allowed)
+              (:address_zip o)))
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
@@ -180,12 +181,14 @@
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
-  [gas-price]
-  (if (= gas-price (octane->gas-price "87"))
-    "87"
-    (if (= gas-price (octane->gas-price "91"))
-      "91"
-      "87"))) ;; if we can't find it then assume 87
+  [gas-price zip-code]
+  (let [fuel-prices ((resolve 'purple.dispatch/get-fuel-prices) zip-code)]
+    (if (= gas-price ((keyword "87") fuel-prices))
+      "87"
+      (if (= gas-price ((keyword "91") fuel-prices))
+        "91"
+        "87" ;; if we can't find it then assume 87
+        ))))
 
 (defn new-order-text
   [db-conn o charge-authorized?]
@@ -233,7 +236,8 @@
             :gallons (Integer. (:gallons order))
             :gas_type (unless-p nil?
                                 (:gas_type order)
-                                (infer-gas-type-by-price (:gas_price order)))
+                                (infer-gas-type-by-price (:gas_price order)
+                                                         (:address_zip order)))
             :lat (unless-p Double/isNaN (Double. (:lat order)) 0)
             :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
             :license_plate license-plate
