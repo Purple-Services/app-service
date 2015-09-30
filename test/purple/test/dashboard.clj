@@ -141,13 +141,13 @@
 ;; complete or cancelled
 (deftest add-order-and-cancel-it
   (testing "Add an order an cancel it in the dashboard"
-    (orders/add-order orders/test-order1)
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (cancel-order)))
 
 (deftest add-order-assign-and-cancel
   (testing "Add an order, assign it a courier and then cancel it"
-    (orders/add-order orders/test-order1)
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (sleep)
@@ -159,7 +159,7 @@
 (deftest order-is-added-assigned-and-cycled
   (testing "An order is added, assigned to 'Test Courier1' and
 the status cycled through. Courier is checked for proper busy status"
-    (orders/add-order orders/test-order1)
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     ;; assign the courier
     (assign-courier "Test Courier1")
@@ -180,8 +180,8 @@ the status cycled through. Courier is checked for proper busy status"
   (testing "Two orders are added, two are assigned to 'Test Courier1',
 both are cycled and the busy status of the courier is checked"
     ;; add two orders
-    (orders/add-order orders/test-order1)
-    (orders/add-order orders/test-order1)
+    (orders/add-order (orders/test-order))
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (sleep)
