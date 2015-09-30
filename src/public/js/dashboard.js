@@ -9,15 +9,18 @@ var status_to_next_status = {
     complete: null,
     cancelled: null
 };
+
 // object that defines the input.value of the input.advance-status
 var status_to_input_value = {
     accepted: "Start Route",
     enroute: "Begin Servicing",
     servicing: "Complete Order"
 }
+
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
 $("#generate-stats-csv").click(function(){
     $.ajax({
         type: "GET",
@@ -37,33 +40,6 @@ $("#download-stats-csv").click(function(){
     window.location = $("#config").data("base-url") +
         $("#config").data("uri-segment") +
         "download-stats-csv";
-});
-
-$("#configForm").submit(function(e){
-    e.preventDefault();
-    var price87 = $("#gasPriceDollars87").val();
-    var price91 = $("#gasPriceDollars91").val();
-    var priceInCents87 = parseInt(price87.replace('$','').replace('.',''));
-    var priceInCents91 = parseInt(price91.replace('$','').replace('.',''));
-    $.ajax({
-        type: "POST",
-        url: $("#config").data("base-url") + "dashboard/change-gas-price",
-        data: JSON.stringify(
-            {
-                "gas-price-87": priceInCents87,
-                "gas-price-91": priceInCents91
-            }
-        ),
-        dataType: "json",
-        contentType: 'application/json',
-        success: function(response) {
-            if (response.success === true) {
-                $("#configForm").fadeOut(400, function(){
-                    $("#successMessage").fadeIn(400);
-                });
-            }
-        }
-    });
 });
 
 $(document).ready(function(){
@@ -239,133 +215,137 @@ $(document).ready(function(){
             });
         }
     });
-});
-$('select.assign-courier').change(function(){
-    var courier_id = $(this).val();
-    var input_button = $(this).parent().find("input.assign-courier");
-    if (courier_id != "Assign to Courier") {
-        input_button.attr("disabled",false);
-    } else {
-        input_button.attr("disabled",true);
-    }
-});
-$('input.assign-courier').click(function(){
-    var selected_courier = $(this).parent().find("select option:selected").text();
-    if (confirm("Are you sure you want to assign this order to " +
-                selected_courier +
-                "? (this cannot be undone) " +
-                " (courier will be notified via push notification)")) {
-        // to get the element inside of success statement
-        var self = this;
-        $(this).attr("disabled",true);
-        $.ajax({
-            type: "POST",
-            url: "dashboard/assign-order",
-            data: JSON.stringify({
-                "order_id": $(this).data("order-id"),
-                "courier_id": $(this).parent().find("select").val()
-            }),
-            dataType: "json",
-            contentType: 'application/json',
-            success: function(response) {
-                if (!response.success) {
-                    alert('The order could not be assigned!\n' +
-                          'Server Message: ' +
-                          response.message);
-                    $(self).attr("disabled",false);
-                } else {
-                    // send alert
-                    alert("This order has been assigned to "
-                          + selected_courier);
-                    // reload page
-                    location.reload();
-                }
-            },
-            failure: function(response) {
-                alert('Something went wrong. Order was NOT ' +
-                      'advanced!');
-                $(self).attr("disabled",false);
-                console.log(response);
-            }
-        });
-    }
-});
-var saveButton = document.createElement("input");
-saveButton.type = "submit";
-saveButton.className = "save-zones";
-saveButton.setAttribute("value","Save");
 
-var editButton = document.createElement("input");
-editButton.type = "submit";
-editButton.className = "edit-zones";
-editButton.setAttribute("value","Edit");
-
-// listener for edit
-$('#zones').on('click', 'input.edit-zones',function(){
-    // get all zone text input fields and activate them
-    var textInputFields = $("table#zones").find('input:text');
-    textInputFields.map(function(index,el) {el.removeAttribute("disabled");});
-
-  
-    // replace the edit button with a save button
-    $(this).replaceWith(saveButton);
-});
-// listener for save
-$('#zones').on('click','input.save-zones', function() {
-    // replace the save button with an edit button
-    $(this).replaceWith(editButton);
-
-    // confirm that the user would like to save
-    if (confirm("Are you sure you want to save your edits to the Zones?")) {
-        // get the rows for each zone
-        var zoneRows = $("table#zones tbody tr");
-        // given a tr, create the edn map for fuel prices
-        var ednFuelPrices = function(tr) {
-            var price87     = $(tr).find(".87-price").find("input").val();
-            var price91     = $(tr).find(".91-price").find("input").val();
-        
-            return "{:87 " + price87 + " :91 " + price91 + "}";
-        };
-        // given a tr, create the edn map for services fees
-        var ednServiceFees = function(tr) {
-            var hrFee       = $(tr).find(".1-hr-fee").find("input").val();
-            var threeHrsFee = $(tr).find(".3-hr-fee").find("input").val();
-
-            return "{:60 " + hrFee + " :180 " + threeHrsFee +"}";
-        };
-        // given a tr, create the edn map for service time bracket
-        var ednServiceTimeBracket = function(tr) {
-            var serviceStart = $(tr).find(".service-start").find("input").val();
-            var serviceEnd   = $(tr).find(".service-end").find("input").val();
-            return "[" + serviceStart + " " + serviceEnd + "]";
+    $('select.assign-courier').change(function(){
+        var courier_id = $(this).val();
+        var input_button = $(this).parent().find("input.assign-courier");
+        if (courier_id != "Assign to Courier") {
+            input_button.attr("disabled",false);
+        } else {
+            input_button.attr("disabled",true);
         }
-        // update each zone row
-        zoneRows.map(function(index,el) {
+    });
+
+    $('input.assign-courier').click(function(){
+        var selected_courier = $(this).parent().find("select option:selected").text();
+        if (confirm("Are you sure you want to assign this order to " +
+                    selected_courier +
+                    "? (this cannot be undone) " +
+                    " (courier will be notified via push notification)")) {
+            // to get the element inside of success statement
+            var self = this;
+            $(this).attr("disabled",true);
             $.ajax({
                 type: "POST",
-                url: "dashboard/update-zone",
+                url: "dashboard/assign-order",
                 data: JSON.stringify({
-                    "id":  $(el).find(".87-price input").data("id"),
-                    "fuel_prices": ednFuelPrices(el),
-                    "service_fees": ednServiceFees(el),
-                    "service_time_bracket": ednServiceTimeBracket(el)
+                    "order_id": $(this).data("order-id"),
+                    "courier_id": $(this).parent().find("select").val()
                 }),
                 dataType: "json",
-                contentType: "application/json",
+                contentType: 'application/json',
                 success: function(response) {
-                    
+                    if (!response.success) {
+                        alert('The order could not be assigned!\n' +
+                              'Server Message: ' +
+                              response.message);
+                        $(self).attr("disabled",false);
+                    } else {
+                        // send alert
+                        alert("This order has been assigned to "
+                              + selected_courier);
+                        // reload page
+                        location.reload();
+                    }
                 },
                 failure: function(response) {
-                    alert("The zone with id number " +
-                          $(el).find(".87-price input").data("id") +
-                          " did not update properly.");
+                    alert('Something went wrong. Order was NOT ' +
+                          'advanced!');
+                    $(self).attr("disabled",false);
                     console.log(response);
                 }
             });
-        });
-        // get all zone text input fields and deactivate them
+        }
+    });
+
+    var saveButton = document.createElement("input");
+    saveButton.type = "submit";
+    saveButton.className = "save-zones";
+    saveButton.setAttribute("value","Save");
+
+    var editButton = document.createElement("input");
+    editButton.type = "submit";
+    editButton.className = "edit-zones";
+    editButton.setAttribute("value","Edit");
+
+    // listener for edit
+    $('#zones').on('click', 'input.edit-zones',function(){
+        // get all zone text input fields and activate them
         var textInputFields = $("table#zones").find('input:text');
         textInputFields.map(function(index,el)
-                            {el.setAttribute("disabled",true);});
-    }
+                            {el.removeAttribute("disabled");});
+
+        // replace the edit button with a save button
+        $(this).replaceWith(saveButton);
+    });
+
+    // listener for save
+    $('#zones').on('click','input.save-zones', function() {
+        // replace the save button with an edit button
+        $(this).replaceWith(editButton);
+
+        // confirm that the user would like to save
+        if (confirm("Are you sure you want to save your edits to the Zones?")) {
+            // get the rows for each zone
+            var zoneRows = $("table#zones tbody tr");
+            // given a tr, create the edn map for fuel prices
+            var ednFuelPrices = function(tr) {
+                var price87     = $(tr).find(".87-price").find("input").val();
+                var price91     = $(tr).find(".91-price").find("input").val();
+
+                return "{:87 " + price87 + " :91 " + price91 + "}";
+            };
+            // given a tr, create the edn map for services fees
+            var ednServiceFees = function(tr) {
+                var hrFee       = $(tr).find(".1-hr-fee").find("input").val();
+                var threeHrsFee = $(tr).find(".3-hr-fee").find("input").val();
+
+                return "{:60 " + hrFee + " :180 " + threeHrsFee +"}";
+            };
+            // given a tr, create the edn map for service time bracket
+            var ednServiceTimeBracket = function(tr) {
+                var serviceStart = $(tr).find(".service-start").find("input").val();
+                var serviceEnd   = $(tr).find(".service-end").find("input").val();
+                return "[" + serviceStart + " " + serviceEnd + "]";
+            }
+            // update each zone row
+            zoneRows.map(function(index,el) {
+                $.ajax({
+                    type: "POST",
+                    url: "dashboard/update-zone",
+                    data: JSON.stringify({
+                        "id":  $(el).find(".87-price input").data("id"),
+                        "fuel_prices": ednFuelPrices(el),
+                        "service_fees": ednServiceFees(el),
+                        "service_time_bracket": ednServiceTimeBracket(el)
+                    }),
+                    dataType: "json",
+                    contentType: "application/json",
+                    success: function(response) {
+                        alert("The zones information has been updated!");
+                    },
+                    failure: function(response) {
+                        alert("The zone with id number " +
+                              $(el).find(".87-price input").data("id") +
+                              " did not update properly.");
+                        console.log(response);
+                    }
+                });
+            });
+            // get all zone text input fields and deactivate them
+            var textInputFields = $("table#zones").find('input:text');
+            textInputFields.map(function(index,el)
+                                {el.setAttribute("disabled",true);});
+        }
+    });
 });
