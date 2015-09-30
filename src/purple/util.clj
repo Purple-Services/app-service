@@ -176,18 +176,16 @@
   (let [user (when user_id
                ((resolve 'purple.users/get-user-by-id) (conn) user_id))]
     (only-prod
-     (send-email (conj {:to "chris@purpledelivery.com"
-                        :cc ["joe@purpledelivery.com"
-                             "bruno@purpledelivery.com"]
-                        :subject "Purple Feedback Form Response"
-                        :body (if user
-                                (str "From User ID: " user_id "\n\n"
-                                     "Name: " (:name user) "\n\n"
-                                     "Email: " (:email user) "\n\n"
-                                     text)
-                                text)}
-                       (when user
-                         [:reply-to (:email user)]))))))
+     (send-email {:to "chris@purpledelivery.com"
+                  :cc ["joe@purpledelivery.com"
+                       "bruno@purpledelivery.com"]
+                  :subject "Purple Feedback Form Response"
+                  :body (if user
+                          (str "From User ID: " user_id "\n\n"
+                               "Name: " (:name user) "\n\n"
+                               "Email: " (:email user) "\n\n"
+                               text)
+                          text)}))))
 
 (! (def segment-client (segment/initialize (System/getProperty "SEGMENT_WRITE_KEY"))))
 
