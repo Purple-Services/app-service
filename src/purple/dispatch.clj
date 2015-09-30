@@ -330,10 +330,11 @@
   "Update a zone's fuel_prices and service_fees. fuel-prices is an edn string
 of the format {:87 <integer cents> :91 <integer cents>}. service-fees is an edn
 string of the format {:60 <integer cents> :180 <integer cents>}"
-  [db-conn id fuel-prices service-fees]
+  [db-conn id fuel-prices service-fees service-time-bracket]
   (!update db-conn "zones"
            {:fuel_prices fuel-prices
-            :service_fees service-fees}
+            :service_fees service-fees
+            :service_time_bracket service-time-bracket}
            {:id id})
   ;; updat the zones as well
   (update-zones))

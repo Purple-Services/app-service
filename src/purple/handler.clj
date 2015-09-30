@@ -364,7 +364,8 @@
                        (dispatch/update-zone db-conn
                                              (:id b)
                                              (:fuel_prices b)
-                                             (:service_fees b))))))
+                                             (:service_fees b)
+                                             (:service_time_bracket b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
