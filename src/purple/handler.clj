@@ -320,12 +320,6 @@
                        (pages/send-push-to-users-list (conn)
                                                       (:message b)
                                                       (:user-ids b)))))
-              (POST "/change-gas-price" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)]
-                       (dispatch/change-gas-price (conn)
-                                                  (:gas-price-87 b)
-                                                  (:gas-price-91 b)))))
               ;; Dashboard admin cancels order
               (POST "/cancel-order" {body :body}
                     ;; cancel the order
@@ -356,16 +350,16 @@
                                                           (:order_id b)
                                                           (:courier_id b)))))
               ;; update a zones description. Currently only supports
-              ;; updating fuel_prices and service_fees
+              ;; updating fuel_prices, service_fees and service_time_bracket
               (POST "/update-zone" {body :body}
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       (dispatch/update-zone db-conn
-                                             (:id b)
-                                             (:fuel_prices b)
-                                             (:service_fees b)
-                                             (:service_time_bracket b))))))
+                       (dispatch/update-zone! db-conn
+                                              (:id b)
+                                              (:fuel_prices b)
+                                              (:service_fees b)
+                                              (:service_time_bracket b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
