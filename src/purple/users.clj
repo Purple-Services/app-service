@@ -11,6 +11,8 @@
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
+            [clj-time.core :as time]
+            [clj-time.coerce :as time-coerce]
             [clojure.string :as s]))
 
 (def safe-authd-user-keys
@@ -147,8 +149,6 @@
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
-
-
 (defn add
   "Adds new user. Will fail if user_id is already being used."
   [db-conn user & {:keys [password client-ip]}]
@@ -168,6 +168,33 @@
                          :referral_code referral-code})
       (segment/track segment-client (:id user) "Sign Up"))
     result))
+
+
+;; (def segment-client (segment/initialize (System/getProperty "SEGMENT_WRITE_KEY")
+;; (defn historical-data
+;;   []
+;;   (run! #(do (println (type (time-coerce/to-date (time-coerce/from-sql-time
+;;                              (:timestamp_created %)))))
+;;            (segment/identify segment-client (:id %)
+;;                                {:email (:email %)
+;;                                 :name (:name %)
+;;                                 :phone (:phone_number %)
+;;                                 :gender (:gender %)
+;;                                 :referral_code (:referral_code %)}
+;;                                :timestamp (time-coerce/to-date
+;;                                            (time-coerce/from-sql-time
+;;                                             (:timestamp_created %))))
+;;              (segment/track segment-client (:id %) "Sign Up"
+;;                             {}
+;;                             :timestamp (time-coerce/to-date
+;;                                         (time-coerce/from-sql-time
+;;                                          (:timestamp_created %))))
+;;              )
+;;         (!select (conn) "users" ["*"] {})))
+;; ;; TODO fix this 
+;; (historical-data)
+
+
 
 (defn login
   "Logs in user depeding on 'type' of user."
@@ -285,12 +312,14 @@
 
 (defn update-user-metadata
   [db-conn user-id app-version os]
-  (!update db-conn
-           "users"
-           (filter (comp not nil? val)
-                   {:app_version app-version
-                    :os os})
-           {:id user-id}))
+  (do (segment/identify segment-client user-id
+                        {:app_version app-version})
+      (!update db-conn
+               "users"
+               (filter (comp not nil? val)
+                       {:app_version app-version
+                        :os os})
+               {:id user-id})))
 
 (defn details
   [db-conn user-id & {:keys [user-meta]}]
