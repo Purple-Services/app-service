@@ -134,12 +134,7 @@
              {:user_id (:id user)
               :token token
               :ip (or client-ip "")})
-    (segment/track segment-client
-                   (:id user)
-                   "Login"
-                   {}
-                   nil
-                   {:ip (or client-ip "")}) ;; TODO, this doesn't do anything?
+    (segment/track segment-client (:id user) "Login")
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -152,31 +147,26 @@
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
+
+
 (defn add
   "Adds new user. Will fail if user_id is already being used."
-  [db-conn user & {:keys [password]}]
-  (let [result (!insert db-conn
+  [db-conn user & {:keys [password client-ip]}]
+  (let [referral-code (coupons/create-referral-coupon db-conn (:id user))
+        result (!insert db-conn
                         "users"
                         (assoc (if (= "native" (:type user))
-                                 (assoc user :password_hash (bcrypt/encrypt password))
+                                 (assoc user
+                                        :password_hash
+                                        (bcrypt/encrypt password))
                                  user)
-                               :referral_code (coupons/create-referral-coupon db-conn
-                                                                              (:id user))))]
+                               :referral_code referral-code))]
     (when (:success result)
+      ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
       (segment/identify segment-client (:id user)
                         {:email (:email user)
-                         :name (:name user)
-                         :phone (:phone_number user)
-                         :referral_code (:referral_code user)
-                         :gender (:gender user)})
+                         :referral_code referral-code})
       (segment/track segment-client (:id user) "Sign Up"))
-    (only-prod (future
-                 (send-email ;; debugging purposes, "why sometimes 100's of calls..."
-                  {:to "chris@purpledelivery.com"
-                   :subject "Purple - users/add caleld"
-                   :body (str user
-                              "\nResult:\n"
-                              result)})))
     result))
 
 (defn login
@@ -228,7 +218,8 @@
                                        :body (str "Google user didn't provide email: "
                                                   (str "g" (:id google-user)))}))
                                     (throw (Exception. "No email.")))))
-                   (throw (Exception. "Invalid login."))))
+                   (throw (Exception. "Invalid login.")))
+                 :client-ip client-ip)
             (login db-conn type platform-id auth-key :client-ip client-ip)))
       (catch Exception e (case (.getMessage e)
                            "Invalid login." {:success false
@@ -272,7 +263,8 @@
                {:id (rand-str-alpha-num 20)
                 :email platform-id
                 :type "native"}
-               :password auth-key)
+               :password auth-key
+               :client-ip client-ip)
           (login db-conn "native" platform-id auth-key :client-ip client-ip))
       {:success false
        :message "Password must be at least 6 characters."})
@@ -328,13 +320,12 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (!update db-conn
-             "users"
-             (select-keys record-map
-                          [:name
-                           :phone_number
-                           :gender])
-             {:id user-id})
+    (doto (select-keys record-map [:name :phone_number :gender])
+      (#(!update db-conn "users" % {:id user-id}))
+      (#(segment/identify segment-client user-id
+                          {:name (:name %)
+                           :phone (:phone_number %)
+                           :gender (:gender %)})))
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -355,14 +346,18 @@
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
     (if (valid-license-plate? (:license_plate record-map))
-      (!insert db-conn
-               "vehicles"
-               (assoc record-map
-                      :id (rand-str-alpha-num 20)
-                      :user_id user-id
-                      :license_plate (clean-up-license-plate
-                                      (:license_plate record-map))
-                      :active 1))
+      (doto (assoc record-map
+                   :id (rand-str-alpha-num 20)
+                   :user_id user-id
+                   :license_plate (clean-up-license-plate
+                                   (:license_plate record-map))
+                   :active 1)
+        (#(!insert db-conn "vehicles" %))
+        (#(segment/track segment-client user-id "Add Vehicle"
+                         (assoc (select-keys % [:year :make :model
+                                                :color :gas_type
+                                                :license_plate])
+                                :vehicle_id (:id %)))))
       {:success false
        :message "Please enter a valid license plate."})
     {:success false
@@ -409,9 +404,13 @@
         customer-id (:stripe_customer_id user)
         customer-resp (if (s/blank? customer-id)
                         (payment/create-stripe-customer user-id stripe-token)
-                        (do (payment/add-stripe-card customer-id stripe-token)
-                            (payment/get-stripe-customer customer-id)))]
-    (update-user-stripe-fields db-conn user-id customer-resp)))
+                        (when (payment/add-stripe-card customer-id stripe-token)
+                          (payment/get-stripe-customer customer-id)))]
+    (if customer-resp
+      (do (segment/track segment-client user-id "Add Credit Card")
+          (update-user-stripe-fields db-conn user-id customer-resp))
+      {:success false
+       :message "Sorry, we weren't able to get that card to work."})))
 
 (defn delete-card
   [db-conn user-id card-id]
