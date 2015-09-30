@@ -188,7 +188,7 @@
                             (not= 0 (:total_price t)))
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
-                   (content (str "$" (cents->dollars (:total_price t))))))
+                   (content (str "$" (cents->dollars-str (:total_price t))))))
   
   [:#users :tbody :tr]
   (clone-for [t (:users x)]
@@ -239,7 +239,7 @@
              (content (:code t))
 
              [:td.value]
-             (content (str "$" (cents->dollars (Math/abs (:value t)))))
+             (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
              [:td.expiration_time]
              (content (unix->fuller (:expiration_time t)))

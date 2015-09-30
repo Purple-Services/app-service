@@ -6,6 +6,9 @@
             [purple.couriers :as couriers]
             [purple.payment :as payment]
             [clojure.java.jdbc :as sql]
+            [clj-time.core :as time]
+            [clj-time.coerce :as time-coerce]
+            [ardoq.analytics-clj :as segment]
             [clojure.string :as s]))
 
 ;; Order status definitions
@@ -91,6 +94,20 @@
             :vehicle
             (first (get vehicles (:vehicle_id %))))
          orders)))
+
+(defn segment-props
+  "Get a map of all the standard properties we track on orders via segment."
+  [o]
+  (assoc (select-keys o [:vehicle_id :gallons :gas_type :lat :lng
+                         :address_street :address_city :address_state
+                         :address_zip :license_plate :coupon_code
+                         :referral_gallons_used])
+         :order_id (:id o)
+         :gas_price (cents->dollars (:gas_price o))
+         :service_fee (cents->dollars (:service_fee o))
+         :total_price (cents->dollars (:total_price o))
+         :target_time_start (unix->DateTime (:target_time_start o))
+         :target_time_end (unix->DateTime  (:target_time_end o))))
 
 (defn gen-charge-description
   [db-conn order]
@@ -188,7 +205,7 @@
                              db-conn (:user_id o))]
          (when (> unpaid-balance 0)
            (str "\n!UNPAID BALANCE: $"
-                (cents->dollars unpaid-balance))))
+                (cents->dollars-str unpaid-balance))))
        "\nDue: " (unix->full
                   (:target_time_end o))
        "\n" (:address_street o) ", "
@@ -295,6 +312,9 @@
                      (stamp-with-charge db-conn
                                         (:id o)
                                         (:charge auth-charge-result)))
+                   (segment/track segment-client (:user_id o) "Request Order"
+                                  (assoc (segment-props o)
+                                         :charge-authorized charge-authorized?))
                    (only-prod (send-email {:to "chris@purpledelivery.com"
                                            :subject "Purple - New Order"
                                            :body (str o)}))
@@ -384,10 +404,13 @@ and their id matches the order's courier_id"
            {:id order-id}))
 
 (defn after-payment
-  [db-conn order]
-  (do (coupons/apply-referral-bonus db-conn (:coupon_code order))
-      ((resolve 'purple.users/send-push) db-conn (:user_id order)
-       "Your delivery has been completed. Thank you!")))
+  [db-conn o]
+  (do (coupons/apply-referral-bonus db-conn (:coupon_code o))
+      ((resolve 'purple.users/send-push) db-conn (:user_id o)
+       "Your delivery has been completed. Thank you!")
+      (segment/track segment-client (:user_id o) "Complete Order"
+                     (assoc (segment-props o)
+                            :revenue (cents->dollars (:total_price o))))))
 
 (defn complete
   "Completes order and charges user."
@@ -554,7 +577,8 @@ and their id matches the order's courier_id"
       ((resolve 'purple.users/details) db-conn user-id)))
 
 (defn cancel
-  [db-conn user-id order-id & {:keys [notify-customer
+  [db-conn user-id order-id & {:keys [origin-was-dashboard
+                                      notify-customer
                                       suppress-user-details
                                       override-cancellable-statuses]}]
   (if-let [o (get-by-id db-conn order-id)]
@@ -599,7 +623,10 @@ and their id matches the order's courier_id"
                 (when (:success refund-result)
                   (stamp-with-refund db-conn
                                      order-id
-                                     (:refund refund-result))))))
+                                     (:refund refund-result)))))
+            (segment/track segment-client (:user_id o) "Cancel Order"
+                           (assoc (segment-props o)
+                                  :cancelled-by-user (not origin-was-dashboard))))
           (if suppress-user-details
             {:success true}
             ((resolve 'purple.users/details) db-conn user-id)))

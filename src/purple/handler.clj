@@ -336,6 +336,7 @@
                        db-conn
                        (:user_id b)
                        (:order_id b)
+                       :origin-was-dashboard true
                        :notify-customer true
                        :suppress-user-details true
                        :override-cancellable-statuses
