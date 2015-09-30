@@ -198,3 +198,13 @@ both are cycled and the busy status of the courier is checked"
     ;; all orders are cleared, the courier should
     ;; no longer be busy
     (is (false? (is-courier-busy? "Test Courier1")))))
+
+(defn get-zone-text-input
+  [zone-id class]
+  "Given a zone-id number, get the related text input"
+  (find-element {:xpath (str
+                         "//td[@class='"
+                         class
+                         "']/input[@data-id='"
+                         zone-id
+                         "']")}))

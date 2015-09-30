@@ -430,8 +430,6 @@
                                 :total))
              :base-url config/base-url
              :uri-segment (if read-only "stats/" "dashboard/")
-             ;; :gas-price-87 @config/gas-price-87
-             ;; :gas-price-91 @config/gas-price-91
              :zones (->> zones
                          (sort-by :id)
                          (map

@@ -48,6 +48,13 @@
   [zone-id]
   (get zq zone-id))
 
+(defn zip-in-zones?
+  "Determine whether or not zip-code can be found in zones"
+  [zip-code]
+  (if (seq (filter #(in? (:zip_codes %) zip-code) @zones))
+    true
+    false))
+
 (defn get-zone-by-zip-code
   "Given a zip code, return the corresponding zone"
   [zip-code]
@@ -88,10 +95,16 @@
       (+ (* 60 3))))
 
 (defn get-gas-prices
-  "Given a zip-code, return the "
+  "Given a zip-code, return the gas prices"
   [zip-code]
-  {:success true
-   :gas_prices (get-fuel-prices zip-code)})
+  (if (zip-in-zones? zip-code)
+    {:success true
+     :gas_prices (get-fuel-prices zip-code)}
+    {:success false
+     :message (str "Sorry, we are unable to deliver gas to your "
+                   "location. We are rapidly expanding our service"
+                   " area and hope to offer service to your"
+                   " location very soon.")}))
 
 (defn priority-score
   "Compute the priority score (an int) of the order."
@@ -114,18 +127,28 @@
 (! (run! add-order-to-zq
          (orders/get-all-unassigned (conn))))
 
+(defn delivery-times-map
+  "Given a service fee, create the delivery-times map"
+  [service-fees]
+  (let [fee #(if (= % 0)
+               "free"
+               (str "$" (cents->dollars %)))]
+    {180 {:service_fee (:180 service-fees)
+          :text (str "within 3 hours ("
+                     (fee (:180 service-fees))
+                     ")")
+          :order 0}
+     60 {:service_fee (:60 service-fees)
+         :text (str "within 1 hour ("
+                    (fee (:60 service-fees)) ")")
+         :order 1
+         }}))
+
 (defn available
-  [good-zip? good-time?-fn zip-code octane]
+  [good-time?-fn zip-code octane]
   (let [service-fees (get-service-fees zip-code)
-        delivery-times {180 {:service_fee (:180 service-fees)
-                             :text "within 3 hours (free)"
-                             :order 0}
-                        60 {:service_fee (:60 service-fees)
-                            :text (str "within 1 hour ($"
-                                       (cents->dollars
-                                        (:60 service-fees)) ")")
-                            :order 1}}
-        good-times (filter #(and good-zip? (good-time?-fn %))
+        delivery-times (delivery-times-map service-fees)
+        good-times (filter #(and (zip-in-zones? zip-code) (good-time?-fn %))
                            ;;(keys config/delivery-times)
                            (keys delivery-times)
                            )]
@@ -137,43 +160,45 @@
 (defn availability
   "Get courier availability for given constraints."
   [db-conn zip-code user-id]
-  (let [good-zip? (seq (filter #(in? (:zip_codes %) zip-code) @zones))
-        opening-minute (first (get-service-time-bracket zip-code))
-        closing-minute (last  (get-service-time-bracket zip-code))
-        current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
-                                                  1000))
-        good-time?-fn (fn [minutes-needed]
-                     (<= opening-minute
-                         current-minute
-                         ;;(- closing-minute minutes-needed)
-                         ;; removed the check for enough time
-                         ;; because our end time just means we accept orders
-                         ;; until then (regardless of deadline)
-                         closing-minute))
-        user (users/get-user-by-id db-conn user-id)]
-    {:success true
-     :availabilities (map (partial available good-zip? good-time?-fn zip-code)
-                          ["87" "91"])
-     ;; if unavailable, this is the explanation:
-     :unavailable-reason
-     (if good-zip?
+  (if (zip-in-zones? zip-code)
+    (let [opening-minute (first (get-service-time-bracket zip-code))
+          closing-minute (last  (get-service-time-bracket zip-code))
+          current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
+                                                    1000))
+          good-time?-fn (fn [minutes-needed]
+                          (<= opening-minute
+                              current-minute
+                              ;;(- closing-minute minutes-needed)
+                              ;; removed the check for enough time
+                              ;; because our end time just means we accept orders
+                              ;; until then (regardless of deadline)
+                              closing-minute))
+          user (users/get-user-by-id db-conn user-id)]
+      {:success true
+       :availabilities (map (partial available good-time?-fn zip-code)
+                            ["87" "91"])
+       ;; if unavailable, this is the explanation:
+       :unavailable-reason
        "Sorry, we only accept orders between 7:30am to 10:30pm every day."
-       "Sorry, we are unable to deliver gas to your location. We are rapidly expanding our service area and hope to offer service to your location very soon.")
-     :user (select-keys user [:referral_gallons :referral_code])
-     
-     ;; we're still sending this for old versions of the app
-     :availability [{:octane "87"
-                     :gallons (if good-zip?
-                                15 0) ;; just assume 15 gallons
-                     :time [1 3]
-                     :price_per_gallon (:87 (get-fuel-prices zip-code))
-                     :service_fee [100 0]}
-                    {:octane "91"
-                     :gallons (if good-zip?
-                                15 0)
-                     :time [1 3]
-                     :price_per_gallon (:91 (get-fuel-prices zip-code))
-                     :service_fee [100 0]}]}))
+       :user (select-keys user [:referral_gallons :referral_code])
+       ;; we're still sending this for old versions of the app
+       :availability [{:octane "87"
+                       :gallons (if (zip-in-zones? zip-code)
+                                  15 0) ;; just assume 15 gallons
+                       :time [1 3]
+                       :price_per_gallon (:87 (get-fuel-prices zip-code))
+                       :service_fee [100 0]}
+                      {:octane "91"
+                       :gallons (if (zip-in-zones? zip-code)
+                                  15 0)
+                       :time [1 3]
+                       :price_per_gallon (:91 (get-fuel-prices zip-code))
+                       :service_fee [100 0]}]})
+    {:success true
+     :unavailable-reason (str "Sorry, we are unable to deliver gas to your "
+                              "location. We are rapidly expanding our service"
+                              " area and hope to offer service to your"
+                              " location very soon.")}))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
