@@ -326,13 +326,19 @@ $('#zones').on('click','input.save-zones', function() {
         
             return "{:87 " + price87 + " :91 " + price91 + "}";
         };
-        // give a tr, create the edn map for services fees
+        // given a tr, create the edn map for services fees
         var ednServiceFees = function(tr) {
             var hrFee       = $(tr).find(".1-hr-fee").find("input").val();
             var threeHrsFee = $(tr).find(".3-hr-fee").find("input").val();
 
             return "{:60 " + hrFee + " :180 " + threeHrsFee +"}";
         };
+        // given a tr, create the edn map for service time bracket
+        var ednServiceTimeBracket = function(tr) {
+            var serviceStart = $(tr).find(".service-start").find("input").val();
+            var serviceEnd   = $(tr).find(".service-end").find("input").val();
+            return "[" + serviceStart + " " + serviceEnd + "]";
+        }
         // update each zone row
         zoneRows.map(function(index,el) {
             $.ajax({
@@ -341,7 +347,8 @@ $('#zones').on('click','input.save-zones', function() {
                 data: JSON.stringify({
                     "id":  $(el).find(".87-price input").data("id"),
                     "fuel_prices": ednFuelPrices(el),
-                    "service_fees": ednServiceFees(el)
+                    "service_fees": ednServiceFees(el),
+                    "service_time_bracket": ednServiceTimeBracket(el)
                 }),
                 dataType: "json",
                 contentType: "application/json",

@@ -293,6 +293,26 @@
                          :value (:180 (:service_fees zone))
                          :maxlength 3
                          :data-id (:id zone)
+                         :size 3}]))
+
+             [:td.service-start]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (first (:service_time_bracket zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 3}]))
+
+             [:td.service-end]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (last (:service_time_bracket zone))
+                         :maxlength 4
+                         :data-id (:id zone)
                          :size 3}])))
 
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
@@ -426,7 +446,15 @@
                                   (try
                                     (read-string (:service_fees %))
                                     (catch Exception e
-                                      (str "read-string :fuel_prices failed: "
+                                      (str "read-string :service_fees failed: "
+                                           (.getMessage e))))))
+                         (map
+                          #(assoc % :service_time_bracket
+                                  (try
+                                    (read-string (:service_time_bracket %))
+                                    (catch Exception e
+                                      (str "read-string :service_time_bracket"
+                                           " failed: "
                                            (.getMessage e)))))))
              :read-only read-only
              :all all}))))
