@@ -1,6 +1,6 @@
 (ns purple.test.payment
   (:use cheshire.core)
-  (:require [purple.payment :refer [stripe-req charge-stripe-customer]]
+  (:require [purple.payment :refer [stripe-req]]
             [clj-http.client :as client]
             [clojure.test :refer [deftest is test-ns testing]]
             [purple.config :as config]
