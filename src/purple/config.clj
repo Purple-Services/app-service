@@ -22,6 +22,7 @@
     (System/setProperty "TWILIO_ACCOUNT_SID" (env :twilio-account-sid))
     (System/setProperty "TWILIO_AUTH_TOKEN" (env :twilio-auto-token))
     (System/setProperty "TWILIO_FROM_NUMBER" (env :twilio-form-number))
+    (System/setProperty "SEGMENT_WRITE_KEY" (env :segment-write-key))
     (System/setProperty "BASE_URL" (env :base-url))
     (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
     (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))))

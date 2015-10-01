@@ -161,6 +161,9 @@
              [:td.customer_name]
              (content (:customer_name t))
              
+             [:td.customer_phone_number]
+             (content (:customer_phone_number t))
+             
              [:td.address_street :a]
              (content (:address_street t))
              [:td.address_street :a]
@@ -188,7 +191,7 @@
                             (not= 0 (:total_price t)))
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
-                   (content (str "$" (cents->dollars (:total_price t))))))
+                   (content (str "$" (cents->dollars-str (:total_price t))))))
   
   [:#users :tbody :tr]
   (clone-for [t (:users x)]
@@ -239,7 +242,7 @@
              (content (:code t))
 
              [:td.value]
-             (content (str "$" (cents->dollars (Math/abs (:value t)))))
+             (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
              [:td.expiration_time]
              (content (unix->fuller (:expiration_time t)))
@@ -399,6 +402,11 @@
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))
+                                  
+                                  :customer_phone_number
+                                  (:phone_number
+                                   (first (get users-by-id (:user_id %))))
+                                  
                                   :was-late
                                   (let [completion-time
                                         (-> (str "kludgeFix 1|" (:event_log %))
@@ -507,6 +515,11 @@
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))
+                                  
+                                  :customer_phone_number
+                                  (:phone_number
+                                   (first (get users-by-id (:user_id %))))
+                                  
                                   :was-late
                                   (let [completion-time
                                         (-> (str "kludgeFix 1|" (:event_log %))
