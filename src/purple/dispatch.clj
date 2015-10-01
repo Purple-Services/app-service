@@ -129,7 +129,7 @@
   [service-fees]
   (let [fee #(if (= % 0)
                "free"
-               (str "$" (cents->dollars %)))]
+               (str "$" (cents->dollars-str %)))]
     {180 {:service_fee (:180 service-fees)
           :text (str "within 3 hours ("
                      (fee (:180 service-fees))
