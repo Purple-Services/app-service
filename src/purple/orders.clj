@@ -268,7 +268,7 @@
      (not (valid-price? db-conn o))
      {:success false
       :message (str "Sorry, the price changed while you were creating your "
-                    "order. Please press the back button to go back to the "
+                    "order. Please press the back button TWICE to go back to the "
                     "map and start over.")}
 
      (not (valid-time-limit? db-conn o))
