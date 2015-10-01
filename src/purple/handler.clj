@@ -242,12 +242,16 @@
                        (:token b)
                        (dispatch/courier-ping db-conn
                                               (:user_id b)
-                                              (unless-p
-                                               Double/isNaN
-                                               (Double. (:lat b)) 0)
-                                              (unless-p
-                                               Double/isNaN
-                                               (Double. (:lng b)) 0)
+                                              (if (nil? (:lat b))
+                                                0
+                                                (unless-p
+                                                 Double/isNaN
+                                                 (Double. (:lat b)) 0))
+                                              (if (nil? (:lng b))
+                                                0
+                                                (unless-p
+                                                 Double/isNaN
+                                                 (Double. (:lng b)) 0))
                                               (or (:gallons b) 0))))))))
   (context "/feedback" []
            (defroutes feedback-routes
