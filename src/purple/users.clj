@@ -313,7 +313,7 @@
 (defn update-user-metadata
   [db-conn user-id app-version os]
   (do (segment/identify segment-client user-id
-                        {:app_version app-version})
+                        {:app_version app-version}) ;; TODO this is happening a lot
       (!update db-conn
                "users"
                (filter (comp not nil? val)
