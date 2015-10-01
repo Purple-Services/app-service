@@ -57,9 +57,10 @@
 (defn get-by-courier
   "Gets all of a courier's assigned orders."
   [db-conn courier-id]
-  (let [orders (!select db-conn
-                        "orders"
-                        ["*"]
+  (let [courier-zip-codes  ((resolve 'purple.dispatch/get-courier-zips) db-conn courier-id)
+        all-orders (!select db-conn
+                            "orders"
+                            ["*"]
                         {}
                         :custom-where
                         (str "(courier_id = \""
@@ -68,6 +69,9 @@
                              (- (quot (System/currentTimeMillis) 1000)
                                 (* 60 60 24 16)) ;; 16 days
                              ") OR status = \"unassigned\" ORDER BY target_time_end DESC"))
+        orders (remove #(and (= (:status %) "unassigned")
+                             (not (contains? courier-zip-codes
+                                             (:address_zip %)))) all-orders)
         customer-ids (distinct (map :user_id orders))
         customers (group-by :id
                             (!select db-conn
@@ -89,10 +93,10 @@
                                          (s/join "\",\"" vehicle-ids)
                                          "\")")))]
     (map #(assoc %
-            :customer
-            (first (get customers (:user_id %)))
-            :vehicle
-            (first (get vehicles (:vehicle_id %))))
+                 :customer
+                 (first (get customers (:user_id %)))
+                 :vehicle
+                 (first (get vehicles (:vehicle_id %))))
          orders)))
 
 (defn segment-props
@@ -146,13 +150,18 @@
    coupon-code  ;; String
    vehicle-id   ;; String
    user-id
-   referral-gallons-used]
+   referral-gallons-used
+   zip-code     ;; String
+   ]
   (max 0
-       (+ (* (octane->gas-price octane)
+       (+ (* ((keyword octane)
+              ((resolve 'purple.dispatch/get-fuel-prices) zip-code))
              (- gallons
                 (min gallons
                      referral-gallons-used)))
-          (:service_fee (get config/delivery-times time))
+          ;;(:service_fee (get config/delivery-times time))
+          ((keyword (str time))
+           ((resolve 'purple.dispatch/get-service-fees) zip-code))
           (if-not (s/blank? coupon-code)
             (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))
             0))))
@@ -168,14 +177,16 @@
                      (:coupon_code o)
                      (:vehicle_id o)
                      (:user_id o)
-                     (:referral_gallons_used o))))
+                     (:referral_gallons_used o)
+                     (:address_zip o))))
 
 (defn valid-time-limit?
   "Check if the Time choice is truly available."
   [db-conn o]
   (if (< (:time-limit o) 180)
     (and (>= (unix->minute-of-day (:target_time_start o))
-             config/one-hour-orders-allowed)
+             ((resolve 'purple.dispatch/get-one-hour-orders-allowed)
+              (:address_zip o)))
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
@@ -188,12 +199,14 @@
 
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
-  [gas-price]
-  (if (= gas-price (octane->gas-price "87"))
-    "87"
-    (if (= gas-price (octane->gas-price "91"))
-      "91"
-      "87"))) ;; if we can't find it then assume 87
+  [gas-price zip-code]
+  (let [fuel-prices ((resolve 'purple.dispatch/get-fuel-prices) zip-code)]
+    (if (= gas-price ((keyword "87") fuel-prices))
+      "87"
+      (if (= gas-price ((keyword "91") fuel-prices))
+        "91"
+        "87" ;; if we can't find it then assume 87
+        ))))
 
 (defn new-order-text
   [db-conn o charge-authorized?]
@@ -241,7 +254,8 @@
             :gallons (Integer. (:gallons order))
             :gas_type (unless-p nil?
                                 (:gas_type order)
-                                (infer-gas-type-by-price (:gas_price order)))
+                                (infer-gas-type-by-price (:gas_price order)
+                                                         (:address_zip order)))
             :lat (unless-p Double/isNaN (Double. (:lat order)) 0)
             :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
             :license_plate license-plate
@@ -318,20 +332,20 @@
                    (only-prod (send-email {:to "chris@purpledelivery.com"
                                            :subject "Purple - New Order"
                                            :body (str o)}))
-                   (run! #((resolve 'purple.users/send-push)
-                           db-conn (:id %) (str "New order available. "
-                                                "Please press Accept "
-                                                "Order ASAP."))
-                         available-couriers)
-                   (run! #(send-sms % (new-order-text db-conn
-                                                      o
-                                                      charge-authorized?))
-                         (concat (map (comp id->phone-number :id)
-                                      connected-couriers)
-                                 (only-prod ["3235782263" ;; Bruno
-                                             "3106919061" ;; JP
-                                             "8589228571" ;; Lee
-                                             ])))))
+                   (only-prod (run! #((resolve 'purple.users/send-push)
+                                      db-conn (:id %) (str "New order available. "
+                                                           "Please press Accept "
+                                                           "Order ASAP."))
+                                    available-couriers))
+                   (only-prod (run! #(send-sms % (new-order-text db-conn
+                                                                 o
+                                                                 charge-authorized?))
+                                    (concat (map (comp id->phone-number :id)
+                                                 connected-couriers)
+                                            (only-prod ["3235782263" ;; Bruno
+                                                        "3106919061" ;; JP
+                                                        "8589228571" ;; Lee
+                                                        ]))))))
          {:success true
           :message (str "Your order has been accepted, and a courier will be "
                         "on the way soon! Please ensure that the fueling door "
