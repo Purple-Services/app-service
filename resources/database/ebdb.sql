@@ -1037,16 +1037,20 @@ INSERT INTO `vehicles` (`id`, `active`, `user_id`, `year`, `make`, `model`, `col
 CREATE TABLE IF NOT EXISTS `zones` (
   `id` int(11) NOT NULL,
   `zip_codes` mediumtext NOT NULL,
-  `human_readable_name` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+  `color` varchar(255) NOT NULL,
+  `fuel_prices` varchar(255) NOT NULL COMMENT 'edn format',
+  `service_fees` varchar(255) NOT NULL COMMENT 'edn format',
+  `service_time_bracket` varchar(255) NOT NULL COMMENT 'edn format'
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `zones`
 --
 
-INSERT INTO `zones` (`id`, `zip_codes`, `human_readable_name`) VALUES
-(1, '90077,90095,90024,90067,90212,90210,90046,90069,90048,90211,90067,90025,90064,90232,90035,90028,90038,90019,90049,90034,90272,90066', 'Beverly Hills / West Hollywood');
-
+INSERT INTO `zones` (`id`, `zip_codes`, `color`, `fuel_prices`, `service_fees`,`service_time_bracket`) VALUES
+(1, '91302,91367,91364,91356,91316,91403,91423,91604', 'yellow', '{:87 310 :91 350}', '{:60 100 :180 0}','[450 1350]'),
+(2, '90272,90049,90402,90025,90403,90401,90404,90064,90405,90066,90291,90292', 'cyan', '{:87 315 :91 355}', '{:60 100 :180 0}','[450 1350]'),
+(3, '90077,90210,90046,90024,90069,90212,90048,90004,90211,90067,90036', 'purple', '{:87 320 :91 375}', '{:60 100 :180 0}','[450 1350]');
 --
 -- Indexes for dumped tables
 --
@@ -1122,7 +1126,7 @@ ALTER TABLE `sessions`
 -- AUTO_INCREMENT for table `zones`
 --
 ALTER TABLE `zones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=4;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

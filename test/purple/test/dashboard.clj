@@ -1,10 +1,13 @@
 (ns purple.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
             [purple.handler :refer [app]]
-            [purple.orders :as orders]
             [purple.db :refer [!select conn]]
+            [purple.dispatch :as dispatch]
+            [purple.test.db :refer [db-config]]
+            [purple.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
-            [clj-webdriver.taxi :refer :all]))
+            [clj-webdriver.taxi :refer :all]
+            [purple.util :refer [split-on-comma]]))
 
 ;; normally, the test server runs on port 3000. If you would like to manually
 ;; run tests, you can set this to (def test-port 3000) in the repl
@@ -15,20 +18,6 @@
 (def user "purpleadmin")
 (def password "gasdelivery8791")
 (def test-base-url (str "http://" test-host ":" test-port "/"))
-
-(def db-config
-  "Configuration file for connecting to the local database"
-  (let [db-host "aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com"
-        db-port "3306"
-        db-name "ebdb"
-        db-password "HHjdnb873HHjsnhhd"
-        db-user "purplemaster"
-        db-config {:classname "com.mysql.jdbc.Driver"
-                   :subprotocol "mysql"
-                   :subname (str "//" db-host ":" db-port "/" db-name)
-                   :user db-user
-                   :password db-password}]
-    db-config))
 
 ;; the fixtures setup are based off of
 ;; https://semaphoreci.com/community/tutorials/testing-clojure-web-applications-with-selenium
@@ -57,33 +46,6 @@
   (t)
   (stop-browser))
 
-(defn add-order
-  "Add an order to the database"
-  []
-  (let [test-user (first (!select db-config "users" ["*"]
-                                  {:email "test@test.com"}))
-        user-id   (:id test-user)
-        vehicle-id (:id
-                    (first
-                     (sort-by :timestamp_created
-                              (!select db-config "vehicles" ["*"]
-                                       {:user_id user-id
-                                        :active 1}))))
-        order {:time "180"
-               :vehicle_id vehicle-id
-               :address_street "383-399 Civic Center Dr"
-               :special_instructions ""
-               :service_fee 0
-               :total_price 3550
-               :coupon_code ""
-               :gas_price 355
-               :gallons 10
-               :gas_type "87"
-               :lat "34.074606839269514"
-               :lng "-118.39825344813232"
-               :address_zip "90210"}]
-    (orders/add db-config user-id order)))
-
 ;; this function is used to slow down clojure so the browser has time to catch
 ;; up. If you are having problems with tests passing, particuarly if they appear
 ;; to randomly fail, try increasing the amount of sleep time before the call
@@ -91,7 +53,7 @@
 (defn sleep
   "Sleep for ms."
   [& [ms]]
-  (let [default-ms 1000 ;500
+  (let [default-ms 700
         time (or ms default-ms)]
     (Thread/sleep time)))
 
@@ -154,7 +116,7 @@
     (click "input.assign-courier")
     (sleep)
     (accept)
-    (sleep 1500)
+    (sleep 800)
     (accept)
     courier-id))
 
@@ -169,24 +131,62 @@
                                              "']"
                                              "/../td[@class='busy']")})))))
 
+(defn get-zone-text-input
+  [zone-id class]
+  "Given a zone-id number, get the related text input"
+  (find-element {:xpath (str
+                         "//td[@class='"
+                         class
+                         "']/input[@data-id='"
+                         zone-id
+                         "']")}))
+
+(defn get-zip-with-zone-id
+  [zone-id]
+  (first (split-on-comma (text (find-element-under
+                                (get-zone-text-input zone-id "87-price")
+                                {:xpath "../../td[@class='zips']"})))))
+
+(defn test-zone-modification
+  "Test that the input with class for zone-id can be modified
+and the new value is equal to comp-fn"
+  [zone-id class comp-fn]
+  (go-to-dashboard)
+  (click "input.edit-zones")
+  (let [input      (get-zone-text-input zone-id class)
+        number     (read-string (value input))
+        number-new (inc number)
+        ]
+    (clear input)
+    (input-text input (str number-new))
+    (click "input.save-zones")
+    (accept)
+    (is (= number-new
+           (comp-fn)))))
+
 (use-fixtures :once with-browser with-server)
 
-(deftest dashboard-greeting
+
+;; main test functions
+(defn dashboard-greeting
+  []
   (testing "make sure that the dashboard is accessible"
     (go-to-dashboard)
     (is (exists? "#last-updated"))))
 
 ;; tests below assume all orders in the dashboard have a status of
 ;; complete or cancelled
-(deftest add-order-and-cancel-it
+(defn add-order-and-cancel-it
+  []
   (testing "Add an order an cancel it in the dashboard"
-    (add-order)
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (cancel-order)))
 
-(deftest add-order-assign-and-cancel
+(defn add-order-assign-and-cancel
+  []
   (testing "Add an order, assign it a courier and then cancel it"
-    (add-order)
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (sleep)
@@ -195,10 +195,11 @@
     (sleep)
     (is (false? (is-courier-busy? "Test Courier1")))))
 
-(deftest order-is-added-assigned-and-cycled
+(defn order-is-added-assigned-and-cycled
+  []
   (testing "An order is added, assigned to 'Test Courier1' and
 the status cycled through. Courier is checked for proper busy status"
-    (add-order)
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     ;; assign the courier
     (assign-courier "Test Courier1")
@@ -215,12 +216,13 @@ the status cycled through. Courier is checked for proper busy status"
     ;; the browser responds, so let it sleep a bit
     (sleep)))
 
-(deftest two-orders-are-added-to-courier-and-cycled
+(defn two-orders-are-added-to-courier-and-cycled
+  []
   (testing "Two orders are added, two are assigned to 'Test Courier1',
 both are cycled and the busy status of the courier is checked"
     ;; add two orders
-    (add-order)
-    (add-order)
+    (orders/add-order (orders/test-order))
+    (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (sleep)
@@ -237,3 +239,39 @@ both are cycled and the busy status of the courier is checked"
     ;; all orders are cleared, the courier should
     ;; no longer be busy
     (is (false? (is-courier-busy? "Test Courier1")))))
+
+
+(defn modify-zone-price
+  []
+  (testing "Make sure that the zone price can be modifed and saved."
+    (let [zone-id 1]
+      (test-zone-modification
+       zone-id "87-price" #(:87
+                            (dispatch/get-fuel-prices
+                             (get-zip-with-zone-id zone-id)))))))
+
+(defn modify-zone-service-fee
+  []
+  (testing "Make sure that the zone service fee can be modified and saved."
+    (let [zone-id 2]
+      (test-zone-modification
+       zone-id "1-hr-fee" #(:60 (dispatch/get-service-fees
+                                 (get-zip-with-zone-id zone-id)))))))
+
+(defn modify-zone-time-bracket
+  []
+  (testing "Make sure that the zone time bracket can be modified and saved."
+    (let [zone-id 3]
+      (test-zone-modification
+       zone-id "service-start" #(first (dispatch/get-service-time-bracket
+                                        (get-zip-with-zone-id zone-id)))))))
+
+(deftest test-dashboard
+  (dashboard-greeting)
+  (add-order-and-cancel-it)
+  (add-order-assign-and-cancel)
+  (order-is-added-assigned-and-cycled)
+  (two-orders-are-added-to-courier-and-cycled)
+  (modify-zone-price)
+  (modify-zone-service-fee)
+  (modify-zone-time-bracket))
