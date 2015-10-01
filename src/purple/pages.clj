@@ -257,7 +257,9 @@
   (clone-for [zone (:zones x)]
 
              [:td.zips]
-             (content (str (:zip_codes zone)))
+             (content (str (s/replace (:zip_codes zone)
+                                      #","
+                                      ", ")))
 
              [:td.color]
              (content (str (:color zone)))
@@ -267,36 +269,36 @@
                               {:type "text"
                                :disabled true
                                :value (:87 (:fuel_prices zone))
-                               :maxlength 3
+                               :maxlength 4
                                :data-id (:id zone)
-                               :size 3}]))
+                               :size 4}]))
 
              [:td.91-price]
              (content (html [:input
                              {:type "text"
                               :disabled true
                               :value (:91 (:fuel_prices zone))
-                              :maxlength 3
+                              :maxlength 4
                               :data-id (:id zone)
-                              :size 3}]))
+                              :size 4}]))
 
              [:td.1-hr-fee]
              (content (html [:input
                              {:type "text"
                               :disabled true
                               :value (:60 (:service_fees zone))
-                              :maxlength 3
+                              :maxlength 4
                               :data-id (:id zone)
-                              :size 3}]))
+                              :size 4}]))
              [:td.3-hr-fee]
              (content (html
                        [:input
                         {:type "text"
                          :disabled true
                          :value (:180 (:service_fees zone))
-                         :maxlength 3
+                         :maxlength 4
                          :data-id (:id zone)
-                         :size 3}]))
+                         :size 4}]))
 
              [:td.service-start]
              (content (html
@@ -306,7 +308,7 @@
                          :value (first (:service_time_bracket zone))
                          :maxlength 4
                          :data-id (:id zone)
-                         :size 3}]))
+                         :size 4}]))
 
              [:td.service-end]
              (content (html
@@ -316,7 +318,7 @@
                          :value (last (:service_time_bracket zone))
                          :maxlength 4
                          :data-id (:id zone)
-                         :size 3}])))
+                         :size 4}])))
 
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
                                           "css/main.css"))
