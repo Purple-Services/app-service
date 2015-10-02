@@ -464,9 +464,7 @@
               (cond-> {:success true}
                 (:user body)
                 (merge-unless-failed
-                 (let [user-map (:user body)
-                       user (assoc user-map
-                                   :name  (s/trim (:name user-map)))
+                 (let [user (update (:user body) :name s/trim)
                        phone-number (:phone_number user)
                        name (:name user)]
                    (cond
