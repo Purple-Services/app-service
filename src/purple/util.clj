@@ -52,6 +52,10 @@
 
 (defn split-on-comma [x] (s/split x #","))
 
+(defn five-digit-zip-code
+  [zip-code]
+  (subs zip-code 0 5))
+
 (defn cents->dollars
   "Integer of cents -> Double of dollars."
   [x]

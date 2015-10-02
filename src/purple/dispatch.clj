@@ -40,7 +40,7 @@
 (defn order->zone-id
   "Determine which zone the order is in; gives the zone id."
   [order]
-  (let [zip-code (subs (:address_zip order) 0 5)]
+  (let [zip-code (five-digit-zip-code (:address_zip order))]
     (:id (first (filter #(in? (:zip_codes %) zip-code)
                         @zones)))))
 
@@ -51,9 +51,10 @@
 (defn zip-in-zones?
   "Determine whether or not zip-code can be found in zones"
   [zip-code]
-  (if (seq (filter #(in? (:zip_codes %) zip-code) @zones))
-    true
-    false))
+  (->> @zones
+       (filter #(in? (:zip_codes %) (five-digit-zip-code zip-code)))
+       seq
+       boolean))
 
 (defn get-zone-by-zip-code
   "Given a zip code, return the corresponding zone"
@@ -156,6 +157,8 @@
   "Get courier availability for given constraints."
   [db-conn zip-code user-id]
   (let [user (users/get-user-by-id db-conn user-id)]
+    (segment/track segment-client user-id "Availability Check"
+                   {:address_zip (five-digit-zip-code zip-code)})
     (if (zip-in-zones? zip-code)
       (let [opening-minute (first (get-service-time-bracket zip-code))
             closing-minute (last  (get-service-time-bracket zip-code))
