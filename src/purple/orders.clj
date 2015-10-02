@@ -159,7 +159,6 @@
              (- gallons
                 (min gallons
                      referral-gallons-used)))
-          ;;(:service_fee (get config/delivery-times time))
           ((keyword (str time))
            ((resolve 'purple.dispatch/get-service-fees) zip-code))
           (if-not (s/blank? coupon-code)

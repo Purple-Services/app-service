@@ -114,6 +114,24 @@
   (+ (* (unix->hour-of-day x) 60)
      (unix->minute-of-hour x)))
 
+(def hmma-formatter (time-format/formatter "h:mm a"))
+(defn unix->hmma
+  "Convert integer unix timestamp to formatted date string."
+  [x]
+  (time-format/unparse
+   (time-format/with-zone hmma-formatter time-zone)
+   (unix->DateTime x)))
+
+(defn minute-of-day->hmma
+  "Convert number of minutes since the beginning of today to a unix timestamp."
+  [m]
+  (unix->hmma
+   (+ (* m 60)
+      (-> (time/date-time 1976) ;; it'll be wrong day but same hmma
+          (time/from-time-zone time-zone)
+          time-coerce/to-long
+          (quot 1000)))))
+
 (defn in? 
   "true if seq contains elm"
   [seq elm]  
@@ -267,11 +285,3 @@
             (ArrayList. [(BasicNameValuePair. "Url" call-url)
                          (BasicNameValuePair. "To" to-number)
                          (BasicNameValuePair. "From" config/twilio-from-number)]))))
-
-
-(defn octane->gas-price
-  "Accepts octane as string. Returns gas price per gallon in cents as integer."
-  [octane]
-  (case octane
-    "87" @config/gas-price-87
-    "91" @config/gas-price-91))

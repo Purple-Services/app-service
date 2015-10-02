@@ -146,9 +146,7 @@
   (let [service-fees (get-service-fees zip-code)
         delivery-times (delivery-times-map service-fees)
         good-times (filter #(and (zip-in-zones? zip-code) (good-time?-fn %))
-                           ;;(keys config/delivery-times)
-                           (keys delivery-times)
-                           )]
+                           (keys delivery-times))]
     {:octane octane
      :gallons 15 ;; for now, we always assume 15 is available
      :price_per_gallon ((keyword octane) (get-fuel-prices zip-code))
@@ -176,7 +174,11 @@
                             ["87" "91"])
        ;; if unavailable, this is the explanation:
        :unavailable-reason
-       "Sorry, we only accept orders between 7:30am to 10:30pm every day."
+       (str "Sorry, the service hours for this ZIP code are "
+            (minute-of-day->hmma opening-minute)
+            " to "
+            (minute-of-day->hmma closing-minute)
+            " every day.")
        :user (select-keys user [:referral_gallons :referral_code])
        ;; we're still sending this for old versions of the app
        :availability [{:octane "87"
@@ -316,7 +318,6 @@
                                     "8589228571"])))) ;; Lee
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
-
 (defn process
   "Does a few periodic tasks."
   []
@@ -343,11 +344,6 @@
             :connected 1
             :last_ping (quot (System/currentTimeMillis) 1000)}
            {:id user-id}))
-
-;; on server boot, set initial gas prices locally from database
-(! (let [c (first (!select (conn) "config" ["*"] {:id 1}))]
-     (reset! config/gas-price-87 (:gas_price_87 c))
-     (reset! config/gas-price-91 (:gas_price_91 c))))
 
 (defn update-zone!
   "Update fuel_prices, service_fees and service_time_bracket for the zone with
