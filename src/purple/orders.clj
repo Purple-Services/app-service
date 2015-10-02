@@ -111,7 +111,8 @@
          :service_fee (cents->dollars (:service_fee o))
          :total_price (cents->dollars (:total_price o))
          :target_time_start (unix->DateTime (:target_time_start o))
-         :target_time_end (unix->DateTime  (:target_time_end o))))
+         :target_time_end (unix->DateTime (:target_time_end o))
+         :zone_id ((resolve 'purple.dispatch/order->zone-id) o)))
 
 (defn gen-charge-description
   [db-conn order]

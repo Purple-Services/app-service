@@ -228,7 +228,9 @@
                        db-conn
                        (:user_id b)
                        (:token b)
-                       (dispatch/availability db-conn (:zip_code b) (:user_id b))))))))
+                       (dispatch/availability db-conn
+                                              (:zip_code b)
+                                              (:user_id b))))))))
   (context "/courier" []
            (defroutes courier-routes
              ;; Courier app periodically updates web service with their status
