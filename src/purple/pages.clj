@@ -245,7 +245,11 @@
              (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
              [:td.expiration_time]
-             (content (unix->fuller (:expiration_time t)))
+             (do-> (content (unix->fuller (:expiration_time t)))
+                   (if (< (:expiration_time t)
+                          (quot (System/currentTimeMillis) 1000))
+                     (add-class "late")
+                     (add-class "not-late")))
 
              [:td.times_used]
              (content (str (:times-used t)))
