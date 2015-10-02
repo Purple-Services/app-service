@@ -5,6 +5,7 @@
   (:require [purple.config :as config]
             [purple.orders :as orders]
             [purple.users :as users]
+            [ardoq.analytics-clj :as segment]
             [clojure.java.jdbc :as sql]
             [overtone.at-at :as at-at]
             [clojure.string :as s])
