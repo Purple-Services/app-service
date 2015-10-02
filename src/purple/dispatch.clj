@@ -389,7 +389,7 @@
             :service_fees service-fees
             :service_time_bracket service-time-bracket}
            {:id id})
-  ;; updat the zones as well
+  ;; update the zones as well
   (update-zones!))
 
 (defn get-courier-zips

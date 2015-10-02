@@ -57,21 +57,21 @@
 (defn get-by-courier
   "Gets all of a courier's assigned orders."
   [db-conn courier-id]
-  (let [courier-zip-codes  ((resolve 'purple.dispatch/get-courier-zips) db-conn courier-id)
-        all-orders (!select db-conn
-                            "orders"
-                            ["*"]
-                        {}
-                        :custom-where
-                        (str "(courier_id = \""
-                             (mysql-escape-str courier-id)
-                             "\" AND target_time_start > "
-                             (- (quot (System/currentTimeMillis) 1000)
-                                (* 60 60 24 16)) ;; 16 days
-                             ") OR status = \"unassigned\" ORDER BY target_time_end DESC"))
+  (let [courier-zip-codes  ((resolve 'purple.dispatch/get-courier-zips)
+                            db-conn courier-id)
+        all-orders (!select db-conn "orders" ["*"] {}
+                            :custom-where
+                            (str "(courier_id = \""
+                                 (mysql-escape-str courier-id)
+                                 "\" AND target_time_start > "
+                                 (- (quot (System/currentTimeMillis) 1000)
+                                    (* 60 60 24 16)) ;; 16 days
+                                 ") OR status = \"unassigned\" "
+                                 "ORDER BY target_time_end DESC"))
         orders (remove #(and (= (:status %) "unassigned")
                              (not (contains? courier-zip-codes
-                                             (:address_zip %)))) all-orders)
+                                             (:address_zip %))))
+                       all-orders)
         customer-ids (distinct (map :user_id orders))
         customers (group-by :id
                             (!select db-conn
