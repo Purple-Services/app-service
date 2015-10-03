@@ -163,7 +163,9 @@
              
              [:td.customer_phone_number]
              (content (:customer_phone_number t))
-             
+
+             [:td.address_street]
+             (add-class (:zone-color t))
              [:td.address_street :a]
              (content (:address_street t))
              [:td.address_street :a]
@@ -266,7 +268,8 @@
                                       ", ")))
 
              [:td.color]
-             (content (str (:color zone)))
+             (do-> (content (str (:color zone)))
+                   (add-class (:color zone)))
 
              [:td.87-price]
              (content  (html [:input
@@ -412,6 +415,12 @@
                                   :customer_phone_number
                                   (:phone_number
                                    (first (get users-by-id (:user_id %))))
+
+                                  :zone-color
+                                  (:color
+                                   ((resolve
+                                     'purple.dispatch/get-zone-by-zip-code)
+                                    (:address_zip %)))
                                   
                                   :was-late
                                   (let [completion-time
