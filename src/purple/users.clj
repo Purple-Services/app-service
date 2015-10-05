@@ -165,36 +165,15 @@
       ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
       (segment/identify segment-client (:id user)
                         {:email (:email user)
-                         :referral_code referral-code})
+                         :referral_code referral-code
+
+                         ;; todo fix this
+                         ;; :createdAt (time-coerce/from-sql-time
+                         ;;             (:timestamp_created %))
+
+                         })
       (segment/track segment-client (:id user) "Sign Up"))
     result))
-
-
-;; (def segment-client (segment/initialize (System/getProperty "SEGMENT_WRITE_KEY")
-;; (defn historical-data
-;;   []
-;;   (run! #(do (println (type (time-coerce/to-date (time-coerce/from-sql-time
-;;                              (:timestamp_created %)))))
-;;            (segment/identify segment-client (:id %)
-;;                                {:email (:email %)
-;;                                 :name (:name %)
-;;                                 :phone (:phone_number %)
-;;                                 :gender (:gender %)
-;;                                 :referral_code (:referral_code %)}
-;;                                :timestamp (time-coerce/to-date
-;;                                            (time-coerce/from-sql-time
-;;                                             (:timestamp_created %))))
-;;              (segment/track segment-client (:id %) "Sign Up"
-;;                             {}
-;;                             :timestamp (time-coerce/to-date
-;;                                         (time-coerce/from-sql-time
-;;                                          (:timestamp_created %))))
-;;              )
-;;         (!select (conn) "users" ["*"] {})))
-;; ;; TODO fix this 
-;; (historical-data)
-
-
 
 (defn login
   "Logs in user depeding on 'type' of user."
