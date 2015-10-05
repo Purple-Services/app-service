@@ -24,9 +24,9 @@
 
 (defn update-zones!
   "Update the zones var held in memory with that in the database"
-  []
+  [db-conn]
   (reset! zones (map #(update-in % [:zip_codes] split-on-comma)
-                     (get-all-zones (conn)))))
+                     (get-all-zones db-conn))))
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
@@ -396,7 +396,7 @@
             :service_time_bracket service-time-bracket}
            {:id id})
   ;; update the zones as well
-  (update-zones!))
+  (update-zones! db-conn))
 
 (defn get-courier-zips
   "Given a courier-id, get all of the zip-codes that a courier is assigned to"
