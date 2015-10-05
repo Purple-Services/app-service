@@ -2,12 +2,14 @@
   (:require [purple.orders :as orders]
             [purple.db :refer [!select conn !update]]
             [purple.dispatch :as dispatch]
-            [purple.test.db :refer [db-config]]
+            [purple.test.db :refer [database-fixture ebdb-test-config]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
+
+(use-fixtures :once database-fixture)
 
 (defn test-order
   "Create a test order."
-  []
+  [db-config]
   (let [test-user (first (!select db-config "users" ["*"]
                                   {:email "test@test.com"}))
         user-id   (:id test-user)
@@ -43,25 +45,26 @@
 
 (defn add-order
   "Add an order to the database"
-  [order]
+  [order db-config]
   (orders/add db-config (:user_id order) order))
 
 (defn unassigned-orders
   "Can the courier only see unassigned orders in their assigned zone?"
   []
-  (let [zone-id 3
+  (let [db-config ebdb-test-config
+        zone-id 3
         zone-zip (-> (filter #(= (:id %) 3) @dispatch/zones)
                      first
                      :zip_codes
                      first)
-        order     (assoc (test-order) :address_zip zone-zip)
+        order     (assoc (test-order db-config) :address_zip zone-zip)
         courier-id "lGYvXf9qcRdJHzhAAIbH"]
     ;; change Test Courier 1's zones to just 1
     (!update db-config "couriers" {:zones "1"} {:id courier-id})
     ;; test that the zone id is correct
     (is (= zone-id (:id (dispatch/get-zone-by-zip-code zone-zip))))
     ;; add an order to zone 3
-    (add-order order)
+    (add-order order db-config)
     ;; Test Courier 1 should not be able to see the unassigned order
     ;; this assumes there are no unassigned orders in the couriers zone!
     (is (= 0 (count (filter #(= (:status %) "unassigned")

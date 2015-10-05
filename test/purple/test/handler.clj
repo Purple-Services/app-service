@@ -36,7 +36,8 @@
       (let [post-data {:user_id user-id
                        :token token
                        :version "1.0.7"
-                       :user {:phone_number "800-555-1212"}}
+                       :user {:phone_number "800-555-1212"
+                              :name "Test User"}}
             response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
@@ -46,7 +47,8 @@
       (let [post-data {:user_id user-id
                        :token token
                        :version "1.0.7"
-                       :user {:phone_number "555-1212"}}
+                       :user {:phone_number "555-1212"
+                              :name "Test User"}}
             response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
