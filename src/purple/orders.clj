@@ -197,6 +197,18 @@
               (* 1 num-couriers))))
     true))
 
+(defn within-time-bracket?
+  "Is the order being placed within the time bracket?"
+  [order]
+  (let [order-time (unix->minute-of-day (:target_time_start order))
+        time-bracket ((resolve 'purple.dispatch/get-service-time-bracket)
+                      (:address_zip order))
+        time-start (first time-bracket)
+        time-end   (+ (last time-bracket) 10)]
+    (<= time-start
+        order-time
+        time-end)))
+
 (defn infer-gas-type-by-price
   "This is only for backwards compatiblity."
   [gas-price zip-code]
@@ -277,6 +289,19 @@
                     "can't promise a delivery within that time limit. Please "
                     "go back and choose the \"within 3 hours\" option.")}
      
+     (not (within-time-bracket? o))
+     {:success false
+      :message (str "Sorry, the service hours for this ZIP code are "
+                    (minute-of-day->hmma
+                     (first
+                      ((resolve 'purple.dispatch/get-service-time-bracket)
+                       (:address_zip o))))
+                    " to "
+                    (minute-of-day->hmma
+                     (last
+                      ((resolve 'purple.dispatch/get-service-time-bracket)
+                       (:address_zip o))))
+                    " every day.")}
      :else
      (do (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
                                                    :status :target_time_start
