@@ -94,3 +94,17 @@
 
 (deftest test-dispatch
   (unassigned-orders))
+
+;; this needs a db fixture in order to work properly,
+;; but the db fixture needs to be generalized across tests
+;;
+;; (deftest within-time-bracket-test
+;;   (testing "Does the within-time-bracket function work properly?"
+;;     (let []
+;;       (is (true? (orders/within-time-bracket?
+;;                   {:address_zip "90210"
+;;                    :target_time_start
+;;                    (util/date-time-to-time-zone-long
+;;                     (time/date-time 2015 10 5 7 30)
+;;                     (time/time-zone-for-id "America/Los_Angeles")
+;;                     )}))))))
