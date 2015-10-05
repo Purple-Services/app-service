@@ -3,7 +3,10 @@
             [purple.db :refer [!select conn !update]]
             [purple.dispatch :as dispatch]
             [purple.test.db :refer [database-fixture ebdb-test-config]]
-            [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
+            [clojure.test :refer [use-fixtures deftest is test-ns testing]]
+            [clj-time.core :as time]
+            [purple.test.util :as util]
+            [purple.util :refer [time-zone]]))
 
 (use-fixtures :once database-fixture)
 
@@ -98,16 +101,68 @@
 (deftest test-dispatch
   (unassigned-orders))
 
-;; this needs a db fixture in order to work properly,
-;; but the db fixture needs to be generalized across tests
-;;
-;; (deftest within-time-bracket-test
-;;   (testing "Does the within-time-bracket function work properly?"
-;;     (let []
-;;       (is (true? (orders/within-time-bracket?
-;;                   {:address_zip "90210"
-;;                    :target_time_start
-;;                    (util/date-time-to-time-zone-long
-;;                     (time/date-time 2015 10 5 7 30)
-;;                     (time/time-zone-for-id "America/Los_Angeles")
-;;                     )}))))))
+(defn within-time-bracket-test
+  "Test that date-time falls within time-bracket in zip-code. time-zone
+corresponds to the one being used on the server. db-config must correspond
+to the same one being used by the fixture."
+  [date-time time-bracket zip-code time-zone db-config]
+  (let [zone-id  (dispatch/get-zone-by-zip-code zip-code)]
+    ;; change the database configuration
+    (!update ebdb-test-config "zones"
+             {:service-time-bracket
+              time-bracket}
+             {:id zone-id})
+    ;; update the zone atom
+    (dispatch/update-zones! db-config)
+    (is (true? (orders/within-time-bracket?
+                {:address_zip zip-code
+                 :target_time_start
+                 (util/date-time-to-time-zone-long
+                  date-time
+                  time-zone)})))))
+
+(defn outside-time-bracket-test
+  "Test that date-time falls outside time-bracket in zip-code. time-zone
+corresponds to the one being used on the server. db-config must correspond
+to the same one being used by the fixture."
+  [date-time time-bracket zip-code time-zone db-config]
+  (let [zone-id  (dispatch/get-zone-by-zip-code zip-code)]
+    ;; change the database configuration
+    (!update ebdb-test-config "zones"
+             {:service-time-bracket
+              time-bracket}
+             {:id zone-id})
+    ;; update the zone atom
+    (dispatch/update-zones! db-config)
+    (is (false? (orders/within-time-bracket?
+                {:address_zip zip-code
+                 :target_time_start
+                 (util/date-time-to-time-zone-long
+                  date-time
+                  time-zone)})))))
+
+(deftest test-within-time-bracket
+  (testing "7:30am is within the time bracket of [450 1350]"
+    (within-time-bracket-test (time/date-time 2015 10 5 7 30)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "10:30pm is within the time bracket of [450 1350]"
+    (within-time-bracket-test (time/date-time 2015 10 5 22 30)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "10:41pm is outside the time bracket of [450 1350]"
+    (outside-time-bracket-test (time/date-time 2015 10 5 22 41)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "7:29am is outside the time bracket of [450 1350]"
+    (outside-time-bracket-test (time/date-time 2015 10 5 7 29)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config)))
