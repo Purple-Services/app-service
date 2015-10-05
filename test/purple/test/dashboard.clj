@@ -63,13 +63,20 @@
   (to (str
        "http://" user ":" password "@" test-host ":" test-port "/dashboard")))
 
+(defn wait-until-alert-text
+  "Wait until there is an alert with text"
+  [text]
+  (wait-until #(= (alert-text) text)))
+
 (defn cancel-order
   "Cancel the most recently added order"
   []
   (click ".cancel-order")
-  (sleep)
+  (wait-until #(= (alert-text) (str "Are you sure you want to cancel this order?"
+                                    " (this cannot be undone) (customer will be"
+                                    " notified via push notification)")))
   (accept)
-  (sleep)
+  (wait-until #(= (alert-text) "Order cancelled!"))
   (accept))
 
 (defn fully-cycle-order
@@ -85,25 +92,32 @@
     (is (= (order-status) "accepted"))
     ;; accepted -> enroute
     (click "input.advance-status")
-    (sleep)
+    (wait-until-alert-text
+     (str "Are you sure you want to mark this order as"
+          " Enroute? (this cannot be undone) "
+          "(customer will be notified via push notification)"))
     (accept)
-    (sleep)
-    (is (= (order-status) "enroute"))
+    (wait-until #(= (order-status) "enroute"))
     ;; enroute -> servicing
     (click "input.advance-status")
-    (sleep)
+    (wait-until-alert-text
+     (str "Are you sure you want to mark this order as"
+          " Servicing? (this cannot be undone) "
+          "(customer will be notified via push notification)"))
     (accept)
-    (sleep)
-    (is (= (order-status) "servicing"))
+    (wait-until #(= (order-status) "servicing"))
     ;; servicing -> complete
     (click "input.advance-status")
-    (sleep)
+    (wait-until-alert-text
+     (str "Are you sure you want to mark this order as"
+          " Complete? (this cannot be undone)"
+          " (customer will be notified via push notification)"))
     (accept)
-    (sleep)
+    (wait-until-alert-text
+     (str "The order has been marked as Complete. Refreshing page."))
     (accept)
     ;; the order status of 'complete' is not checked because there is
     ;; currently no way to determine which tr corresponds to an order-id
-    ;; (sleep)
     ;;(is (= (order-status) "complete"))
     ))
 
@@ -114,9 +128,14 @@
   (let [courier-id (value (select-option ".assign-courier"
                                          {:text courier-name}))]
     (click "input.assign-courier")
-    (sleep)
+    (wait-until-alert-text (str "Are you sure you want to assign this order to "
+                                courier-name
+                                "? (this cannot be undone) "
+                                " (courier will be notified via push"
+                                " notification)"))
     (accept)
-    (sleep 800)
+    (wait-until-alert-text
+     (str "This order has been assigned to Test Courier1"))
     (accept)
     courier-id))
 
@@ -189,10 +208,8 @@ and the new value is equal to comp-fn"
     (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (assign-courier "Test Courier1")
-    (sleep)
     (is (true? (is-courier-busy? "Test Courier1")))
     (cancel-order)
-    (sleep)
     (is (false? (is-courier-busy? "Test Courier1")))))
 
 (defn order-is-added-assigned-and-cycled
@@ -204,17 +221,15 @@ the status cycled through. Courier is checked for proper busy status"
     ;; assign the courier
     (assign-courier "Test Courier1")
     ;; give the browser time to catch up
-    (sleep)
     ;; check to see that the courier is busy
     (is (true? (is-courier-busy? "Test Courier1")))
     ;; cycle through the first order
     (fully-cycle-order)
-    (sleep)
     ;; check to see that courier is NOT busy
     (is (false? (is-courier-busy? "Test Courier1")))
     ;; the server will be brought down by the fixture before
     ;; the browser responds, so let it sleep a bit
-    (sleep)))
+    ))
 
 (defn two-orders-are-added-to-courier-and-cycled
   []
@@ -225,17 +240,13 @@ both are cycled and the busy status of the courier is checked"
     (orders/add-order (orders/test-order))
     (go-to-dashboard)
     (assign-courier "Test Courier1")
-    (sleep)
     (is (true? (is-courier-busy? "Test Courier1")))
     (assign-courier "Test Courier1")
-    (sleep)
     ;; cycle through the first order
     (fully-cycle-order)
-    (sleep)
     (is (true? (is-courier-busy? "Test Courier1")))
     ;; cycle through the second order
     (fully-cycle-order)
-    (sleep)
     ;; all orders are cleared, the courier should
     ;; no longer be busy
     (is (false? (is-courier-busy? "Test Courier1")))))
