@@ -398,18 +398,20 @@
   ;; update the zones as well
   (update-zones! db-conn))
 
+(defn courier-assigned-zones
+  "Given a courier-id, return a set of all zones they are assigned to"
+  [db-conn courier-id]
+  (set
+   (map read-string
+        (split-on-comma (:zones (first
+                                 (!select db-conn
+                                          "couriers"
+                                          [:zones]
+                                          {:id courier-id})))))))
 (defn get-courier-zips
   "Given a courier-id, get all of the zip-codes that a courier is assigned to"
   [db-conn courier-id]
-  (let [courier-assigned-zones (into
-                               #{}
-                               (map read-string
-                                    (split-on-comma
-                                     (:zones (first
-                                      (!select db-conn
-                                               "couriers"
-                                               [:zones]
-                                               {:id courier-id}))))))
+  (let [courier-assigned-zones (courier-assigned-zones db-conn courier-id)
         courier-zones (filter #(contains? courier-assigned-zones (:id %))
                               @zones)
         zip-codes (apply concat (map :zip_codes courier-zones))]

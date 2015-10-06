@@ -325,8 +325,18 @@
                                       (:license_plate o)
                                       (:user_id o)))
          (future (let [connected-couriers (couriers/get-all-connected db-conn)
-                       available-couriers (remove :busy connected-couriers)
 
+                       available-couriers
+                       (->> connected-couriers
+                            (remove :busy)
+                            (filter
+                             #(contains?
+                               ((resolve
+                                 'purple.dispatch/courier-assigned-zones)
+                                db-conn (:id %))
+                               (:id ((resolve
+                                      'purple.dispatch/get-zone-by-zip-code)
+                                     (:address_zip o))))))
                        users-by-id
                        (group-by :id
                                  ((resolve 'purple.users/get-users-by-ids)
