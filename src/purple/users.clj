@@ -354,18 +354,19 @@
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
     (if (valid-license-plate? (:license_plate record-map))
-      (doto (assoc record-map
-                   :id (rand-str-alpha-num 20)
-                   :user_id user-id
-                   :license_plate (clean-up-license-plate
-                                   (:license_plate record-map))
-                   :active 1)
-        (#(!insert db-conn "vehicles" %))
-        (#(segment/track segment-client user-id "Add Vehicle"
-                         (assoc (select-keys % [:year :make :model
-                                                :color :gas_type
-                                                :license_plate])
-                                :vehicle_id (:id %)))))
+      (do (doto (assoc record-map
+                       :id (rand-str-alpha-num 20)
+                       :user_id user-id
+                       :license_plate (clean-up-license-plate
+                                       (:license_plate record-map))
+                       :active 1)
+            (#(!insert db-conn "vehicles" %))
+            (#(segment/track segment-client user-id "Add Vehicle"
+                             (assoc (select-keys % [:year :make :model
+                                                    :color :gas_type
+                                                    :license_plate])
+                                    :vehicle_id (:id %)))))
+          {:success true})
       {:success false
        :message "Please enter a valid license plate."})
     {:success false
