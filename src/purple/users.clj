@@ -351,26 +351,48 @@
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (if (not-any? (comp s/blank? str val)
-                (select-keys record-map required-vehicle-fields))
-    (if (valid-license-plate? (:license_plate record-map))
-      (do (doto (assoc record-map
-                       :id (rand-str-alpha-num 20)
-                       :user_id user-id
-                       :license_plate (clean-up-license-plate
-                                       (:license_plate record-map))
-                       :active 1)
-            (#(!insert db-conn "vehicles" %))
-            (#(segment/track segment-client user-id "Add Vehicle"
-                             (assoc (select-keys % [:year :make :model
-                                                    :color :gas_type
-                                                    :license_plate])
-                                    :vehicle_id (:id %)))))
-          {:success true})
-      {:success false
-       :message "Please enter a valid license plate."})
+  (cond
+    ;; the only required field that is missing is
+    ;; the license pate
+    (and (every?
+          identity
+          (map #(contains? record-map %)
+               (remove
+                #(= % :license_plate)
+                required-vehicle-fields)))
+         (or (not (contains? record-map :license_plate))
+             (empty? (:license_plate record-map))))
     {:success false
-     :message "Required fields cannot be empty."}))
+     :message (str "License Plate is a required field. If this is a new vehicle"
+                   " without plates, write: NOPLATES. Vehicles without license"
+                   " plates are ineligible for coupon codes.")}
+
+    (and
+     ;; make sure all required keys are present
+     (not-every?
+      identity (map #(contains? record-map %) required-vehicle-fields))
+     ;; ...and that none of them are blank
+     (not-any? (comp s/blank? str val)
+               (select-keys record-map required-vehicle-fields)))
+    {:success false
+     :message "Required fields cannot be empty."}
+
+    ;; license_plate is valid
+    (valid-license-plate? (:license_plate record-map))
+    (do (doto (assoc record-map
+                     :id (rand-str-alpha-num 20)
+                     :user_id user-id
+                     :license_plate (clean-up-license-plate
+                                     (:license_plate record-map))
+                     :active 1)
+          (#(!insert db-conn "vehicles" %))
+          (#(segment/track segment-client user-id "Add Vehicle"
+                           (assoc (select-keys % [:year :make :model
+                                                  :color :gas_type
+                                                  :license_plate])
+                                  :vehicle_id (:id %)))))
+        {:success true})
+    :else {:success false :message "Unknown error"}))
 
 (defn update-vehicle
   "The user-id given is assumed to have been auth'd already."
