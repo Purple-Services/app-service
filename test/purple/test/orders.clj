@@ -6,7 +6,8 @@
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-time.core :as time]
             [purple.test.util :as util]
-            [purple.util :refer [time-zone]]))
+            [purple.util :refer [time-zone]]
+            [purple.couriers :as couriers]))
 
 (use-fixtures :once database-fixture)
 
@@ -166,3 +167,58 @@ to the same one being used by the fixture."
                               "90210"
                               time-zone
                               ebdb-test-config)))
+
+(deftest get-connected-couriers-zone
+  (testing "Only the couriers within a zone that are not busy are selected"
+    (let [db-config ebdb-test-config
+          zone-id 3
+          zone-zip (-> (filter #(= (:id %) zone-id) @dispatch/zones)
+                       first
+                       :zip_codes
+                       first)
+          order     (assoc (test-order db-config) :address_zip zone-zip)
+          courier-id "lGYvXf9qcRdJHzhAAIbH" ; may have to be manually retrieved
+          courier-id-2 "vIBMV7lpCytIBJmsJaIx" ; same as above
+          ]
+      ;; set all couriers as connected, not busy and in zone 1
+      (!update db-config "couriers" {:connected 1 :busy 0 :zones "1"} {})
+       ;; only Test Courier1 is assigned to zone 3
+      (!update db-config "couriers"
+               {:zones (str "1," zone-id)}
+               {:id courier-id})
+      ;; test that there are three connected couriers
+      (is (= 3 (count (couriers/get-all-connected ebdb-test-config))))
+      ;; test that only one courier is connected and assigned zone 3
+      (is (= 1
+             (count (->> (couriers/get-all-connected ebdb-test-config)
+                         (remove :busy)
+                         (filter
+                          #(contains?
+                            (dispatch/courier-assigned-zones
+                             db-config (:id %))
+                            (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
+      ;; assign courier 2 to zone 3
+      (!update db-config "couriers"
+               {:zones (str "1," zone-id)}
+               {:id courier-id-2})
+      ;; test that two couriers are connected and assigned zone 3
+      (is (= 2
+             (count (->> (couriers/get-all-connected ebdb-test-config)
+                         (remove :busy)
+                         (filter
+                          #(contains?
+                            (dispatch/courier-assigned-zones
+                             db-config (:id %))
+                            (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
+      ;; set courier 1 as busy
+      (!update db-config "couriers" {:busy 1} {:id courier-id})
+      ;; test that only one courier is connected, not busy and assigned zone 3
+      (is (= 1
+             (count (->> (couriers/get-all-connected ebdb-test-config)
+                         (remove :busy)
+                         (filter
+                          #(contains?
+                            (dispatch/courier-assigned-zones
+                             db-config (:id %))
+                            (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
+      )))
