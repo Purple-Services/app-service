@@ -2,12 +2,17 @@
   (:require [purple.orders :as orders]
             [purple.db :refer [!select conn !update]]
             [purple.dispatch :as dispatch]
-            [purple.test.db :refer [db-config]]
-            [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
+            [purple.test.db :refer [database-fixture ebdb-test-config]]
+            [clojure.test :refer [use-fixtures deftest is test-ns testing]]
+            [clj-time.core :as time]
+            [purple.test.util :as util]
+            [purple.util :refer [time-zone]]))
+
+(use-fixtures :once database-fixture)
 
 (defn test-order
   "Create a test order."
-  []
+  [db-config]
   (let [test-user (first (!select db-config "users" ["*"]
                                   {:email "test@test.com"}))
         user-id   (:id test-user)
@@ -43,25 +48,26 @@
 
 (defn add-order
   "Add an order to the database"
-  [order]
+  [order db-config]
   (orders/add db-config (:user_id order) order))
 
 (defn unassigned-orders
   "Can the courier only see unassigned orders in their assigned zone?"
   []
-  (let [zone-id 3
+  (let [db-config ebdb-test-config
+        zone-id 3
         zone-zip (-> (filter #(= (:id %) 3) @dispatch/zones)
                      first
                      :zip_codes
                      first)
-        order     (assoc (test-order) :address_zip zone-zip)
+        order     (assoc (test-order db-config) :address_zip zone-zip)
         courier-id "lGYvXf9qcRdJHzhAAIbH"]
     ;; change Test Courier 1's zones to just 1
     (!update db-config "couriers" {:zones "1"} {:id courier-id})
     ;; test that the zone id is correct
     (is (= zone-id (:id (dispatch/get-zone-by-zip-code zone-zip))))
     ;; add an order to zone 3
-    (add-order order)
+    (add-order order db-config)
     ;; Test Courier 1 should not be able to see the unassigned order
     ;; this assumes there are no unassigned orders in the couriers zone!
     (is (= 0 (count (filter #(= (:status %) "unassigned")
@@ -95,16 +101,68 @@
 (deftest test-dispatch
   (unassigned-orders))
 
-;; this needs a db fixture in order to work properly,
-;; but the db fixture needs to be generalized across tests
-;;
-;; (deftest within-time-bracket-test
-;;   (testing "Does the within-time-bracket function work properly?"
-;;     (let []
-;;       (is (true? (orders/within-time-bracket?
-;;                   {:address_zip "90210"
-;;                    :target_time_start
-;;                    (util/date-time-to-time-zone-long
-;;                     (time/date-time 2015 10 5 7 30)
-;;                     (time/time-zone-for-id "America/Los_Angeles")
-;;                     )}))))))
+(defn within-time-bracket-test
+  "Test that date-time falls within time-bracket in zip-code. time-zone
+corresponds to the one being used on the server. db-config must correspond
+to the same one being used by the fixture."
+  [date-time time-bracket zip-code time-zone db-config]
+  (let [zone-id  (dispatch/get-zone-by-zip-code zip-code)]
+    ;; change the database configuration
+    (!update ebdb-test-config "zones"
+             {:service-time-bracket
+              time-bracket}
+             {:id zone-id})
+    ;; update the zone atom
+    (dispatch/update-zones! db-config)
+    (is (true? (orders/within-time-bracket?
+                {:address_zip zip-code
+                 :target_time_start
+                 (util/date-time-to-time-zone-long
+                  date-time
+                  time-zone)})))))
+
+(defn outside-time-bracket-test
+  "Test that date-time falls outside time-bracket in zip-code. time-zone
+corresponds to the one being used on the server. db-config must correspond
+to the same one being used by the fixture."
+  [date-time time-bracket zip-code time-zone db-config]
+  (let [zone-id  (dispatch/get-zone-by-zip-code zip-code)]
+    ;; change the database configuration
+    (!update ebdb-test-config "zones"
+             {:service-time-bracket
+              time-bracket}
+             {:id zone-id})
+    ;; update the zone atom
+    (dispatch/update-zones! db-config)
+    (is (false? (orders/within-time-bracket?
+                {:address_zip zip-code
+                 :target_time_start
+                 (util/date-time-to-time-zone-long
+                  date-time
+                  time-zone)})))))
+
+(deftest test-within-time-bracket
+  (testing "7:30am is within the time bracket of [450 1350]"
+    (within-time-bracket-test (time/date-time 2015 10 5 7 30)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "10:30pm is within the time bracket of [450 1350]"
+    (within-time-bracket-test (time/date-time 2015 10 5 22 30)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "10:41pm is outside the time bracket of [450 1350]"
+    (outside-time-bracket-test (time/date-time 2015 10 5 22 41)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "7:29am is outside the time bracket of [450 1350]"
+    (outside-time-bracket-test (time/date-time 2015 10 5 7 29)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config)))
