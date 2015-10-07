@@ -235,18 +235,25 @@
                            {:success false
                             :message "Unknown error."})))))
 
-(defn valid-email
-  "Only for native users."
-  [db-conn email]
-  (and (boolean (re-matches #"^\S+@\S+\.\S+$" email))
-       (not (get-user db-conn "native" email))))
+(defn email-available?
+  "Is there not a native account that is using this email address?"
+  [db-conn email & {:keys [ignore-user-id]}]
+  (let [user (get-user db-conn "native" email)]
+    (or (not user)
+        (and ignore-user-id
+             (= ignore-user-id (:id user))))))
 
-(defn valid-password
+(defn valid-email?
+  "Syntactically valid email address?"
+  [email]
+  (boolean (re-matches #"^\S+@\S+\.\S+$" email)))
+
+(defn valid-password?
   "Only for native users."
   [password]
   (boolean (re-matches #"^.{6,100}$" password)))
 
-(defn valid-phone-number
+(defn valid-phone-number?
   "Given a phone-number string, check whether or not it is a valid phone number
   with a 10 digit code. Returns true if it is valid, false otherwise.
   See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507
@@ -255,7 +262,7 @@
   (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$"
                        phone-number)))
 
-(defn valid-name
+(defn valid-name?
   "Given a name, make sure that it has a space in it"
   [name]
   (boolean (re-find #"\s" name)))
@@ -263,8 +270,9 @@
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key & {:keys [client-ip]}]
-  (if (valid-email db-conn platform-id)
-    (if (valid-password auth-key)
+  (if (and (valid-email? platform-id)
+           (email-available? db-conn platform-id))
+    (if (valid-password? auth-key)
       (do (add db-conn
                {:id (rand-str-alpha-num 20)
                 :email platform-id
@@ -328,12 +336,15 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (doto (select-keys record-map [:name :phone_number :gender])
-      (#(!update db-conn "users" % {:id user-id}))
-      (#(segment/identify segment-client user-id
-                          {:name (:name %)
-                           :phone (:phone_number %)
-                           :gender (:gender %)})))
+    (do (doto (select-keys record-map [:name :phone_number :gender :email])
+          (#(!update db-conn "users" % {:id user-id}))
+          (#(segment/identify segment-client user-id
+                              (conj {:name (:name %)
+                                     :phone (:phone_number %)
+                                     :gender (:gender %)}
+                                    (when (:email %)
+                                      [:email (:email %)])))))
+        {:success true})
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -473,15 +484,24 @@
                 (merge-unless-failed
                  (let [user (update (:user body) :name s/trim)
                        phone-number (:phone_number user)
-                       name (:name user)]
+                       name (:name user)
+                       email (:email user)]
                    (cond
-                     (and name (not (valid-name name)))
+                     (and name (not (valid-name? name)))
                      {:success false
                       :message "Please enter your full name."}
                      
-                     (and phone-number (not (valid-phone-number phone-number)))
+                     (and phone-number (not (valid-phone-number? phone-number)))
                      {:success false
                       :message "Please enter a valid phone number."}
+
+                     (and email
+                          (or (not (valid-email? email))
+                              (not (email-available? db-conn
+                                                     email
+                                                     :ignore-user-id user-id))))
+                     {:success false
+                      :message "Email Address is incorrectly formatted or is already associated with an account."}
 
                      :else (update-user db-conn user-id user))))
                 
@@ -559,7 +579,7 @@
   "Only for native accounts."
   [db-conn reset-key password]
   (if-not (s/blank? reset-key) ;; <-- very important check, for security
-    (if (valid-password password)
+    (if (valid-password? password)
       (!update db-conn
                "users"
                {:password_hash (bcrypt/encrypt password)
