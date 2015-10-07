@@ -277,6 +277,23 @@ both are cycled and the busy status of the courier is checked"
        zone-id "service-start" #(first (dispatch/get-service-time-bracket
                                         (get-zip-with-zone-id zone-id)))))))
 
+(defn courier-phone-number-present
+  []
+  (testing "A courier's correct phone number is displayed in the dashboard"
+    (let [courier-name "Test Courier1"
+          phone-number (-> (!select db-config "users" [:phone_number]
+                                    {:name courier-name})
+                           first
+                           :phone_number)]
+      (is (= phone-number
+             (text
+              (find-element
+               {:xpath (str "//table[@id='couriers']//"
+                            "td[text()='"
+                            courier-name
+                            "']/../"
+                            "td[@class='courier_phone_number']")})))))))
+
 (deftest test-dashboard
   (dashboard-greeting)
   (add-order-and-cancel-it)
@@ -285,4 +302,5 @@ both are cycled and the busy status of the courier is checked"
   (two-orders-are-added-to-courier-and-cycled)
   (modify-zone-price)
   (modify-zone-service-fee)
-  (modify-zone-time-bracket))
+  (modify-zone-time-bracket)
+  (courier-phone-number-present))
