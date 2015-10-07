@@ -154,4 +154,9 @@ removed"
       (is (true?
            (:success (add-vehicle ebdb-test-config user-id
                                      (assoc record-map
-                                            :license_plate "NOPLATES"))))))))
+                                            :license_plate "NOPLATES")))))
+      ;; add an invalid license plate and receive an error message
+      (is (= "Please enter a valid license plate."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :license_plate "FA$T"))))))))

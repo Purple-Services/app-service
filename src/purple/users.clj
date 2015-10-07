@@ -392,6 +392,11 @@
                                                   :license_plate])
                                   :vehicle_id (:id %)))))
         {:success true})
+    ;; license_plate is invalid
+    (not (valid-license-plate? (:license_plate record-map)))
+    {:success false
+     :message "Please enter a valid license plate."}
+    ;; unknown error
     :else {:success false :message "Unknown error"}))
 
 (defn update-vehicle
