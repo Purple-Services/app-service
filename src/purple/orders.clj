@@ -332,9 +332,8 @@
                             (filter
                              #(contains?
                                (:zones %)
-                               (:id ((resolve
-                                      'purple.dispatch/get-zone-by-zip-code)
-                                     (:address_zip o))))))
+                               ((resolve 'purple.dispatch/order->zone-id) o)
+                               )))
                        users-by-id
                        (group-by :id
                                  ((resolve 'purple.users/get-users-by-ids)
