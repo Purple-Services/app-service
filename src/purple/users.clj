@@ -237,8 +237,11 @@
 
 (defn email-available?
   "Is there not a native account that is using this email address?"
-  [db-conn email]
-  (not (get-user db-conn "native" email)))
+  [db-conn email & {:keys [ignore-user-id]}]
+  (let [user (get-user db-conn "native" email)]
+    (or (not user)
+        (and ignore-user-id
+             (= ignore-user-id (:id user))))))
 
 (defn valid-email?
   "Syntactically valid email address?"
@@ -465,9 +468,13 @@
                      {:success false
                       :message "Please enter a valid phone number."}
 
-                     (and email (not (valid-email? email)))
+                     (and email
+                          (or (not (valid-email? email))
+                              (not (email-available? db-conn
+                                                     email
+                                                     :ignore-user-id user-id))))
                      {:success false
-                      :message "Please enter a valid email address."}
+                      :message "Email Address is incorrectly formatted or is already associated with an account."}
 
                      :else (update-user db-conn user-id user))))
                 
