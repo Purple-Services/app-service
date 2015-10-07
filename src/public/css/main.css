@@ -58,3 +58,28 @@ td.late {
 .only-show-orders div:not(.part-of-orders){
     display: none;
 }
+
+
+.address_street a {
+    /* background: rgba(255, 255, 255, 0.4); */
+    /* padding: 0px 3px; */
+    /* color: black; */
+}
+
+/* zone colors */
+.purple, .purple a {
+    background-color: rgba(194, 0, 255, 1);
+    color: white;
+}
+.blue, .blue a {
+    background-color: rgba(0, 0, 255, 1);
+    color: white;
+}
+.yellow, .yellow a {
+    background-color: rgba(255, 255, 0, 1);
+    color: black;
+}
+.red, .red a {
+    background-color: rgba(230, 0, 0, 1);
+    color: white;
+}

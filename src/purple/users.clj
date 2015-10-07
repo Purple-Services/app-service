@@ -8,8 +8,11 @@
             [purple.orders :as orders]
             [purple.coupons :as coupons]
             [purple.payment :as payment]
+            [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
+            [clj-time.core :as time]
+            [clj-time.coerce :as time-coerce]
             [clojure.string :as s]))
 
 (def safe-authd-user-keys
@@ -133,6 +136,7 @@
              {:user_id (:id user)
               :token token
               :ip (or client-ip "")})
+    (segment/track segment-client (:id user) "Login")
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -147,21 +151,28 @@
 
 (defn add
   "Adds new user. Will fail if user_id is already being used."
-  [db-conn user & {:keys [password]}]
-  (let [result (!insert db-conn
+  [db-conn user & {:keys [password client-ip]}]
+  (let [referral-code (coupons/create-referral-coupon db-conn (:id user))
+        result (!insert db-conn
                         "users"
                         (assoc (if (= "native" (:type user))
-                                 (assoc user :password_hash (bcrypt/encrypt password))
+                                 (assoc user
+                                        :password_hash
+                                        (bcrypt/encrypt password))
                                  user)
-                               :referral_code (coupons/create-referral-coupon db-conn
-                                                                              (:id user))))]
-    ;; (only-prod (future
-    ;;              (send-email ;; debugging purposes, "why sometimes 100's of calls..."
-    ;;               {:to "chris@purpledelivery.com"
-    ;;                :subject "Purple - users/add caleld"
-    ;;                :body (str user
-    ;;                           "\nResult:\n"
-    ;;                           result)})))
+                               :referral_code referral-code))]
+    (when (:success result)
+      ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
+      (segment/identify segment-client (:id user)
+                        {:email (:email user)
+                         :referral_code referral-code
+
+                         ;; todo fix this
+                         ;; :createdAt (time-coerce/from-sql-time
+                         ;;             (:timestamp_created %))
+
+                         })
+      (segment/track segment-client (:id user) "Sign Up"))
     result))
 
 (defn login
@@ -213,7 +224,8 @@
                                        :body (str "Google user didn't provide email: "
                                                   (str "g" (:id google-user)))}))
                                     (throw (Exception. "No email.")))))
-                   (throw (Exception. "Invalid login."))))
+                   (throw (Exception. "Invalid login.")))
+                 :client-ip client-ip)
             (login db-conn type platform-id auth-key :client-ip client-ip)))
       (catch Exception e (case (.getMessage e)
                            "Invalid login." {:success false
@@ -223,24 +235,34 @@
                            {:success false
                             :message "Unknown error."})))))
 
-(defn valid-email
-  "Only for native users."
-  [db-conn email]
-  (and (boolean (re-matches #"^\S+@\S+\.\S+$" email))
-       (not (get-user db-conn "native" email))))
+(defn email-available?
+  "Is there not a native account that is using this email address?"
+  [db-conn email & {:keys [ignore-user-id]}]
+  (let [user (get-user db-conn "native" email)]
+    (or (not user)
+        (and ignore-user-id
+             (= ignore-user-id (:id user))))))
 
-(defn valid-password
+(defn valid-email?
+  "Syntactically valid email address?"
+  [email]
+  (boolean (re-matches #"^\S+@\S+\.\S+$" email)))
+
+(defn valid-password?
   "Only for native users."
   [password]
   (boolean (re-matches #"^.{6,100}$" password)))
 
-(defn valid-phone-number
-  "Given a phone-number string, check whether or not it is a valid phone number with a 10 digit code.
-  Returns true if it is valid, false otherwise. See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507 for more information about the regex used"
+(defn valid-phone-number?
+  "Given a phone-number string, check whether or not it is a valid phone number
+  with a 10 digit code. Returns true if it is valid, false otherwise.
+  See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507
+  for more information about the regex used"
   [phone-number]
-  (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$" phone-number)))
+  (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$"
+                       phone-number)))
 
-(defn valid-name
+(defn valid-name?
   "Given a name, make sure that it has a space in it"
   [name]
   (boolean (re-find #"\s" name)))
@@ -248,13 +270,15 @@
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key & {:keys [client-ip]}]
-  (if (valid-email db-conn platform-id)
-    (if (valid-password auth-key)
+  (if (and (valid-email? platform-id)
+           (email-available? db-conn platform-id))
+    (if (valid-password? auth-key)
       (do (add db-conn
                {:id (rand-str-alpha-num 20)
                 :email platform-id
                 :type "native"}
-               :password auth-key)
+               :password auth-key
+               :client-ip client-ip)
           (login db-conn "native" platform-id auth-key :client-ip client-ip))
       {:success false
        :message "Password must be at least 6 characters."})
@@ -275,12 +299,14 @@
 
 (defn update-user-metadata
   [db-conn user-id app-version os]
-  (!update db-conn
-           "users"
-           (filter (comp not nil? val)
-                   {:app_version app-version
-                    :os os})
-           {:id user-id}))
+  (do (segment/identify segment-client user-id
+                        {:app_version app-version}) ;; TODO this is happening a lot
+      (!update db-conn
+               "users"
+               (filter (comp not nil? val)
+                       {:app_version app-version
+                        :os os})
+               {:id user-id})))
 
 (defn details
   [db-conn user-id & {:keys [user-meta]}]
@@ -310,13 +336,15 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (!update db-conn
-             "users"
-             (select-keys record-map
-                          [:name
-                           :phone_number
-                           :gender])
-             {:id user-id})
+    (do (doto (select-keys record-map [:name :phone_number :gender :email])
+          (#(!update db-conn "users" % {:id user-id}))
+          (#(segment/identify segment-client user-id
+                              (conj {:name (:name %)
+                                     :phone (:phone_number %)
+                                     :gender (:gender %)}
+                                    (when (:email %)
+                                      [:email (:email %)])))))
+        {:success true})
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -334,21 +362,53 @@
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (if (not-any? (comp s/blank? str val)
-                (select-keys record-map required-vehicle-fields))
-    (if (valid-license-plate? (:license_plate record-map))
-      (!insert db-conn
-               "vehicles"
-               (assoc record-map
-                      :id (rand-str-alpha-num 20)
-                      :user_id user-id
-                      :license_plate (clean-up-license-plate
-                                      (:license_plate record-map))
-                      :active 1))
-      {:success false
-       :message "Please enter a valid license plate."})
+  (cond
+    ;; the only required field that is missing is
+    ;; the license pate
+    (and (every?
+          identity
+          (map #(contains? record-map %)
+               (remove
+                #(= % :license_plate)
+                required-vehicle-fields)))
+         (or (not (contains? record-map :license_plate))
+             (s/blank? (:license_plate record-map))))
     {:success false
-     :message "Required fields cannot be empty."}))
+     :message (str "License Plate is a required field. If this is a new vehicle"
+                   " without plates, write: NOPLATES. Vehicles without license"
+                   " plates are ineligible for coupon codes.")}
+
+    (and
+     ;; make sure all required keys are present
+     (not-every?
+      identity (map #(contains? record-map %) required-vehicle-fields))
+     ;; ...and that none of them are blank
+     (not-any? (comp s/blank? str val)
+               (select-keys record-map required-vehicle-fields)))
+    {:success false
+     :message "Required fields cannot be empty."}
+
+    ;; license_plate is valid
+    (valid-license-plate? (:license_plate record-map))
+    (do (doto (assoc record-map
+                     :id (rand-str-alpha-num 20)
+                     :user_id user-id
+                     :license_plate (clean-up-license-plate
+                                     (:license_plate record-map))
+                     :active 1)
+          (#(!insert db-conn "vehicles" %))
+          (#(segment/track segment-client user-id "Add Vehicle"
+                           (assoc (select-keys % [:year :make :model
+                                                  :color :gas_type
+                                                  :license_plate])
+                                  :vehicle_id (:id %)))))
+        {:success true})
+    ;; license_plate is invalid
+    (not (valid-license-plate? (:license_plate record-map)))
+    {:success false
+     :message "Please enter a valid license plate."}
+    ;; unknown error
+    :else {:success false :message "Unknown error"}))
 
 (defn update-vehicle
   "The user-id given is assumed to have been auth'd already."
@@ -391,9 +451,13 @@
         customer-id (:stripe_customer_id user)
         customer-resp (if (s/blank? customer-id)
                         (payment/create-stripe-customer user-id stripe-token)
-                        (do (payment/add-stripe-card customer-id stripe-token)
-                            (payment/get-stripe-customer customer-id)))]
-    (update-user-stripe-fields db-conn user-id customer-resp)))
+                        (when (payment/add-stripe-card customer-id stripe-token)
+                          (payment/get-stripe-customer customer-id)))]
+    (if customer-resp
+      (do (segment/track segment-client user-id "Add Credit Card")
+          (update-user-stripe-fields db-conn user-id customer-resp))
+      {:success false
+       :message "Sorry, we weren't able to get that card to work."})))
 
 (defn delete-card
   [db-conn user-id card-id]
@@ -418,17 +482,26 @@
               (cond-> {:success true}
                 (:user body)
                 (merge-unless-failed
-                 (let [user (:user body)
+                 (let [user (update (:user body) :name s/trim)
                        phone-number (:phone_number user)
-                       name (:name user)]
+                       name (:name user)
+                       email (:email user)]
                    (cond
-                     (and name (not (valid-name name)))
+                     (and name (not (valid-name? name)))
                      {:success false
                       :message "Please enter your full name."}
                      
-                     (and phone-number (not (valid-phone-number phone-number)))
+                     (and phone-number (not (valid-phone-number? phone-number)))
                      {:success false
                       :message "Please enter a valid phone number."}
+
+                     (and email
+                          (or (not (valid-email? email))
+                              (not (email-available? db-conn
+                                                     email
+                                                     :ignore-user-id user-id))))
+                     {:success false
+                      :message "Email Address is incorrectly formatted or is already associated with an account."}
 
                      :else (update-user db-conn user-id user))))
                 
@@ -506,7 +579,7 @@
   "Only for native accounts."
   [db-conn reset-key password]
   (if-not (s/blank? reset-key) ;; <-- very important check, for security
-    (if (valid-password password)
+    (if (valid-password? password)
       (!update db-conn
                "users"
                {:password_hash (bcrypt/encrypt password)
@@ -571,8 +644,8 @@
   "Sends an SMS message to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (send-sms (:phone_number user)
-              message)
+    (only-prod (send-sms (:phone_number user)
+                         message))
     {:success true}))
 
 (defn call-user

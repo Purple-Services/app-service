@@ -8,7 +8,8 @@
             [clj-time.format :as time-format]
             [clj-aws.core :as aws]
             [clj-aws.sns :as sns]
-            [environ.core :refer [env]])
+            [environ.core :refer [env]]
+            [ardoq.analytics-clj :as segment])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
@@ -51,7 +52,18 @@
 
 (defn split-on-comma [x] (s/split x #","))
 
+(defn five-digit-zip-code
+  [zip-code]
+  (subs zip-code 0 5))
+
 (defn cents->dollars
+  "Integer of cents -> Double of dollars."
+  [x]
+  (if (zero? x)
+    0
+    (double (/ x 100))))
+
+(defn cents->dollars-str
   "To display an integer of cents as string in dollars with a decimal."
   [x]
   (let [y (str x)]
@@ -62,13 +74,17 @@
 
 (def time-zone (time/time-zone-for-id "America/Los_Angeles"))
 
+(defn unix->DateTime
+  [x]
+  (time-coerce/from-long (* 1000 x)))
+
 (def full-formatter (time-format/formatter "M/d h:mm a"))
 (defn unix->full
   "Convert integer unix timestamp to formatted date string."
   [x]
   (time-format/unparse
    (time-format/with-zone full-formatter time-zone)
-   (time-coerce/from-long (* 1000 x))))
+   (unix->DateTime x)))
 
 (def fuller-formatter (time-format/formatter "M/d/y h:mm a"))
 (defn unix->fuller
@@ -76,7 +92,7 @@
   [x]
   (time-format/unparse
    (time-format/with-zone fuller-formatter time-zone)
-   (time-coerce/from-long (* 1000 x))))
+   (unix->DateTime x)))
 
 (def hour-formatter (time-format/formatter "H"))
 (defn unix->hour-of-day
@@ -85,7 +101,7 @@
   (Integer.
    (time-format/unparse
     (time-format/with-zone hour-formatter time-zone)
-    (time-coerce/from-long (* 1000 x)))))
+    (unix->DateTime x))))
 
 (def minute-formatter (time-format/formatter "m"))
 (defn unix->minute-of-hour
@@ -94,13 +110,31 @@
   (Integer.
    (time-format/unparse
     (time-format/with-zone minute-formatter time-zone)
-    (time-coerce/from-long (* 1000 x)))))
+    (unix->DateTime x))))
 
 (defn unix->minute-of-day
   "How many minutes (int) since beginning of day?"
   [x]
   (+ (* (unix->hour-of-day x) 60)
      (unix->minute-of-hour x)))
+
+(def hmma-formatter (time-format/formatter "h:mm a"))
+(defn unix->hmma
+  "Convert integer unix timestamp to formatted date string."
+  [x]
+  (time-format/unparse
+   (time-format/with-zone hmma-formatter time-zone)
+   (unix->DateTime x)))
+
+(defn minute-of-day->hmma
+  "Convert number of minutes since the beginning of today to a unix timestamp."
+  [m]
+  (unix->hmma
+   (+ (* m 60)
+      (-> (time/date-time 1976) ;; it'll be wrong day but same hmma
+          (time/from-time-zone time-zone)
+          time-coerce/to-long
+          (quot 1000)))))
 
 (defn in? 
   "true if seq contains elm"
@@ -164,18 +198,18 @@
   (let [user (when user_id
                ((resolve 'purple.users/get-user-by-id) (conn) user_id))]
     (only-prod
-     (send-email (conj {:to "chris@purpledelivery.com"
-                        :cc ["joe@purpledelivery.com"
-                             "bruno@purpledelivery.com"]
-                        :subject "Purple Feedback Form Response"
-                        :body (if user
-                                (str "From User ID: " user_id "\n\n"
-                                     "Name: " (:name user) "\n\n"
-                                     "Email: " (:email user) "\n\n"
-                                     text)
-                                text)}
-                       (when user
-                         [:reply-to (:email user)]))))))
+     (send-email {:to "chris@purpledelivery.com"
+                  :cc ["joe@purpledelivery.com"
+                       "bruno@purpledelivery.com"]
+                  :subject "Purple Feedback Form Response"
+                  :body (if user
+                          (str "From User ID: " user_id "\n\n"
+                               "Name: " (:name user) "\n\n"
+                               "Email: " (:email user) "\n\n"
+                               text)
+                          text)}))))
+
+(! (def segment-client (segment/initialize (System/getProperty "SEGMENT_WRITE_KEY"))))
 
 ;; Amazon SNS (Push Notifications)
 (! (do
@@ -255,11 +289,3 @@
             (ArrayList. [(BasicNameValuePair. "Url" call-url)
                          (BasicNameValuePair. "To" to-number)
                          (BasicNameValuePair. "From" config/twilio-from-number)]))))
-
-
-(defn octane->gas-price
-  "Accepts octane as string. Returns gas price per gallon in cents as integer."
-  [octane]
-  (case octane
-    "87" @config/gas-price-87
-    "91" @config/gas-price-91))

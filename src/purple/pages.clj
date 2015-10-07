@@ -74,6 +74,9 @@
              [:td.name]
              (content (:name t))
 
+             [:td.courier_phone_number]
+             (content (:phone_number t))
+
              [:td.busy]
              (content (if (:busy t) "Yes" "No"))
 
@@ -163,7 +166,9 @@
              
              [:td.customer_phone_number]
              (content (:customer_phone_number t))
-             
+
+             [:td.address_street]
+             (add-class (:zone-color t))
              [:td.address_street :a]
              (content (:address_street t))
              [:td.address_street :a]
@@ -191,7 +196,7 @@
                             (not= 0 (:total_price t)))
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
-                   (content (str "$" (cents->dollars (:total_price t))))))
+                   (content (str "$" (cents->dollars-str (:total_price t))))))
   
   [:#users :tbody :tr]
   (clone-for [t (:users x)]
@@ -242,10 +247,14 @@
              (content (:code t))
 
              [:td.value]
-             (content (str "$" (cents->dollars (Math/abs (:value t)))))
+             (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
              [:td.expiration_time]
-             (content (unix->fuller (:expiration_time t)))
+             (do-> (content (unix->fuller (:expiration_time t)))
+                   (if (< (:expiration_time t)
+                          (quot (System/currentTimeMillis) 1000))
+                     (add-class "late")
+                     (add-class "not-late")))
 
              [:td.times_used]
              (content (str (:times-used t)))
@@ -253,17 +262,88 @@
              [:td.only_for_first_orders]
              (content (if (:only_for_first_orders t) "Yes" "No")))
 
-  [:#gasPriceDollars87] (set-attr :value (:gas-price-87 x))
-  [:#gasPriceDollars91] (set-attr :value (:gas-price-91 x))
+  [:#zones :tbody :tr]
+  (clone-for [zone (:zones x)]
+
+             [:td.zips]
+             (content (str (s/replace (:zip_codes zone)
+                                      #","
+                                      ", ")))
+
+             [:td.color]
+             (do-> (content (str (:color zone)))
+                   (add-class (:color zone)))
+
+             [:td.87-price]
+             (content  (html [:input
+                              {:type "text"
+                               :disabled true
+                               :value (:87 (:fuel_prices zone))
+                               :maxlength 4
+                               :data-id (:id zone)
+                               :size 4}]))
+
+             [:td.91-price]
+             (content (html [:input
+                             {:type "text"
+                              :disabled true
+                              :value (:91 (:fuel_prices zone))
+                              :maxlength 4
+                              :data-id (:id zone)
+                              :size 4}]))
+
+             [:td.1-hr-fee]
+             (content (html [:input
+                             {:type "text"
+                              :disabled true
+                              :value (:60 (:service_fees zone))
+                              :maxlength 4
+                              :data-id (:id zone)
+                              :size 4}]))
+             [:td.3-hr-fee]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (:180 (:service_fees zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 4}]))
+
+             [:td.service-start]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (first (:service_time_bracket zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 4}]))
+
+             [:td.service-end]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (last (:service_time_bracket zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 4}])))
 
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
                                           "css/main.css"))
 
   [:#download-stats-csv]
-  (content (str "[download "
-                (unix->full (quot (.lastModified (java.io.File. "stats.csv"))
-                                  1000))
-                "]"))
+  (let [stats-file (java.io.File. "stats.csv")]
+    (if (> (.length stats-file) 0)
+      (content (str "[download "
+                    (unix->full (quot (.lastModified stats-file)
+                                      1000))
+                    "]"))
+      (do-> (remove-class "fake-link")
+            (remove-attr :id)
+            (content (str "[Processing... refresh page to check status."
+                          " It may take an hour.]")))))
   
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
@@ -316,7 +396,7 @@
              (group-by :id))
         
         id->name #(:name (first (get users-by-id %)))
-
+        id->phone_number #(:phone_number (first (get users-by-id %)))
         vehicles-by-id
         (->> (!select db-conn "vehicles"
                       [:id :year :make :model :color :gas_type
@@ -331,11 +411,15 @@
         
         id->vehicle #(first (get vehicles-by-id %))
         all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
+        zones       (!select db-conn "zones" ["*"] {})
         ]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
-             :couriers (map #(assoc % :name (id->name (:id %))) all-couriers)
+             :couriers (map #(assoc %
+                                    :name (id->name (:id %))
+                                    :phone_number (id->phone_number (:id %)))
+                            all-couriers)
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))
@@ -343,6 +427,12 @@
                                   :customer_phone_number
                                   (:phone_number
                                    (first (get users-by-id (:user_id %))))
+
+                                  :zone-color
+                                  (:color
+                                   ((resolve
+                                     'purple.dispatch/get-zone-by-zip-code)
+                                    (:address_zip %)))
                                   
                                   :was-late
                                   (let [completion-time
@@ -375,8 +465,30 @@
                                 :total))
              :base-url config/base-url
              :uri-segment (if read-only "stats/" "dashboard/")
-             :gas-price-87 @config/gas-price-87
-             :gas-price-91 @config/gas-price-91
+             :zones (->> zones
+                         (sort-by :id)
+                         (map
+                          #(assoc % :fuel_prices
+                                  (try
+                                    (read-string (:fuel_prices %))
+                                    (catch Exception e
+                                      (str "read-string :fuel_prices failed: "
+                                           (.getMessage e))))))
+                         (map
+                          #(assoc % :service_fees
+                                  (try
+                                    (read-string (:service_fees %))
+                                    (catch Exception e
+                                      (str "read-string :service_fees failed: "
+                                           (.getMessage e))))))
+                         (map
+                          #(assoc % :service_time_bracket
+                                  (try
+                                    (read-string (:service_time_bracket %))
+                                    (catch Exception e
+                                      (str "read-string :service_time_bracket"
+                                           " failed: "
+                                           (.getMessage e)))))))
              :read-only read-only
              :all all}))))
 

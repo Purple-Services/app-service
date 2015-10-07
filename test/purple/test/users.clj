@@ -1,57 +1,31 @@
 (ns purple.test.users
-  (:require [purple.users :refer [valid-phone-number valid-name add register get-user edit]]
-            [clojure.test :refer [deftest is test-ns use-fixtures test-ns testing]]
-            [clojure.java.jdbc :refer [with-connection do-commands]]
-            [purple.util :refer [rand-str-alpha-num]]))
+  (:require [purple.users :refer [valid-phone-number? valid-name? add register
+                                  get-user edit add-vehicle]]
+            [clojure.test :refer [deftest is test-ns use-fixtures
+                                  test-ns testing]]
+            [purple.test.db :refer [database-fixture ebdb-test-config]]
+            [purple.util :refer [rand-str-alpha-num]]
+            [clojure.string :as string]))
 
-(def db-config
-  "Configuration file for connecting to the local database"
-  (let [db-host "localhost"
-        db-port "3306"
-        db-name "ebdb_test"
-        db-password "localpurpledevelopment2015"
-        db-user "purplemaster"
-        db-config {:classname "com.mysql.jdbc.Driver"
-                   :subprotocol "mysql"
-                   :subname (str "//" db-host ":" db-port "/" db-name)
-                   :user db-user
-                   :password db-password}]
-    db-config))
-
-(defn- clean-up
-  "Remove all test data from the database"
-  [test]
-  ;; start with a clean ebdb_test database
-  (with-connection db-config
-    (apply do-commands '("DROP DATABASE IF EXISTS ebdb_test"
-                         "CREATE DATABASE IF NOT EXISTS ebdb_test")))
-  ;; run the test
-  (test)
-    ;; clear out all of the changes made to the ebdb_test database
-  (with-connection db-config
-    (apply do-commands '("DROP DATABASE IF EXISTS ebdb_test"
-                         "CREATE DATABASE IF NOT EXISTS ebdb_test"))))
-
-
-(use-fixtures :each clean-up)
+(use-fixtures :each database-fixture)
 
 (deftest phone-number-validator
   "Test that the phone number validator works"
   ;; The following tests should pass
-  (is (valid-phone-number "888-555-1212"))
-  (is (valid-phone-number "888 555 1212"))
-  (is (valid-phone-number "(888) 555-1212"))
-  (is (valid-phone-number "(888)-555-1212"))
-  (is (valid-phone-number "8885551212"))
-  (is (valid-phone-number "(888)555 1212"))
-  (is (valid-phone-number "888555 1212"))
-  (is (valid-phone-number "+1 (888)-555-1212"))
-  (is (valid-phone-number "1 234 234 4444"))
+  (is (valid-phone-number? "888-555-1212"))
+  (is (valid-phone-number? "888 555 1212"))
+  (is (valid-phone-number? "(888) 555-1212"))
+  (is (valid-phone-number? "(888)-555-1212"))
+  (is (valid-phone-number? "8885551212"))
+  (is (valid-phone-number? "(888)555 1212"))
+  (is (valid-phone-number? "888555 1212"))
+  (is (valid-phone-number? "+1 (888)-555-1212"))
+  (is (valid-phone-number? "1 234 234 4444"))
 
   ;; The following tests should fail
-  (is (not (valid-phone-number "888 555 12123"))) ;; too many digits
-  (is (not (valid-phone-number "888 555 1212d"))) ;; number contains a letter
-  (is (not (valid-phone-number "888 555 121"))) ;; not enough digits
+  (is (not (valid-phone-number? "888 555 12123"))) ;; too many digits
+  (is (not (valid-phone-number? "888 555 1212d"))) ;; number contains a letter
+  (is (not (valid-phone-number? "888 555 121"))) ;; not enough digits
   
   )
 
@@ -59,59 +33,130 @@
   "Test that the name validator works"
 
   ;; The following tests should pass
-  (is (valid-name "Test User"))
-  (is (valid-name "Test Middle User"))
+  (is (valid-name? "Test User"))
+  (is (valid-name? "Test Middle User"))
 
   ;; The following tests should fail
-  (is (not (valid-name "Test")))
-  (is (not (valid-name "TestUser"))))
+  (is (not (valid-name? "Test")))
+  (is (not (valid-name? "TestUser"))))
 
-(deftest add-user
-  ;; create the users and coupons tables
-  (with-connection  db-config (apply do-commands ["SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'"
-                                                  "CREATE TABLE `users` (
-  `id` varchar(255) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `type` varchar(50) NOT NULL COMMENT 'native, facebook, or google',
-  `password_hash` varchar(255) NOT NULL DEFAULT '',
-  `reset_key` varchar(255) NOT NULL DEFAULT '',
-  `phone_number` varchar(50) NOT NULL DEFAULT '',
-  `phone_number_verified` tinyint(1) NOT NULL DEFAULT '0',
-  `name` varchar(255) NOT NULL DEFAULT '',
-  `gender` varchar(20) NOT NULL DEFAULT '',
-  `referral_code` varchar(255) NOT NULL DEFAULT '',
-  `referral_gallons` int(11) NOT NULL DEFAULT '0',
-  `is_courier` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'if ''true'', there should be an entry with this id in the ''couriers'' table',
-  `stripe_customer_id` varchar(255) NOT NULL DEFAULT '',
-  `stripe_cards` text NOT NULL DEFAULT '',
-  `stripe_default_card` varchar(255) DEFAULT NULL,
-  `apns_token` varchar(255) NOT NULL DEFAULT '',
-  `arn_endpoint` varchar(255) NOT NULL DEFAULT '',
-  `os` varchar(255) NOT NULL DEFAULT '',
-  `app_version` varchar(50) NOT NULL DEFAULT '',
-  `timestamp_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+(defn register-user
+  "Register a native user in the database"
+  [db-config platform-id password]
+  (is (true? (:success (register db-config
+                                 platform-id
+                                 password
+                                 :client-ip "127.0.0.1")))))
 
-                                                  "DROP TABLE IF EXISTS `coupons`"
-                                                  "CREATE TABLE `coupons` (
-  `id` varchar(255) NOT NULL,
-  `code` varchar(255) NOT NULL,
-  `type` varchar(255) NOT NULL COMMENT 'standard or referral',
-  `value` int(11) NOT NULL DEFAULT '0' COMMENT 'if type is standard, the value of the discount in cents',
-  `owner_user_id` varchar(255) NOT NULL DEFAULT '' COMMENT 'if this is a referral, then the user id of the origin account',
-  `used_by_license_plates` mediumtext NOT NULL COMMENT 'comma-separated list of license plates',
-  `used_by_user_ids` mediumtext NOT NULL COMMENT 'comma-separated list of user ids',
-  `only_for_first_orders` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'All coupons can only be used once, but coupons with this field as TRUE can only be used on vehicles that have never been part of an order',
-  `expiration_time` int(11) NOT NULL DEFAULT '1999999999' COMMENT 'coupon can''t be used after this point in time',
-  `timestamp_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `code` (`code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8"]))
-  (testing "A user can be added to the database"
-    (add db-config
-         {:id (rand-str-alpha-num 20)
-          :email "test@test.com"
-          :type "native"}
-         :password "qwerty123"))
-  )
+(defn edit-user
+  "Edit a users information in the database"
+  [db-config user-id body]
+  (is (true? (:success (edit
+                        db-config
+                        user-id
+                        body)))))
+
+(deftest user-with-extraneous-whitespace-in-email-not-registered
+  (testing "A native user with extraneous whitespace in email
+is not able to be registerd. Note: Client trims whitespace when accessing
+route /user/register.")
+  (let [password "secret"]
+    ;; email with trailing whitespace can not be registered
+    (is (false? (:success (register ebdb-test-config
+                                    "foo@bar.com   "
+                                    password
+                                    :client-ip "127.0.0.1"))))
+    ;; email with leading whitespace can not be registered
+    (is (false? (:success (register ebdb-test-config
+                                    "   foo@bar.com"
+                                    password
+                                    :client-ip "127.0.0.1"))))
+    ;; email with leading and trailing whitespace can not be registered
+    (is (false? (:success (register ebdb-test-config
+                                    "   foo@bar.com  "
+                                    password
+                                    :client-ip "127.0.0.1"))))))
+
+(defn test-trim
+  "Test that a users name is trimmed"
+  [db-config email name]
+  (is (true? (edit-user db-config
+                        (:id (get-user db-config
+                                       "native" email))
+                        {:user {:name name
+                                :phone_number "888-555-1212"}})))
+  (is (= (string/trim name)
+         (:name (get-user db-config "native" email)))))
+
+(deftest extraneous-whitespace-in-name-trimmed
+  (testing "A users name is edited with extraneous whitespace automatically
+removed"
+    ;; register a new user
+    (let [email   "foo@bar.com"
+          password "qwerty123"]
+      (register-user ebdb-test-config email password)
+      ;; name with trailing whitespace is trimmed
+      (test-trim ebdb-test-config email "foo bar    ")
+      ;; name with leading whitespace is trimmed
+      (test-trim ebdb-test-config email "   foo bar")
+      ;; name with leading and trailing whitespace is trimmed
+      (test-trim ebdb-test-config email "    foo bar    "))))
+
+(deftest add-vehicle-test
+  (let [email "foo@bar.com"
+        password "qwerty123"
+        year "2015"
+        make "honda"
+        model "accord"
+        color "blue"
+        gas-type "87"
+        record-map {:year year
+                    :make make
+                    :model model
+                    :color color
+                    :gas_type gas-type}]
+    (register-user ebdb-test-config email password)
+    (let [user-id (:id (get-user ebdb-test-config
+                                 "native" email))]
+      ;; some of the required fields are missing from record-map
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (dissoc record-map
+                                            :year
+                                            :make
+                                            :model
+                                            :color)))))
+      ;; remove all of the fields!
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (dissoc record-map
+                                            :year
+                                            :make
+                                            :model
+                                            :color
+                                            :gas_type)))))
+      ;; Try to add a vehicle with a nil record map
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id nil))))
+      ;; Try to add a vehicle without a :license_plate key
+      (is (= (str "License Plate is a required field. If this is a new vehicle"
+                   " without plates, write: NOPLATES. Vehicles without license"
+                   " plates are ineligible for coupon codes.")
+             (:message (add-vehicle ebdb-test-config user-id record-map))))
+      ;; Try to add a vehicle with a blank :license_plate key
+      (is (= (str "License Plate is a required field. If this is a new vehicle"
+                   " without plates, write: NOPLATES. Vehicles without license"
+                   " plates are ineligible for coupon codes.")
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :license_plate "")))))
+      ;; Try to add a vechile with a NOPLATES designation
+      (is (true?
+           (:success (add-vehicle ebdb-test-config user-id
+                                     (assoc record-map
+                                            :license_plate "NOPLATES")))))
+      ;; add an invalid license plate and receive an error message
+      (is (= "Please enter a valid license plate."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :license_plate "FA$T"))))))))

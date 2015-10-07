@@ -228,7 +228,9 @@
                        db-conn
                        (:user_id b)
                        (:token b)
-                       (dispatch/availability db-conn (:zip_code b) (:user_id b))))))))
+                       (dispatch/availability db-conn
+                                              (:zip_code b)
+                                              (:user_id b))))))))
   (context "/courier" []
            (defroutes courier-routes
              ;; Courier app periodically updates web service with their status
@@ -242,12 +244,16 @@
                        (:token b)
                        (dispatch/courier-ping db-conn
                                               (:user_id b)
-                                              (unless-p
-                                               Double/isNaN
-                                               (Double. (:lat b)) 0)
-                                              (unless-p
-                                               Double/isNaN
-                                               (Double. (:lng b)) 0)
+                                              (if (nil? (:lat b))
+                                                0
+                                                (unless-p
+                                                 Double/isNaN
+                                                 (Double. (:lat b)) 0))
+                                              (if (nil? (:lng b))
+                                                0
+                                                (unless-p
+                                                 Double/isNaN
+                                                 (Double. (:lng b)) 0))
                                               (or (:gallons b) 0))))))))
   (context "/feedback" []
            (defroutes feedback-routes
@@ -320,12 +326,6 @@
                        (pages/send-push-to-users-list (conn)
                                                       (:message b)
                                                       (:user-ids b)))))
-              (POST "/change-gas-price" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)]
-                       (dispatch/change-gas-price (conn)
-                                                  (:gas-price-87 b)
-                                                  (:gas-price-91 b)))))
               ;; Dashboard admin cancels order
               (POST "/cancel-order" {body :body}
                     ;; cancel the order
@@ -336,6 +336,7 @@
                        db-conn
                        (:user_id b)
                        (:order_id b)
+                       :origin-was-dashboard true
                        :notify-customer true
                        :suppress-user-details true
                        :override-cancellable-statuses
@@ -354,7 +355,18 @@
                            db-conn (conn)]
                        (orders/assign-to-courier-by-admin db-conn
                                                           (:order_id b)
-                                                          (:courier_id b))))))
+                                                          (:courier_id b)))))
+              ;; update a zones description. Currently only supports
+              ;; updating fuel_prices, service_fees and service_time_bracket
+              (POST "/update-zone" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (dispatch/update-zone! db-conn
+                                              (:id b)
+                                              (:fuel_prices b)
+                                              (:service_fees b)
+                                              (:service_time_bracket b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication

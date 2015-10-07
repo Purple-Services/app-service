@@ -22,6 +22,7 @@
     (System/setProperty "TWILIO_ACCOUNT_SID" (env :twilio-account-sid))
     (System/setProperty "TWILIO_AUTH_TOKEN" (env :twilio-auto-token))
     (System/setProperty "TWILIO_FROM_NUMBER" (env :twilio-form-number))
+    (System/setProperty "SEGMENT_WRITE_KEY" (env :segment-write-key))
     (System/setProperty "BASE_URL" (env :base-url))
     (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
     (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))))
@@ -88,29 +89,6 @@
 (def twilio-auth-token (System/getProperty "TWILIO_AUTH_TOKEN"))
 (def twilio-from-number (System/getProperty "TWILIO_FROM_NUMBER"))
 
-;;;; Service Hours
-;; Time bracket to allow orders to be placed
-;; Minute of day, start and end (in PST/PDT)
-;; e.g., [(* 60 8) (* 60 19)] service available from 8:00:00am to 7:59:59pm
-;; The way things are coded, you can't wrap around past midnight.
-;; ALSO CHANGE ERROR MESSAGE on Line 96 of dispatch.clj
-(def service-time-bracket [(+ (* 60 7) 30)
-                           (+ (* 60 22) 30)]) ; 7:30am 10:30pm
-
-;; Minute of day when one-hour orders start being allowed for that day.
-(def one-hour-orders-allowed (* 60 10)) ; 10:00am
-
-;;;; Delivery time guarantee options
-;; Key is number of minutes till deadline
-;; ALSO CHANGE in dispatch.clj where the hardcoded service fee is being used
-;; for old versions of the app
-(def delivery-times {180 {:service_fee 0
-                          :text "within 3 hours (free)"
-                          :order 0}
-                     60  {:service_fee 100
-                          :text "within 1 hour ($1)"
-                          :order 1}})
-
 ;;;; Referral Program
 ;; Discount value in cents of using a referral code
 (def referral-referred-value -1000) ;; should be negative!
@@ -128,11 +106,6 @@
    "cancelled"   nil})
 ;; An order can be cancelled only if its status is one of these
 (def cancellable-statuses ["unassigned" "assigned" "accepted" "enroute"])
-
-;; These will be initiated on startup with values from db.
-;; No need to modify them directly here.
-(def gas-price-87 (atom 0))
-(def gas-price-91 (atom 0))
 
 ;; Messages
 (def delayed-assignment-message "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you.")

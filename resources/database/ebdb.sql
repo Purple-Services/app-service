@@ -217,7 +217,6 @@ INSERT INTO `orders` (`id`, `status`, `user_id`, `courier_id`, `vehicle_id`, `li
 ('FklnI853NjSCz62G2YkM', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'lGYvXf9qcRdJHzhAAIbH', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437285541, 1437289141, 10, '87', '', 34.04805601398782, -118.43377105396729, '1926 Glendon Ave', '', '', '90025', 0, '', 329, 0, 3290, 1, 'ch_16QAtfD0DZN191iCXSroa8wL', 'cus_5iSBWnDnrEX3xI', 'txn_16QAtfD0DZN191iCK46XoS1J', 1437285815, NULL, '', 'accepted 1437285779|enroute 1437285797|servicing 1437285803|complete 1437285807|', '2015-07-19 05:59:08'),
 ('IZ4Fbr0V3SXW7IZEQH31', 'complete', 'AMJzRy3xlLXAVcVlsbrj', 'lGYvXf9qcRdJHzhAAIbH', 'iahubwN8qlf09hylklca', '34354', 1438724521, 1438735321, 10, '91', '', 34.0736204, -118.4003563, '486-498 N Rexford Dr', '', '', '90210', 0, '', 365, 0, 3650, 1, 'ch_16WDECD0DZN191iCAYw6rcZJ', 'cus_6jgXzml8l0DLBW', 'txn_16WDECD0DZN191iCygv5kBDk', 1438724744, NULL, '', 'accepted 1438724663|enroute 1438724691|servicing 1438724699|complete 1438724744|', '2015-08-04 21:41:59'),
 ('JQr0ycipnJIXrUeOU4Eu', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'lGYvXf9qcRdJHzhAAIbH', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437174622, 1437178222, 10, '87', '', 34.068917284409714, -118.39993141796873, '9422 Dayton Way', '', '', '90210', 0, '', 329, 0, 3290, 1, 'ch_16Pi8DD0DZN191iCySAiZ9UL', 'cus_5iSBWnDnrEX3xI', 'txn_16Pi8DD0DZN191iC7mxieKpc', 1437175241, NULL, '', 'accepted 1437175008|enroute 1437175221|servicing 1437175227|complete 1437175235|', '2015-07-17 23:10:27'),
-('kaFCmt06jgYSqtVkMukb', 'unassigned', 'aQ9sHTpPW6saayrTfRqE', '', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1438882318, 1438893118, 10, '87', '', 34.0736204, -118.4003563, '486-498 N Rexford Dr', '', '', '90210', 0, '', 315, 0, 3150, 0, '', '', '', 0, NULL, '', '', '2015-08-06 17:31:59'),
 ('kdIvG3WGYWP0MhLE5LVC', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'lGYvXf9qcRdJHzhAAIbH', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437172115, 1437175715, 10, '87', '', 34.0695838356915, -118.4001781811981, '301 N Canon Dr', '', '', '90210', 0, '', 329, 0, 3290, 1, 'ch_16Pi4UD0DZN191iClhZHwQpJ', 'cus_5iSBWnDnrEX3xI', 'txn_16Pi4UD0DZN191iCPjJNF8Sv', 1437175010, NULL, '', 'accepted 1437174599|enroute 1437174666|servicing 1437174998|complete 1437175003|', '2015-07-17 22:28:41'),
 ('NGRtSpDokljPgVrtWY5D', 'cancelled', 'aQ9sHTpPW6saayrTfRqE', '', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437877546, 1437888346, 10, '87', '', 34.04781972467719, -118.43360494841004, '1944 Glendon Ave', '', '', '90025', 0, '', 315, 0, 3150, 0, '', '', '', 0, NULL, '', 'cancelled 1437877577|', '2015-07-26 02:25:46'),
 ('OBxnVrfoynzC6n2zloT5', 'cancelled', 'aQ9sHTpPW6saayrTfRqE', '', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437878513, 1437882113, 10, '87', '', 34.04781972467719, -118.43360494841004, '1944 Glendon Ave', '', '', '90025', 0, '', 315, 499, 3649, 0, '', '', '', 0, NULL, '', 'cancelled 1437878524|', '2015-07-26 02:41:53'),
@@ -234,7 +233,6 @@ INSERT INTO `orders` (`id`, `status`, `user_id`, `courier_id`, `vehicle_id`, `li
 ('ukS08IBRaRaVXXyjLMP6', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'lGYvXf9qcRdJHzhAAIbH', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437693351, 1437704151, 10, '87', '', 34.07197411102373, -118.40256882645741, '499 N Canon Dr', '', '', '90210', 0, '', 329, 0, 3290, 0, '', '', '', 0, NULL, '', 'accepted 1437693433|enroute 1437693437|servicing 1437693440|complete 1437693443|', '2015-07-23 23:15:57'),
 ('UN9rPgbof6SgVR5hyFId', 'complete', 'FpL2ooAjfqQEDiKoYv50', 'lGYvXf9qcRdJHzhAAIbH', 'lTYVW77NEEQSuZgj1Vy3', '111223', 1438718454, 1438729254, 10, '87', '', 34.07480679177511, -118.4003563, '505 N Alpine Dr', '', '', '90210', 0, '', 315, 0, 3150, 1, 'ch_16WBqpD0DZN191iCFyzIrTC8', 'cus_6jeu7ylsip5rs9', 'txn_16WBqpD0DZN191iC7EbxdvqH', 1438719451, NULL, '', 'accepted 1438719316|enroute 1438719397|servicing 1438719444|complete 1438719452|', '2015-08-04 20:00:53'),
 ('UWcVtAmG5X11AFDWKNO5', 'cancelled', 'aQ9sHTpPW6saayrTfRqE', '', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437854376, 1437865176, 10, '87', '', 34.048157078282465, -118.43374752327883, '1926 Glendon Ave', '', '', '90025', 0, '', 315, 0, 3150, 0, '', '', '', 0, NULL, '', 'cancelled 1437877581|', '2015-07-25 19:59:36'),
-('V0E1etvNfH4Rrln2gSFP', 'unassigned', 'aQ9sHTpPW6saayrTfRqE', '', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1438883710, 1438894510, 10, '87', '', 34.0736204, -118.4003563, '486-498 N Rexford Dr', '', '', '90210', 0, '', 315, 0, 3150, 0, '', '', '', 0, NULL, '', '', '2015-08-06 17:55:10'),
 ('wSnDXckug9GAicfo3FQF', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'lGYvXf9qcRdJHzhAAIbH', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437175063, 1437178663, 10, '87', '', 34.068570675670735, -118.3991696706085, '243 N Canon Dr', '', '', '90210', 0, '', 329, 0, 3290, 1, 'ch_16PiVND0DZN191iCdN44WKjc', 'cus_5iSBWnDnrEX3xI', 'txn_16PiVND0DZN191iC3JnZTwSX', 1437176677, NULL, '', 'accepted 1437175241|enroute 1437176485|servicing 1437176667|complete 1437176671|', '2015-07-17 23:17:48'),
 ('wVvBjPL8yBpY7fIyrJp9', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'lGYvXf9qcRdJHzhAAIbH', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437432833, 1437436433, 10, '87', 'Please call me to let you into parking garage.', 34.067175724626324, -118.40168373544314, '9560 Wilshire Blvd', '', '', '90212', 0, '', 329, 0, 3290, 0, '', '', '', 0, NULL, '', 'accepted 1437693414|enroute 1437693418|servicing 1437693421|complete 1437693425|', '2015-07-20 22:53:55'),
 ('xAlGiuzKfseIFfN338oC', 'complete', 'aQ9sHTpPW6saayrTfRqE', 'vIBMV7lpCytIBJmsJaIx', '8RTh2hjZOGpMmUgDZ9XW', 'CHH', 1437282593, 1437286193, 10, '87', '', 34.04805601398782, -118.43377105396729, '1926 Glendon Ave', '', '', '90025', 0, '', 329, 0, 3290, 1, 'ch_16QC0lD0DZN191iCTAx5oPwA', 'cus_5iSBWnDnrEX3xI', 'txn_16QC0lD0DZN191iCgP6iMTy7', 1437290099, NULL, '', 'accepted 1437285629|enroute 1437289843|servicing 1437289854|complete 1437290090|', '2015-07-19 06:00:00'),
@@ -849,6 +847,8 @@ INSERT INTO `users` (`id`, `email`, `type`, `password_hash`, `reset_key`, `phone
 ('x8QE1Pzzkze4WZmDb4Ru', 'abc@abc.com', 'native', '$2a$11$lVUJ5sH61aBpzy6Xabcro.cH4mZfto7yKcuU/SNz2l1pIs54rRdia', '', '85354', 0, 'abd', '', '2WVA6', 0, 0, 'cus_61uFx4bUSig1Pe', '[{"brand":"Visa","last4":"4242","id":"card_15pqQpD0DZN191iCnZ6EQp5D"}]', 'card_15pqQpD0DZN191iCnZ6EQp5D', '', '', '', '', '2015-04-10 00:41:14'),
 ('zA0WXhPpcS3fpYpCbhBa', 'testcourier3@test.com', 'native', '$2a$11$bwBCmrp8D075OriHPTcmkudfyJuOjyegW43C0ykHxK7zeYOdlf1L.', '', '1', 0, 'test courier 3', '', 'M8AGP', 0, 1, '', '', NULL, '', 'arn:aws:sns:us-west-2:336714665684:endpoint/GCM/Purple/8016d86e-01df-3153-84e9-2b651d33975d', 'Android', '1.0.6', '2015-07-19 06:40:55');
 
+-- Disable push notifications
+UPDATE `users` SET `arn_endpoint` = '' WHERE 1;
 -- --------------------------------------------------------
 
 --
@@ -1037,16 +1037,20 @@ INSERT INTO `vehicles` (`id`, `active`, `user_id`, `year`, `make`, `model`, `col
 CREATE TABLE IF NOT EXISTS `zones` (
   `id` int(11) NOT NULL,
   `zip_codes` mediumtext NOT NULL,
-  `human_readable_name` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+  `color` varchar(255) NOT NULL,
+  `fuel_prices` varchar(255) NOT NULL COMMENT 'edn format',
+  `service_fees` varchar(255) NOT NULL COMMENT 'edn format',
+  `service_time_bracket` varchar(255) NOT NULL COMMENT 'edn format'
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `zones`
 --
 
-INSERT INTO `zones` (`id`, `zip_codes`, `human_readable_name`) VALUES
-(1, '90077,90095,90024,90067,90212,90210,90046,90069,90048,90211,90067,90025,90064,90232,90035,90028,90038,90019,90049,90034,90272,90066', 'Beverly Hills / West Hollywood');
-
+INSERT INTO `zones` (`id`, `zip_codes`, `color`, `fuel_prices`, `service_fees`,`service_time_bracket`) VALUES
+(1, '91302,91367,91364,91356,91316,91403,91423,91604', 'yellow', '{:87 310 :91 350}', '{:60 100 :180 0}','[450 1350]'),
+(2, '90272,90049,90402,90025,90403,90401,90404,90064,90405,90066,90291,90292', 'cyan', '{:87 315 :91 355}', '{:60 100 :180 0}','[450 1350]'),
+(3, '90077,90210,90046,90024,90069,90212,90048,90004,90211,90067,90036', 'purple', '{:87 320 :91 375}', '{:60 100 :180 0}','[450 1350]');
 --
 -- Indexes for dumped tables
 --
@@ -1122,7 +1126,7 @@ ALTER TABLE `sessions`
 -- AUTO_INCREMENT for table `zones`
 --
 ALTER TABLE `zones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=4;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
