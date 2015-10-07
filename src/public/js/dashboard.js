@@ -30,7 +30,6 @@ $("#generate-stats-csv").click(function(){
         contentType: 'application/json',
         success: function(response) {
             if (response.success === true) {
-
 		// remove download link
 		$("#download-stats-csv").remove();
 
