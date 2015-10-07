@@ -194,8 +194,7 @@ to the same one being used by the fixture."
                          (remove :busy)
                          (filter
                           #(contains?
-                            (dispatch/courier-assigned-zones
-                             db-config (:id %))
+                            (:zones %)
                             (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
       ;; assign courier 2 to zone 3
       (!update db-config "couriers"
@@ -207,8 +206,7 @@ to the same one being used by the fixture."
                          (remove :busy)
                          (filter
                           #(contains?
-                            (dispatch/courier-assigned-zones
-                             db-config (:id %))
+                            (:zones %)
                             (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
       ;; set courier 1 as busy
       (!update db-config "couriers" {:busy 1} {:id courier-id})
@@ -218,7 +216,6 @@ to the same one being used by the fixture."
                          (remove :busy)
                          (filter
                           #(contains?
-                            (dispatch/courier-assigned-zones
-                             db-config (:id %))
+                            (:zones %)
                             (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
       )))
