@@ -331,9 +331,7 @@
                             (remove :busy)
                             (filter
                              #(contains?
-                               ((resolve
-                                 'purple.dispatch/courier-assigned-zones)
-                                db-conn (:id %))
+                               (:zones %)
                                (:id ((resolve
                                       'purple.dispatch/get-zone-by-zip-code)
                                      (:address_zip o))))))
@@ -507,7 +505,7 @@ and their id matches the order's courier_id"
         (let [update-result
               (case status
                 "assigned" (if (in? (map :id
-                                         ((resolve 'purple.dispatch/available-couriers) db-conn))
+                                         (couriers/available-couriers db-conn))
                                     user-id)
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))
