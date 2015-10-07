@@ -146,16 +146,16 @@
   "Add benefits of referral to origin account."
   [db-conn code]
   (when-not (s/blank? code)
-    (let [user-id (-> (!select db-conn "users" [:id] {:referral_code code})
-                      first
-                      :id)]
+    (when-let [user-id (-> (!select db-conn "users" [:id] {:referral_code code})
+                           first ;; if this when-let fails, that means this was
+                           :id)] ;; tried on a standard coupon not referral
       (sql/with-connection db-conn
         (sql/do-prepared
          (str "UPDATE users SET referral_gallons = referral_gallons + "
               (Integer. config/referral-referrer-gallons)
               " WHERE id = \"" (mysql-escape-str user-id) "\"")))
       ((resolve 'purple.users/send-push) db-conn user-id
-       (str "Thanks for sharing Purple with your friend! We've gone ahead and added "
+       (str "Thank you for sharing Purple with your friend! We've added "
             config/referral-referrer-gallons
             " gallons to your account!")))))
 
