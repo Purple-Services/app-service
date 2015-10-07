@@ -1,5 +1,5 @@
 (ns purple.test.users
-  (:require [purple.users :refer [valid-phone-number valid-name add register
+  (:require [purple.users :refer [valid-phone-number? valid-name? add register
                                   get-user edit add-vehicle]]
             [clojure.test :refer [deftest is test-ns use-fixtures
                                   test-ns testing]]
