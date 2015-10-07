@@ -30,7 +30,13 @@ $("#generate-stats-csv").click(function(){
         contentType: 'application/json',
         success: function(response) {
             if (response.success === true) {
-                alert("stats.csv generation initiated. Please refresh the page in a minute or so, then try to download the CSV file..");
+
+		// remove download link
+		$("#download-stats-csv").remove();
+
+		alert("stats.csv generation initiated." +
+		      " Please refresh the page in a minute or so," +
+		      " then try to download the CSV file..");
             }
         }
     });

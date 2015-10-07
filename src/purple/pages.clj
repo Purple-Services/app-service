@@ -331,10 +331,15 @@
                                           "css/main.css"))
 
   [:#download-stats-csv]
-  (content (str "[download "
-                (unix->full (quot (.lastModified (java.io.File. "stats.csv"))
-                                  1000))
-                "]"))
+  (if (> (.length (java.io.File. "stats.csv")) 0)
+    (content (str "[download "
+                  (unix->full (quot (.lastModified (java.io.File. "stats.csv"))
+                                    1000))
+                  "]"))
+    (do-> (remove-class "fake-link")
+          (remove-attr :id)
+          (content (str "[Processing... refresh page to check status."
+                        " It may take an hour.]"))))
   
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
