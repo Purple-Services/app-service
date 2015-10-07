@@ -361,7 +361,7 @@
                 #(= % :license_plate)
                 required-vehicle-fields)))
          (or (not (contains? record-map :license_plate))
-             (empty? (:license_plate record-map))))
+             (s/blank? (:license_plate record-map))))
     {:success false
      :message (str "License Plate is a required field. If this is a new vehicle"
                    " without plates, write: NOPLATES. Vehicles without license"
