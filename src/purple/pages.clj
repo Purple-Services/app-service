@@ -74,6 +74,9 @@
              [:td.name]
              (content (:name t))
 
+             [:td.courier_phone_number]
+             (content (:phone_number t))
+
              [:td.busy]
              (content (if (:busy t) "Yes" "No"))
 
@@ -387,7 +390,7 @@
              (group-by :id))
         
         id->name #(:name (first (get users-by-id %)))
-
+        id->phone_number #(:phone_number (first (get users-by-id %)))
         vehicles-by-id
         (->> (!select db-conn "vehicles"
                       [:id :year :make :model :color :gas_type
@@ -407,7 +410,10 @@
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
-             :couriers (map #(assoc % :name (id->name (:id %))) all-couriers)
+             :couriers (map #(assoc %
+                                    :name (id->name (:id %))
+                                    :phone_number (id->phone_number (:id %)))
+                            all-couriers)
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))
