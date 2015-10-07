@@ -195,7 +195,7 @@ to the same one being used by the fixture."
                          (filter
                           #(contains?
                             (:zones %)
-                            (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
+                            (dispatch/order->zone-id order)))))))
       ;; assign courier 2 to zone 3
       (!update db-config "couriers"
                {:zones (str "1," zone-id)}
@@ -207,7 +207,7 @@ to the same one being used by the fixture."
                          (filter
                           #(contains?
                             (:zones %)
-                            (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
+                            (dispatch/order->zone-id order)))))))
       ;; set courier 1 as busy
       (!update db-config "couriers" {:busy 1} {:id courier-id})
       ;; test that only one courier is connected, not busy and assigned zone 3
@@ -217,5 +217,5 @@ to the same one being used by the fixture."
                          (filter
                           #(contains?
                             (:zones %)
-                            (:id (dispatch/get-zone-by-zip-code zone-zip))))))))
+                            (dispatch/order->zone-id order)))))))
       )))
