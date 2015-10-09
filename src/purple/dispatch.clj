@@ -400,8 +400,9 @@
 (defn get-courier-zips
   "Given a courier-id, get all of the zip-codes that a courier is assigned to"
   [db-conn courier-id]
-  (let [courier-assigned-zones (courier-assigned-zones db-conn courier-id)
-        courier-zones (filter #(contains? courier-assigned-zones (:id %))
+  (let [courier-zones (filter #(contains?
+                                (courier-assigned-zones db-conn courier-id)
+                                (:id %))
                               @zones)
         zip-codes (apply concat (map :zip_codes courier-zones))]
-    (into #{} zip-codes)))
+    (set zip-codes)))
