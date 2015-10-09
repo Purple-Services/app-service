@@ -99,7 +99,11 @@
              
              [:td.zones]
              (content (:zones t))
-             
+
+             [:td.location]
+             (do->  (set-attr :data-lat (:lat t))
+                    (set-attr :data-lng (:lng t)))
+
              [:td.location :a]
              (content "View On Map")
              [:td.location :a]
