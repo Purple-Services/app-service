@@ -71,6 +71,13 @@
                    :name]
                   {:reset_key key})))
 
+(defn id->type
+  "Given a user id, get the type (native, facebook, google...)."
+  [id]
+  (cond (= (count id) 20) "native"
+        (= "fb" (subs id 0 2)) "facebook"
+        (= "g" (subs id 0 1)) "google"))
+
 (defn auth-native?
   "Is password correct for this user map?"
   [user auth-key]
@@ -274,7 +281,7 @@
            (email-available? db-conn platform-id))
     (if (valid-password? auth-key)
       (do (add db-conn
-               {:id (rand-str-alpha-num 20)
+               {:id (rand-str-alpha-num 20) ;; keep it 20!
                 :email platform-id
                 :type "native"}
                :password auth-key
@@ -497,9 +504,11 @@
 
                      (and email
                           (or (not (valid-email? email))
-                              (not (email-available? db-conn
-                                                     email
-                                                     :ignore-user-id user-id))))
+                              (and (= (id->type user-id) "native")
+                                   (not (email-available? db-conn
+                                                          email
+                                                          :ignore-user-id
+                                                          user-id)))))
                      {:success false
                       :message "Email Address is incorrectly formatted or is already associated with an account."}
 
