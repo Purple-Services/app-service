@@ -373,7 +373,7 @@
                                                                  o
                                                                  charge-authorized?))
                                     (concat (map (comp id->phone-number :id)
-                                                 connected-couriers)
+                                                 available-couriers)
                                             (only-prod ["3235782263"   ;; Bruno
                                                         "3106919061"   ;; JP
                                                         ;;"8589228571" ;; Lee
