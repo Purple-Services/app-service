@@ -142,6 +142,7 @@ to the same one being used by the fixture."
                   time-zone)})))))
 
 (deftest test-within-time-bracket
+  ;; the following dates fall within daylight saving time
   (testing "7:30am is within the time bracket of [450 1350]"
     (within-time-bracket-test (time/date-time 2015 10 5 7 30)
                               "[450 1350]"
@@ -165,4 +166,29 @@ to the same one being used by the fixture."
                               "[450 1350]"
                               "90210"
                               time-zone
-                              ebdb-test-config)))
+                              ebdb-test-config))
+  ;; the following dates fall within standard time
+  (testing "7:30am is within the time bracket of [450 1350]"
+    (within-time-bracket-test (time/date-time 2015 11 1 7 30)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "10:30pm is within the time bracket of [450 1350]"
+    (within-time-bracket-test (time/date-time 2015 11 1 22 30)
+                              "[450 1350]"
+                              "90210"
+                              time-zone
+                              ebdb-test-config))
+  (testing "10:41pm is outside the time bracket of [450 1350]"
+    (outside-time-bracket-test (time/date-time 2015 11 1 22 41)
+                               "[450 1350]"
+                               "90210"
+                               time-zone
+                               ebdb-test-config))
+  (testing "7:29am is outside the time bracket of [450 1350]"
+    (outside-time-bracket-test (time/date-time 2015 11 1 7 29)
+                               "[450 1350]"
+                               "90210"
+                               time-zone
+                               ebdb-test-config)))
