@@ -114,7 +114,9 @@ removed"
                     :make make
                     :model model
                     :color color
-                    :gas_type gas-type}]
+                    :gas_type gas-type
+                    :photo ""
+                    :id "new"}]
     (register-user ebdb-test-config email password)
     (let [user-id (:id (get-user ebdb-test-config
                                  "native" email))]
@@ -126,7 +128,7 @@ removed"
                                             :make
                                             :model
                                             :color)))))
-      ;; remove all of the fields!
+      ;; remove all of the fields
       (is (= "Required fields cannot be empty."
              (:message (add-vehicle ebdb-test-config user-id
                                     (dissoc record-map
@@ -138,23 +140,37 @@ removed"
       ;; Try to add a vehicle with a nil record map
       (is (= "Required fields cannot be empty."
              (:message (add-vehicle ebdb-test-config user-id nil))))
+      ;; Try to add a vehicle that has the equivalent json request
+      ;; of all blank fields on the server
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :year nil
+                                           :make nil
+                                           :model nil
+                                           :color nil
+                                           :gas_type "87"
+                                           :license_plate ""
+                                           :id "new"
+                                           :photo "")))))
       ;; Try to add a vehicle without a :license_plate key
       (is (= (str "License Plate is a required field. If this is a new vehicle"
-                   " without plates, write: NOPLATES. Vehicles without license"
-                   " plates are ineligible for coupon codes.")
+                  " without plates, write: NOPLATES. Vehicles without license"
+                  " plates are ineligible for coupon codes.")
              (:message (add-vehicle ebdb-test-config user-id record-map))))
       ;; Try to add a vehicle with a blank :license_plate key
       (is (= (str "License Plate is a required field. If this is a new vehicle"
-                   " without plates, write: NOPLATES. Vehicles without license"
-                   " plates are ineligible for coupon codes.")
+                  " without plates, write: NOPLATES. Vehicles without license"
+                  " plates are ineligible for coupon codes.")
              (:message (add-vehicle ebdb-test-config user-id
                                     (assoc record-map
+                                           :photo ""
                                            :license_plate "")))))
       ;; Try to add a vechile with a NOPLATES designation
       (is (true?
            (:success (add-vehicle ebdb-test-config user-id
-                                     (assoc record-map
-                                            :license_plate "NOPLATES")))))
+                                  (assoc record-map
+                                         :license_plate "NOPLATES")))))
       ;; add an invalid license plate and receive an error message
       (is (= "Please enter a valid license plate."
              (:message (add-vehicle ebdb-test-config user-id
