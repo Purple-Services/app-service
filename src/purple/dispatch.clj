@@ -8,7 +8,8 @@
             [ardoq.analytics-clj :as segment]
             [clojure.java.jdbc :as sql]
             [overtone.at-at :as at-at]
-            [clojure.string :as s])
+            [clojure.string :as s]
+            [purple.couriers :as couriers])
   (:import (org.joda.time DateTime DateTimeZone)))
 
 (def job-pool (at-at/mk-pool))
@@ -224,18 +225,6 @@
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
-(defn available-couriers
-  [db-conn]
-  (map #(assoc % :zones (map (fn [x] (Integer. x))
-                             (split-on-comma (:zones %))))
-       (!select db-conn
-                "couriers"
-                ["*"]
-                {:active true
-                 :on_duty true
-                 :connected true
-                 :busy false})))
-
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
   [db-conn]
@@ -291,7 +280,7 @@
 (defn match-orders-with-couriers
   [db-conn]
   (run! #(take-order-from-zones db-conn (:id %) (:zones %))
-        (available-couriers db-conn)))
+        (couriers/available-couriers db-conn)))
 
 (defn remind-couriers
   "Notifies couriers if they have not responded to new orders assigned to them."
@@ -329,7 +318,7 @@
   "If there are no couriers connected, but there are orders, then warn us."
   [db-conn]
   (when (and (seq (filter #(seq @(val %)) zq))
-             (empty? (available-couriers db-conn))
+             (empty? (couriers/available-couriers db-conn))
              (< (* 60 20) ;; only warn every 20 minutes
                 (- (quot (System/currentTimeMillis) 1000)
                    @last-orphan-warning)))
@@ -398,19 +387,22 @@
   ;; update the zones as well
   (update-zones! db-conn))
 
+(defn courier-assigned-zones
+  "Given a courier-id, return a set of all zones they are assigned to"
+  [db-conn courier-id]
+  (set
+   (map read-string
+        (split-on-comma (:zones (first
+                                 (!select db-conn
+                                          "couriers"
+                                          [:zones]
+                                          {:id courier-id})))))))
 (defn get-courier-zips
   "Given a courier-id, get all of the zip-codes that a courier is assigned to"
   [db-conn courier-id]
-  (let [courier-assigned-zones (into
-                               #{}
-                               (map read-string
-                                    (split-on-comma
-                                     (:zones (first
-                                      (!select db-conn
-                                               "couriers"
-                                               [:zones]
-                                               {:id courier-id}))))))
-        courier-zones (filter #(contains? courier-assigned-zones (:id %))
+  (let [courier-zones (filter #(contains?
+                                (courier-assigned-zones db-conn courier-id)
+                                (:id %))
                               @zones)
         zip-codes (apply concat (map :zip_codes courier-zones))]
-    (into #{} zip-codes)))
+    (set zip-codes)))

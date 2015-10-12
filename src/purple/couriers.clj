@@ -7,11 +7,23 @@
 (defn get-all-connected
   "All the couriers that are currently connected."
   [db-conn]
-  (map #(assoc % :zones (map (fn [x] (Integer. x))
-                             (split-on-comma (:zones %))))
+  (map #(assoc % :zones (set (map (fn [x] (Integer. x))
+                                  (split-on-comma (:zones %)))))
        (!select db-conn
                 "couriers"
                 ["*"]
                 {:active true
                  :on_duty true
                  :connected true})))
+
+(defn available-couriers
+  [db-conn]
+  (map #(assoc % :zones (set (map (fn [x] (Integer. x))
+                                  (split-on-comma (:zones %)))))
+       (!select db-conn
+                "couriers"
+                ["*"]
+                {:active true
+                 :on_duty true
+                 :connected true
+                 :busy false})))
