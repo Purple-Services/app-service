@@ -70,6 +70,11 @@ $(document).ready(function(){
     // extract a zip code from a google reverse geocoding api call
     // response
     function extractPostalCode(response) {
+	// there were no results for the given lat lng
+	if (response.status === "ZERO_RESULTS") {
+	    return "NONE";
+	}
+
 	return onlyResultsThatContainPostalCode(response)[0]
 	    .address_components.filter(
 		containsPostalCode)[0]
@@ -129,10 +134,15 @@ $(document).ready(function(){
 	var lat = $(elem).data('lat');
 	var lng = $(elem).data('lng');
 
-	postalCodeForLatLng(lat,lng,
-			    function (zipCode) {
-				$(elem).addClass(getColorForZip(zipCode));
-			    });
+	// if a courier is currently connected, highlight their
+	// location with the color of the zone they are currently in
+	if ( $(elem).parent().find(".currently-connected").length > 0)
+	{
+	    postalCodeForLatLng(lat,lng,
+				function (zipCode) {
+				    $(elem).addClass(getColorForZip(zipCode));
+				});
+	}
     });
 
     $('.show-all').click(function(){
