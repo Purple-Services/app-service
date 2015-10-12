@@ -99,7 +99,11 @@
              
              [:td.zones]
              (content (:zones t))
-             
+
+             [:td.location]
+             (do->  (set-attr :data-lat (:lat t))
+                    (set-attr :data-lng (:lng t)))
+
              [:td.location :a]
              (content "View On Map")
              [:td.location :a]
@@ -183,6 +187,13 @@
              [:td.octane]
              (content (str (:gas_type (:vehicle t))))
 
+             [:td.color_make_model]
+             (content (str (:color (:vehicle t))
+                           " "
+                           (:make (:vehicle t))
+                           " "
+                           (:model (:vehicle t))))
+             
              [:td.license_plate]
              (content (str (:license_plate (:vehicle t))))
 

@@ -325,8 +325,15 @@
                                       (:license_plate o)
                                       (:user_id o)))
          (future (let [connected-couriers (couriers/get-all-connected db-conn)
-                       available-couriers (remove :busy connected-couriers)
 
+                       available-couriers
+                       (->> connected-couriers
+                            (remove :busy)
+                            (filter
+                             #(contains?
+                               (:zones %)
+                               ((resolve 'purple.dispatch/order->zone-id) o)
+                               )))
                        users-by-id
                        (group-by :id
                                  ((resolve 'purple.users/get-users-by-ids)
@@ -366,7 +373,7 @@
                                                                  o
                                                                  charge-authorized?))
                                     (concat (map (comp id->phone-number :id)
-                                                 connected-couriers)
+                                                 available-couriers)
                                             (only-prod ["3235782263"   ;; Bruno
                                                         "3106919061"   ;; JP
                                                         ;;"8589228571" ;; Lee
@@ -497,7 +504,7 @@ and their id matches the order's courier_id"
         (let [update-result
               (case status
                 "assigned" (if (in? (map :id
-                                         ((resolve 'purple.dispatch/available-couriers) db-conn))
+                                         (couriers/available-couriers db-conn))
                                     user-id)
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))

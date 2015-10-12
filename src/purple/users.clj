@@ -71,6 +71,13 @@
                    :name]
                   {:reset_key key})))
 
+(defn id->type
+  "Given a user id, get the type (native, facebook, google...)."
+  [id]
+  (cond (= (count id) 20) "native"
+        (= "fb" (subs id 0 2)) "facebook"
+        (= "g" (subs id 0 1)) "google"))
+
 (defn auth-native?
   "Is password correct for this user map?"
   [user auth-key]
@@ -274,7 +281,7 @@
            (email-available? db-conn platform-id))
     (if (valid-password? auth-key)
       (do (add db-conn
-               {:id (rand-str-alpha-num 20)
+               {:id (rand-str-alpha-num 20) ;; keep it 20!
                 :email platform-id
                 :type "native"}
                :password auth-key
@@ -362,53 +369,74 @@
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (cond
-    ;; the only required field that is missing is
-    ;; the license pate
-    (and (every?
-          identity
-          (map #(contains? record-map %)
-               (remove
-                #(= % :license_plate)
-                required-vehicle-fields)))
-         (or (not (contains? record-map :license_plate))
-             (s/blank? (:license_plate record-map))))
-    {:success false
-     :message (str "License Plate is a required field. If this is a new vehicle"
-                   " without plates, write: NOPLATES. Vehicles without license"
-                   " plates are ineligible for coupon codes.")}
-
-    (and
-     ;; make sure all required keys are present
-     (not-every?
-      identity (map #(contains? record-map %) required-vehicle-fields))
-     ;; ...and that none of them are blank
-     (not-any? (comp s/blank? str val)
-               (select-keys record-map required-vehicle-fields)))
-    {:success false
-     :message "Required fields cannot be empty."}
-
-    ;; license_plate is valid
-    (valid-license-plate? (:license_plate record-map))
-    (do (doto (assoc record-map
-                     :id (rand-str-alpha-num 20)
-                     :user_id user-id
-                     :license_plate (clean-up-license-plate
-                                     (:license_plate record-map))
-                     :active 1)
-          (#(!insert db-conn "vehicles" %))
-          (#(segment/track segment-client user-id "Add Vehicle"
-                           (assoc (select-keys % [:year :make :model
-                                                  :color :gas_type
-                                                  :license_plate])
-                                  :vehicle_id (:id %)))))
-        {:success true})
-    ;; license_plate is invalid
-    (not (valid-license-plate? (:license_plate record-map)))
-    {:success false
-     :message "Please enter a valid license plate."}
-    ;; unknown error
-    :else {:success false :message "Unknown error"}))
+  (let [required-fields-present? (every? identity (map #(contains? record-map %)
+                                                       required-vehicle-fields))
+        required-fields-blank? (not
+                                (and
+                                 ;; all required fields must be present
+                                 required-fields-present?
+                                 ;; and none of the required fields are blank
+                                 (every? identity
+                                         (map (comp not s/blank?)
+                                              (vals
+                                               (select-keys
+                                                record-map
+                                                required-vehicle-fields))))))
+        license-plate-blank? (s/blank? (:license_plate record-map))
+        only-license-plate-blank? (and
+                                   ;; are all fields other than license plate
+                                   ;; present?
+                                   (every? identity
+                                             (map
+                                              #(contains? record-map %)
+                                              (remove
+                                               #(= % :license_plate)
+                                               required-vehicle-fields)))
+                                   ;; are all fields besides license plate not
+                                   ;; blank ?
+                                   (every? identity
+                                           (map
+                                            (comp not s/blank?)
+                                            (vals
+                                             (-> record-map
+                                                 (select-keys
+                                                  required-vehicle-fields)
+                                                 (dissoc :license_plate)))))
+                                   ;; and the license plate is blank or missing
+                                   license-plate-blank?)]
+    (cond
+      ;; the only required field that is missing is
+      ;; the license pate
+      only-license-plate-blank?
+      {:success false
+       :message (str "License Plate is a required field. If this is a new"
+                     " vehicle without plates, write: NOPLATES. Vehicles"
+                     " without license plates are ineligible for coupon"
+                     " codes.")}
+      required-fields-blank?
+      {:success false
+       :message "Required fields cannot be empty."}
+      ;; license_plate is valid
+      (valid-license-plate? (:license_plate record-map))
+      (do (doto (assoc record-map
+                       :id (rand-str-alpha-num 20)
+                       :user_id user-id
+                       :license_plate (clean-up-license-plate
+                                       (:license_plate record-map))
+                       :active 1)
+            (#(!insert db-conn "vehicles" %))
+            (#(segment/track segment-client user-id "Add Vehicle"
+                             (assoc (select-keys % [:year :make :model
+                                                    :color :gas_type
+                                                    :license_plate])
+                                    :vehicle_id (:id %)))))
+          {:success true})
+      ;; license_plate is invalid
+      (not (valid-license-plate? (:license_plate record-map)))
+      {:success false
+       :message "Please enter a valid license plate."}
+      ;; unknown error
+      :else {:success false :message "Unknown error"})))
 
 (defn update-vehicle
   "The user-id given is assumed to have been auth'd already."
@@ -497,9 +525,11 @@
 
                      (and email
                           (or (not (valid-email? email))
-                              (not (email-available? db-conn
-                                                     email
-                                                     :ignore-user-id user-id))))
+                              (and (= (id->type user-id) "native")
+                                   (not (email-available? db-conn
+                                                          email
+                                                          :ignore-user-id
+                                                          user-id)))))
                      {:success false
                       :message "Email Address is incorrectly formatted or is already associated with an account."}
 
