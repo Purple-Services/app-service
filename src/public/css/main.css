@@ -14,11 +14,11 @@ table thead {
     font-weight: bold;
 }
 table#couriers tbody td {
-    opacity: 0.4;
+    opacity: 0.2;
 }
 table tbody td.currently-connected, table tbody td.currently-connected ~ td {
     /*background-color: rgba(20,210,0,0.15);*/
-    opacity: 1;
+    opacity: 1 !important;
 }
 table tbody tr:hover {
     background: #ddd;
