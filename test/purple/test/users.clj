@@ -1,31 +1,31 @@
 (ns purple.test.users
-  (:require [purple.users :refer [valid-phone-number valid-name add register
-                                  get-user edit]]
+  (:require [purple.users :refer [valid-phone-number? valid-name? add register
+                                  get-user edit add-vehicle]]
             [clojure.test :refer [deftest is test-ns use-fixtures
                                   test-ns testing]]
             [purple.test.db :refer [database-fixture ebdb-test-config]]
             [purple.util :refer [rand-str-alpha-num]]
             [clojure.string :as string]))
 
-(use-fixtures :once database-fixture)
+(use-fixtures :each database-fixture)
 
 (deftest phone-number-validator
   "Test that the phone number validator works"
   ;; The following tests should pass
-  (is (valid-phone-number "888-555-1212"))
-  (is (valid-phone-number "888 555 1212"))
-  (is (valid-phone-number "(888) 555-1212"))
-  (is (valid-phone-number "(888)-555-1212"))
-  (is (valid-phone-number "8885551212"))
-  (is (valid-phone-number "(888)555 1212"))
-  (is (valid-phone-number "888555 1212"))
-  (is (valid-phone-number "+1 (888)-555-1212"))
-  (is (valid-phone-number "1 234 234 4444"))
+  (is (valid-phone-number? "888-555-1212"))
+  (is (valid-phone-number? "888 555 1212"))
+  (is (valid-phone-number? "(888) 555-1212"))
+  (is (valid-phone-number? "(888)-555-1212"))
+  (is (valid-phone-number? "8885551212"))
+  (is (valid-phone-number? "(888)555 1212"))
+  (is (valid-phone-number? "888555 1212"))
+  (is (valid-phone-number? "+1 (888)-555-1212"))
+  (is (valid-phone-number? "1 234 234 4444"))
 
   ;; The following tests should fail
-  (is (not (valid-phone-number "888 555 12123"))) ;; too many digits
-  (is (not (valid-phone-number "888 555 1212d"))) ;; number contains a letter
-  (is (not (valid-phone-number "888 555 121"))) ;; not enough digits
+  (is (not (valid-phone-number? "888 555 12123"))) ;; too many digits
+  (is (not (valid-phone-number? "888 555 1212d"))) ;; number contains a letter
+  (is (not (valid-phone-number? "888 555 121"))) ;; not enough digits
   
   )
 
@@ -33,12 +33,12 @@
   "Test that the name validator works"
 
   ;; The following tests should pass
-  (is (valid-name "Test User"))
-  (is (valid-name "Test Middle User"))
+  (is (valid-name? "Test User"))
+  (is (valid-name? "Test Middle User"))
 
   ;; The following tests should fail
-  (is (not (valid-name "Test")))
-  (is (not (valid-name "TestUser"))))
+  (is (not (valid-name? "Test")))
+  (is (not (valid-name? "TestUser"))))
 
 (defn register-user
   "Register a native user in the database"
@@ -101,3 +101,78 @@ removed"
       (test-trim ebdb-test-config email "   foo bar")
       ;; name with leading and trailing whitespace is trimmed
       (test-trim ebdb-test-config email "    foo bar    "))))
+
+(deftest add-vehicle-test
+  (let [email "foo@bar.com"
+        password "qwerty123"
+        year "2015"
+        make "honda"
+        model "accord"
+        color "blue"
+        gas-type "87"
+        record-map {:year year
+                    :make make
+                    :model model
+                    :color color
+                    :gas_type gas-type
+                    :photo ""
+                    :id "new"}]
+    (register-user ebdb-test-config email password)
+    (let [user-id (:id (get-user ebdb-test-config
+                                 "native" email))]
+      ;; some of the required fields are missing from record-map
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (dissoc record-map
+                                            :year
+                                            :make
+                                            :model
+                                            :color)))))
+      ;; remove all of the fields
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (dissoc record-map
+                                            :year
+                                            :make
+                                            :model
+                                            :color
+                                            :gas_type)))))
+      ;; Try to add a vehicle with a nil record map
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id nil))))
+      ;; Try to add a vehicle that has the equivalent json request
+      ;; of all blank fields on the server
+      (is (= "Required fields cannot be empty."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :year nil
+                                           :make nil
+                                           :model nil
+                                           :color nil
+                                           :gas_type "87"
+                                           :license_plate ""
+                                           :id "new"
+                                           :photo "")))))
+      ;; Try to add a vehicle without a :license_plate key
+      (is (= (str "License Plate is a required field. If this is a new vehicle"
+                  " without plates, write: NOPLATES. Vehicles without license"
+                  " plates are ineligible for coupon codes.")
+             (:message (add-vehicle ebdb-test-config user-id record-map))))
+      ;; Try to add a vehicle with a blank :license_plate key
+      (is (= (str "License Plate is a required field. If this is a new vehicle"
+                  " without plates, write: NOPLATES. Vehicles without license"
+                  " plates are ineligible for coupon codes.")
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :photo ""
+                                           :license_plate "")))))
+      ;; Try to add a vechile with a NOPLATES designation
+      (is (true?
+           (:success (add-vehicle ebdb-test-config user-id
+                                  (assoc record-map
+                                         :license_plate "NOPLATES")))))
+      ;; add an invalid license plate and receive an error message
+      (is (= "Please enter a valid license plate."
+             (:message (add-vehicle ebdb-test-config user-id
+                                    (assoc record-map
+                                           :license_plate "FA$T"))))))))

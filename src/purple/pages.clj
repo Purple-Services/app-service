@@ -74,6 +74,9 @@
              [:td.name]
              (content (:name t))
 
+             [:td.courier_phone_number]
+             (content (:phone_number t))
+
              [:td.busy]
              (content (if (:busy t) "Yes" "No"))
 
@@ -96,7 +99,11 @@
              
              [:td.zones]
              (content (:zones t))
-             
+
+             [:td.location]
+             (do->  (set-attr :data-lat (:lat t))
+                    (set-attr :data-lng (:lng t)))
+
              [:td.location :a]
              (content "View On Map")
              [:td.location :a]
@@ -180,6 +187,13 @@
              [:td.octane]
              (content (str (:gas_type (:vehicle t))))
 
+             [:td.color_make_model]
+             (content (str (:color (:vehicle t))
+                           " "
+                           (:make (:vehicle t))
+                           " "
+                           (:model (:vehicle t))))
+             
              [:td.license_plate]
              (content (str (:license_plate (:vehicle t))))
 
@@ -331,10 +345,16 @@
                                           "css/main.css"))
 
   [:#download-stats-csv]
-  (content (str "[download "
-                (unix->full (quot (.lastModified (java.io.File. "stats.csv"))
-                                  1000))
-                "]"))
+  (let [stats-file (java.io.File. "stats.csv")]
+    (if (> (.length stats-file) 0)
+      (content (str "[download "
+                    (unix->full (quot (.lastModified stats-file)
+                                      1000))
+                    "]"))
+      (do-> (remove-class "fake-link")
+            (remove-attr :id)
+            (content (str "[Processing... refresh page to check status."
+                          " It may take an hour.]")))))
   
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
@@ -387,7 +407,7 @@
              (group-by :id))
         
         id->name #(:name (first (get users-by-id %)))
-
+        id->phone_number #(:phone_number (first (get users-by-id %)))
         vehicles-by-id
         (->> (!select db-conn "vehicles"
                       [:id :year :make :model :color :gas_type
@@ -407,7 +427,10 @@
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"
-             :couriers (map #(assoc % :name (id->name (:id %))) all-couriers)
+             :couriers (map #(assoc %
+                                    :name (id->name (:id %))
+                                    :phone_number (id->phone_number (:id %)))
+                            all-couriers)
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
                                   :customer_name (id->name (:user_id %))

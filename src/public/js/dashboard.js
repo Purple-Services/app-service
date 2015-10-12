@@ -30,7 +30,12 @@ $("#generate-stats-csv").click(function(){
         contentType: 'application/json',
         success: function(response) {
             if (response.success === true) {
-                alert("stats.csv generation initiated. Please refresh the page in a minute or so, then try to download the CSV file..");
+		// remove download link
+		$("#download-stats-csv").remove();
+
+		alert("stats.csv generation initiated." +
+		      " Please refresh the page in a minute or so," +
+		      " then try to download the CSV file..");
             }
         }
     });
@@ -43,6 +48,89 @@ $("#download-stats-csv").click(function(){
 });
 
 $(document).ready(function(){
+
+    function containsPostalCode(obj) {
+	return obj.types.some(elem => elem == "postal_code");
+    };
+
+    // get only the objects in the response that have a zip code in them
+    function onlyResultsThatContainPostalCode(response) {
+	return response.results.filter(
+	    function(obj) {
+		return obj.address_components.some(
+		    elem =>
+			elem.types.some(
+			    elem =>
+				elem === "postal_code"))});
+    };
+
+    // extract a zip code from a google reverse geocoding api call
+    // response
+    function extractPostalCode(response) {
+	return onlyResultsThatContainPostalCode(response)[0]
+	    .address_components.filter(
+		containsPostalCode)[0]
+	    .short_name;
+    };
+
+    // callback is called with the parameter zip-code
+    // obtained using lat and lng google reverse geocoding
+    // api call
+    function postalCodeForLatLng(lat,lng,callback) {
+
+	var googleAPIBaseURL =
+	    "https://maps.googleapis.com/maps/api/geocode/" +
+	    "json?";
+
+	var googleAPIKey = "AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg";
+
+	var requestURL =
+	    googleAPIBaseURL +
+	    "latlng=" + lat + "," + lng +
+	    "&key=" +
+	    googleAPIKey;
+
+	$.get(requestURL,
+	      function(response) {
+		  callback(extractPostalCode(response));
+	      });
+    };
+
+    // get the color for a zip code
+    function getColorForZip(zipCode) {
+
+	// create regexp for finding a zip code
+	var zipRegExp = new RegExp(zipCode);
+
+	// get the td that corresponds to a zip code
+	// there should be a td.zips containing all of the
+	// zip codes for a zone in table#zones
+	// of dashboard
+	var zipTd = $("#zones .zips").filter(
+	    function(index,elem)
+	    {
+		return elem.innerText.match(zipRegExp);
+	    })[0];
+
+	// get the corresponding td.color for that zip
+	// there should be a td.color for a zone in table#zones
+	var colorTd = $(zipTd).parent().find(".color")[0];
+
+	// return the color
+	return $(colorTd).text();
+    };
+
+    // highlight the couriers location in the color that corresponds to the zone
+    // they are in
+    $("table#couriers .location").map(function(index,elem) {
+	var lat = $(elem).data('lat');
+	var lng = $(elem).data('lng');
+
+	postalCodeForLatLng(lat,lng,
+			    function (zipCode) {
+				$(elem).addClass(getColorForZip(zipCode));
+			    });
+    });
 
     $('.show-all').click(function(){
         var table = $("#" + $(this).data('show-id'));

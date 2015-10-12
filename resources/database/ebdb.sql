@@ -847,6 +847,8 @@ INSERT INTO `users` (`id`, `email`, `type`, `password_hash`, `reset_key`, `phone
 ('x8QE1Pzzkze4WZmDb4Ru', 'abc@abc.com', 'native', '$2a$11$lVUJ5sH61aBpzy6Xabcro.cH4mZfto7yKcuU/SNz2l1pIs54rRdia', '', '85354', 0, 'abd', '', '2WVA6', 0, 0, 'cus_61uFx4bUSig1Pe', '[{"brand":"Visa","last4":"4242","id":"card_15pqQpD0DZN191iCnZ6EQp5D"}]', 'card_15pqQpD0DZN191iCnZ6EQp5D', '', '', '', '', '2015-04-10 00:41:14'),
 ('zA0WXhPpcS3fpYpCbhBa', 'testcourier3@test.com', 'native', '$2a$11$bwBCmrp8D075OriHPTcmkudfyJuOjyegW43C0ykHxK7zeYOdlf1L.', '', '1', 0, 'test courier 3', '', 'M8AGP', 0, 1, '', '', NULL, '', 'arn:aws:sns:us-west-2:336714665684:endpoint/GCM/Purple/8016d86e-01df-3153-84e9-2b651d33975d', 'Android', '1.0.6', '2015-07-19 06:40:55');
 
+-- Disable push notifications
+UPDATE `users` SET `arn_endpoint` = '' WHERE 1;
 -- --------------------------------------------------------
 
 --

@@ -143,6 +143,7 @@ to the same one being used by the fixture."
                   time-zone)})))))
 
 (deftest test-within-time-bracket
+  ;; the following dates fall within daylight saving time
   (testing "7:30am is within the time bracket of [450 1350]"
     (within-time-bracket-test (time/date-time 2015 10 5 7 30)
                               "[450 1350]"
