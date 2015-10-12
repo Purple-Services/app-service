@@ -181,7 +181,7 @@
                      (:address_zip o))))
 
 (defn valid-time-limit?
-  "Check if the Time choice is truly available."
+  "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
   [db-conn o]
   (if (< (:time-limit o) 180)
     (and (>= (unix->minute-of-day (:target_time_start o))
@@ -190,12 +190,13 @@
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
-               num-couriers (max 1
-                                 (count (filter #(in? (:zones %) zone-id)
-                                                (couriers/get-all-connected db-conn))))]
+               num-couriers (->> (couriers/get-all-connected db-conn)
+                                 (filter #(in? (:zones %) zone-id))
+                                 count
+                                 (max 1))]
            (< num-orders-in-queue
               (* 1 num-couriers))))
-    true))
+    true)) ;; 3-hour or greater is always available
 
 (defn within-time-bracket?
   "Is the order being placed within the time bracket?"
