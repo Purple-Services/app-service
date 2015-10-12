@@ -71,6 +71,13 @@
                    :name]
                   {:reset_key key})))
 
+(defn id->type
+  "Given a user id, get the type (native, facebook, google...)."
+  [id]
+  (cond (= (count id) 20) "native"
+        (= "fb" (subs id 0 2)) "facebook"
+        (= "g" (subs id 0 1)) "google"))
+
 (defn auth-native?
   "Is password correct for this user map?"
   [user auth-key]
@@ -235,18 +242,25 @@
                            {:success false
                             :message "Unknown error."})))))
 
-(defn valid-email
-  "Only for native users."
-  [db-conn email]
-  (and (boolean (re-matches #"^\S+@\S+\.\S+$" email))
-       (not (get-user db-conn "native" email))))
+(defn email-available?
+  "Is there not a native account that is using this email address?"
+  [db-conn email & {:keys [ignore-user-id]}]
+  (let [user (get-user db-conn "native" email)]
+    (or (not user)
+        (and ignore-user-id
+             (= ignore-user-id (:id user))))))
 
-(defn valid-password
+(defn valid-email?
+  "Syntactically valid email address?"
+  [email]
+  (boolean (re-matches #"^\S+@\S+\.\S+$" email)))
+
+(defn valid-password?
   "Only for native users."
   [password]
   (boolean (re-matches #"^.{6,100}$" password)))
 
-(defn valid-phone-number
+(defn valid-phone-number?
   "Given a phone-number string, check whether or not it is a valid phone number
   with a 10 digit code. Returns true if it is valid, false otherwise.
   See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507
@@ -255,7 +269,7 @@
   (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$"
                        phone-number)))
 
-(defn valid-name
+(defn valid-name?
   "Given a name, make sure that it has a space in it"
   [name]
   (boolean (re-find #"\s" name)))
@@ -263,10 +277,11 @@
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key & {:keys [client-ip]}]
-  (if (valid-email db-conn platform-id)
-    (if (valid-password auth-key)
+  (if (and (valid-email? platform-id)
+           (email-available? db-conn platform-id))
+    (if (valid-password? auth-key)
       (do (add db-conn
-               {:id (rand-str-alpha-num 20)
+               {:id (rand-str-alpha-num 20) ;; keep it 20!
                 :email platform-id
                 :type "native"}
                :password auth-key
@@ -328,12 +343,15 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (doto (select-keys record-map [:name :phone_number :gender])
-      (#(!update db-conn "users" % {:id user-id}))
-      (#(segment/identify segment-client user-id
-                          {:name (:name %)
-                           :phone (:phone_number %)
-                           :gender (:gender %)})))
+    (do (doto (select-keys record-map [:name :phone_number :gender :email])
+          (#(!update db-conn "users" % {:id user-id}))
+          (#(segment/identify segment-client user-id
+                              (conj {:name (:name %)
+                                     :phone (:phone_number %)
+                                     :gender (:gender %)}
+                                    (when (:email %)
+                                      [:email (:email %)])))))
+        {:success true})
     {:success false
      :message "Required fields cannot be empty."}))
 
@@ -351,25 +369,74 @@
 (defn add-vehicle
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id record-map]
-  (if (not-any? (comp s/blank? str val)
-                (select-keys record-map required-vehicle-fields))
-    (if (valid-license-plate? (:license_plate record-map))
-      (doto (assoc record-map
-                   :id (rand-str-alpha-num 20)
-                   :user_id user-id
-                   :license_plate (clean-up-license-plate
-                                   (:license_plate record-map))
-                   :active 1)
-        (#(!insert db-conn "vehicles" %))
-        (#(segment/track segment-client user-id "Add Vehicle"
-                         (assoc (select-keys % [:year :make :model
-                                                :color :gas_type
-                                                :license_plate])
-                                :vehicle_id (:id %)))))
+  (let [required-fields-present? (every? identity (map #(contains? record-map %)
+                                                       required-vehicle-fields))
+        required-fields-blank? (not
+                                (and
+                                 ;; all required fields must be present
+                                 required-fields-present?
+                                 ;; and none of the required fields are blank
+                                 (every? identity
+                                         (map (comp not s/blank?)
+                                              (vals
+                                               (select-keys
+                                                record-map
+                                                required-vehicle-fields))))))
+        license-plate-blank? (s/blank? (:license_plate record-map))
+        only-license-plate-blank? (and
+                                   ;; are all fields other than license plate
+                                   ;; present?
+                                   (every? identity
+                                             (map
+                                              #(contains? record-map %)
+                                              (remove
+                                               #(= % :license_plate)
+                                               required-vehicle-fields)))
+                                   ;; are all fields besides license plate not
+                                   ;; blank ?
+                                   (every? identity
+                                           (map
+                                            (comp not s/blank?)
+                                            (vals
+                                             (-> record-map
+                                                 (select-keys
+                                                  required-vehicle-fields)
+                                                 (dissoc :license_plate)))))
+                                   ;; and the license plate is blank or missing
+                                   license-plate-blank?)]
+    (cond
+      ;; the only required field that is missing is
+      ;; the license pate
+      only-license-plate-blank?
       {:success false
-       :message "Please enter a valid license plate."})
-    {:success false
-     :message "Required fields cannot be empty."}))
+       :message (str "License Plate is a required field. If this is a new"
+                     " vehicle without plates, write: NOPLATES. Vehicles"
+                     " without license plates are ineligible for coupon"
+                     " codes.")}
+      required-fields-blank?
+      {:success false
+       :message "Required fields cannot be empty."}
+      ;; license_plate is valid
+      (valid-license-plate? (:license_plate record-map))
+      (do (doto (assoc record-map
+                       :id (rand-str-alpha-num 20)
+                       :user_id user-id
+                       :license_plate (clean-up-license-plate
+                                       (:license_plate record-map))
+                       :active 1)
+            (#(!insert db-conn "vehicles" %))
+            (#(segment/track segment-client user-id "Add Vehicle"
+                             (assoc (select-keys % [:year :make :model
+                                                    :color :gas_type
+                                                    :license_plate])
+                                    :vehicle_id (:id %)))))
+          {:success true})
+      ;; license_plate is invalid
+      (not (valid-license-plate? (:license_plate record-map)))
+      {:success false
+       :message "Please enter a valid license plate."}
+      ;; unknown error
+      :else {:success false :message "Unknown error"})))
 
 (defn update-vehicle
   "The user-id given is assumed to have been auth'd already."
@@ -445,15 +512,26 @@
                 (merge-unless-failed
                  (let [user (update (:user body) :name s/trim)
                        phone-number (:phone_number user)
-                       name (:name user)]
+                       name (:name user)
+                       email (:email user)]
                    (cond
-                     (and name (not (valid-name name)))
+                     (and name (not (valid-name? name)))
                      {:success false
                       :message "Please enter your full name."}
                      
-                     (and phone-number (not (valid-phone-number phone-number)))
+                     (and phone-number (not (valid-phone-number? phone-number)))
                      {:success false
                       :message "Please enter a valid phone number."}
+
+                     (and email
+                          (or (not (valid-email? email))
+                              (and (= (id->type user-id) "native")
+                                   (not (email-available? db-conn
+                                                          email
+                                                          :ignore-user-id
+                                                          user-id)))))
+                     {:success false
+                      :message "Email Address is incorrectly formatted or is already associated with an account."}
 
                      :else (update-user db-conn user-id user))))
                 
@@ -531,7 +609,7 @@
   "Only for native accounts."
   [db-conn reset-key password]
   (if-not (s/blank? reset-key) ;; <-- very important check, for security
-    (if (valid-password password)
+    (if (valid-password? password)
       (!update db-conn
                "users"
                {:password_hash (bcrypt/encrypt password)
