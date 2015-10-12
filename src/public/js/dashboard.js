@@ -50,19 +50,22 @@ $("#download-stats-csv").click(function(){
 $(document).ready(function(){
 
     function containsPostalCode(obj) {
-	return obj.types.some(elem => elem == "postal_code");
+        return obj.types.some(function (elem) {
+	    return elem === "postal_code";
+        });
     };
 
     // get only the objects in the response that have a zip code in them
     function onlyResultsThatContainPostalCode(response) {
-	return response.results.filter(
-	    function(obj) {
-		return obj.address_components.some(
-		    elem =>
-			elem.types.some(
-			    elem =>
-				elem === "postal_code"))});
+        return response.results.filter(function (obj) {
+            return obj.address_components.some(function (elem) {
+                return elem.types.some(function (elem) {
+                    return elem === "postal_code";
+                });
+            });
+        });
     };
+
 
     // extract a zip code from a google reverse geocoding api call
     // response
