@@ -166,7 +166,8 @@
              (content (unix->full (:target_time_end t)))
 
              [:td.customer_name]
-             (content (:customer_name t))
+             (content (str "(" (:customer_sift_score t) ") "
+                           (:customer_name t)))
              
              [:td.customer_phone_number]
              (content (:customer_phone_number t))
@@ -394,6 +395,7 @@
         (->> (!select db-conn "users"
                       [:id :name :email :phone_number :os
                        :app_version :stripe_default_card
+                       :sift_score
                        :arn_endpoint :timestamp_created]
                       {}
                       :custom-where
@@ -437,6 +439,10 @@
                                   
                                   :customer_phone_number
                                   (:phone_number
+                                   (first (get users-by-id (:user_id %))))
+
+                                  :customer_sift_score
+                                  (:sift_score
                                    (first (get users-by-id (:user_id %))))
 
                                   :zone-color
