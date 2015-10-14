@@ -23,6 +23,25 @@
   [event-type fields]
   (sift-req "post" "events" (merge {:$type event-type} fields)))
 
+(defn create-account
+  [user]
+  (event "$create_account"
+         (conj {:$user_id (:id user)
+                :$user_email (:email user)}
+               (not-nil-vec :$social_sign_on_type (case (:type user)
+                                                    "facebook" "$facebook"
+                                                    "google" "$google"
+                                                    nil)))))
+
+(defn update-account
+  [user]
+  (event "$update_account"
+         (conj {:$user_id (:id user)}
+               (not-nil-vec :$user_email (:email user))
+               (not-nil-vec :$name (:name user))
+               (not-nil-vec :$phone (:phone_number user))
+               (not-nil-vec :gender (:gender user)))))
+
 (defn common-order-fields
   [order user]
   (assoc (select-keys order [:gallons :gas_type :lat :lng :vehicle_id
@@ -36,15 +55,12 @@
          :$currency_code "USD"
          :$shipping_address {:$address_1 (:address_street order)
                              :$zipcode (:address_zip order)
+                             :$name (:name user)
                              :$phone (:phone_number user)}
          :time_limit :time-limit
          :gas_price (* (:gas_price order) 10000)
          :service_fee (* (:service_fee order) 10000)
          :zone_id ((resolve 'purple.dispatch/order->zone-id) order)))
-
-(defn not-nil-vec
-  [k v]
-  (when-not (nil? v) [k v]))
 
 (defn charge-authorization
   [order user {:keys [stripe-charge-id
