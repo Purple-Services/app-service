@@ -166,7 +166,7 @@
              (content (unix->full (:target_time_end t)))
 
              [:td.customer_name]
-             (content (str "(" (:customer_sift_score t) ") "
+             (content (str ;; "(" (:customer_sift_score t) ") "
                            (:customer_name t)))
              
              [:td.customer_phone_number]

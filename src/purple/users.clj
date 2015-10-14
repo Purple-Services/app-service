@@ -8,6 +8,7 @@
             [purple.orders :as orders]
             [purple.coupons :as coupons]
             [purple.payment :as payment]
+            [purple.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
@@ -147,7 +148,7 @@
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
-             :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
+                  :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
      :orders (into [] (if (:is_courier user)
                         (orders/get-by-courier db-conn (:id user))
@@ -169,17 +170,19 @@
                                  user)
                                :referral_code referral-code))]
     (when (:success result)
-      ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
-      (segment/identify segment-client (:id user)
-                        {:email (:email user)
-                         :referral_code referral-code
+      (future
+        (sift/create-account (select-keys user [:id :email :type]))
+        ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
+        (segment/identify segment-client (:id user)
+                          {:email (:email user)
+                           :referral_code referral-code
 
-                         ;; todo fix this
-                         ;; :createdAt (time-coerce/from-sql-time
-                         ;;             (:timestamp_created %))
+                           ;; todo fix this
+                           ;; :createdAt (time-coerce/from-sql-time
+                           ;;             (:timestamp_created %))
 
-                         })
-      (segment/track segment-client (:id user) "Sign Up"))
+                           })
+        (segment/track segment-client (:id user) "Sign Up")))
     result))
 
 (defn login
@@ -327,7 +330,7 @@
                                 (:os user-meta)))
         {:success true
          :user (assoc (select-keys user safe-authd-user-keys)
-                 :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
+                      :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
          :vehicles (into [] (get-users-vehicles db-conn user-id))
          :orders (into [] (if (:is_courier user)
                             (orders/get-by-courier db-conn (:id user))
@@ -345,6 +348,7 @@
                 (select-keys record-map required-data))
     (do (doto (select-keys record-map [:name :phone_number :gender :email])
           (#(!update db-conn "users" % {:id user-id}))
+          (#(sift/update-account (assoc % :id user-id)))
           (#(segment/identify segment-client user-id
                               (conj {:name (:name %)
                                      :phone (:phone_number %)
@@ -387,11 +391,11 @@
                                    ;; are all fields other than license plate
                                    ;; present?
                                    (every? identity
-                                             (map
-                                              #(contains? record-map %)
-                                              (remove
-                                               #(= % :license_plate)
-                                               required-vehicle-fields)))
+                                           (map
+                                            #(contains? record-map %)
+                                            (remove
+                                             #(= % :license_plate)
+                                             required-vehicle-fields)))
                                    ;; are all fields besides license plate not
                                    ;; blank ?
                                    (every? identity
