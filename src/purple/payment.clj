@@ -102,3 +102,7 @@
                                   "Refund ID: " charge-id "\n")}))
           {:success false
            :refund resp}))))
+
+(defn get-stripe-charge
+  [charge-id]
+  (stripe-req "get" (str "charges/" charge-id)))
