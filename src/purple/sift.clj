@@ -24,19 +24,21 @@
   (sift-req "post" "events" (merge {:$type event-type} fields)))
 
 (defn create-account
-  [user]
+  [user {:keys [event-time]}] ;; only needed for backfilling historical data
   (event "$create_account"
          (conj {:$user_id (:id user)
                 :$user_email (:email user)}
+               (not-nil-vec :$time event-time)
                (not-nil-vec :$social_sign_on_type (case (:type user)
                                                     "facebook" "$facebook"
                                                     "google" "$google"
                                                     nil)))))
 
 (defn update-account
-  [user]
+  [user {:keys [event-time]}] ;; only needed for backfilling historical data
   (event "$update_account"
          (conj {:$user_id (:id user)}
+               (not-nil-vec :$time event-time)
                (not-nil-vec :$user_email (:email user))
                (not-nil-vec :$name (:name user))
                (not-nil-vec :$phone (:phone_number user))
@@ -57,13 +59,15 @@
                              :$zipcode (:address_zip order)
                              :$name (:name user)
                              :$phone (:phone_number user)}
-         :time_limit :time-limit
+         :time_limit (:time-limit order)
          :gas_price (* (:gas_price order) 10000)
          :service_fee (* (:service_fee order) 10000)
-         :zone_id ((resolve 'purple.dispatch/order->zone-id) order)))
+         :zone_id (try ((resolve 'purple.dispatch/order->zone-id) order)
+                       (catch Exception e nil))))
 
 (defn charge-authorization
-  [order user {:keys [stripe-charge-id
+  [order user {:keys [event-time ;; only needed for backfilling historical data
+                      stripe-charge-id
                       stripe-customer-id
                       successful?
                       card-last4
@@ -73,6 +77,7 @@
                       stripe-brand]}]
   (event "$transaction"
          (conj (common-order-fields order user)
+               (not-nil-vec :$time event-time)
                (not-nil-vec :$transaction_id stripe-charge-id)
                [:$transaction_type "$authorize"]
                [:$transaction_status (if successful? "$success" "$failure")]
