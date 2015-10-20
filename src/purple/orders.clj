@@ -191,12 +191,11 @@
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
-               num-couriers (->> (couriers/get-all-connected db-conn)
+               num-couriers (->> (couriers/available-couriers db-conn)
                                  (filter #(in? (:zones %) zone-id))
-                                 count
-                                 (max 1))]
+                                 count)]
            (< num-orders-in-queue
-              (* 1 num-couriers))))
+              num-couriers)))
     true)) ;; 3-hour or greater is always available
 
 (defn within-time-bracket?
