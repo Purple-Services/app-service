@@ -333,7 +333,7 @@ $(document).ready(function(){
         if (confirm("Are you sure you want to assign this order to " +
                     selected_courier +
                     "? (this cannot be undone) " +
-                    " (courier will be notified via push notification)")) {
+                    " (courier(s) will be notified via push notification)")) {
             // to get the element inside of success statement
             var self = this;
             $(this).attr("disabled",true);
@@ -362,7 +362,7 @@ $(document).ready(function(){
                 },
                 failure: function(response) {
                     alert('Something went wrong. Order was NOT ' +
-                          'advanced!');
+                          'reassigned!');
                     $(self).attr("disabled",false);
                     console.log(response);
                 }

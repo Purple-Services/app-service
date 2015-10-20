@@ -144,20 +144,31 @@
                                       :data-order-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
-             (if (= (:status t)
-                    "unassigned")
-               (content (html [:select {:class "assign-courier"}
-                               [:option "Assign to Courier"]
-                               (map
-                                #(html
-                                  [:option {:value (:id %)} (:name %) ])
-                                (:couriers x))]
-                              [:input {:type "submit"
-                                       :class "assign-courier"
-                                       :value "Save"
-                                       :data-order-id (:id t)
-                                       :disabled true}]))
-               (content (:courier_name t)))
+             (content (html [:select {:class "assign-courier"}
+                             [:option
+                              (if (= (:status t)
+                                     "unassigned")
+                                {:selected ""})
+                              "Assign to Courier"]
+                             (map
+                              #(html
+                                [:option
+                                 (if (= (:courier_id t)
+                                        (:id %))
+                                   {:value (:id %)
+                                    :selected ""}
+                                   {:value (:id %)})
+                                 (:name %) ])
+                              ;; filter out the couriers to only those assigned
+                              ;; to the zone
+                              (filter #(contains? (:assigned_zones %) (:zone t))
+                                      (:couriers x)))]
+                            [:input {:type "submit"
+                                     :class "assign-courier"
+                                     :value "Save"
+                                     :data-order-id (:id t)
+                                     :zone (:zone t)
+                                     :disabled true}]))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
@@ -345,6 +356,9 @@
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
                                           "css/main.css"))
 
+  [:#dashboardJS] (set-attr :src (str (:base-url x)
+                                      "js/dashboard.js"))
+
   [:#download-stats-csv]
   (let [stats-file (java.io.File. "stats.csv")]
     (if (> (.length stats-file) 0)
@@ -431,7 +445,11 @@
             {:title "Purple - Dashboard"
              :couriers (map #(assoc %
                                     :name (id->name (:id %))
-                                    :phone_number (id->phone_number (:id %)))
+                                    :phone_number (id->phone_number (:id %))
+                                    :assigned_zones
+                                    (set (map read-string
+                                              (split-on-comma
+                                               (:zones %)))))
                             all-couriers)
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
@@ -447,6 +465,12 @@
 
                                   :zone-color
                                   (:color
+                                   ((resolve
+                                     'purple.dispatch/get-zone-by-zip-code)
+                                    (:address_zip %)))
+
+                                  :zone
+                                  (:id
                                    ((resolve
                                      'purple.dispatch/get-zone-by-zip-code)
                                     (:address_zip %)))
