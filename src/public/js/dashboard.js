@@ -50,23 +50,31 @@ $("#download-stats-csv").click(function(){
 $(document).ready(function(){
 
     function containsPostalCode(obj) {
-	return obj.types.some(elem => elem == "postal_code");
+        return obj.types.some(function (elem) {
+	    return elem === "postal_code";
+        });
     };
 
     // get only the objects in the response that have a zip code in them
     function onlyResultsThatContainPostalCode(response) {
-	return response.results.filter(
-	    function(obj) {
-		return obj.address_components.some(
-		    elem =>
-			elem.types.some(
-			    elem =>
-				elem === "postal_code"))});
+        return response.results.filter(function (obj) {
+            return obj.address_components.some(function (elem) {
+                return elem.types.some(function (elem) {
+                    return elem === "postal_code";
+                });
+            });
+        });
     };
+
 
     // extract a zip code from a google reverse geocoding api call
     // response
     function extractPostalCode(response) {
+	// there were no results for the given lat lng
+	if (response.status === "ZERO_RESULTS") {
+	    return "NONE";
+	}
+
 	return onlyResultsThatContainPostalCode(response)[0]
 	    .address_components.filter(
 		containsPostalCode)[0]
@@ -82,7 +90,8 @@ $(document).ready(function(){
 	    "https://maps.googleapis.com/maps/api/geocode/" +
 	    "json?";
 
-	var googleAPIKey = "AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg";
+    // this key is on chris@purpledelivery.com account
+	var googleAPIKey = "AIzaSyAflsl4cNXHnO-HaZhfGC2gcGoIxt19UW4";
 
 	var requestURL =
 	    googleAPIBaseURL +
@@ -126,10 +135,15 @@ $(document).ready(function(){
 	var lat = $(elem).data('lat');
 	var lng = $(elem).data('lng');
 
-	postalCodeForLatLng(lat,lng,
-			    function (zipCode) {
-				$(elem).addClass(getColorForZip(zipCode));
-			    });
+	// if a courier is currently connected, highlight their
+	// location with the color of the zone they are currently in
+	if ( $(elem).parent().find(".currently-connected").length > 0)
+	{
+	    postalCodeForLatLng(lat,lng,
+				function (zipCode) {
+				    $(elem).addClass(getColorForZip(zipCode));
+				});
+	}
     });
 
     $('.show-all').click(function(){

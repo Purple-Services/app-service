@@ -193,7 +193,7 @@ resources/database/ebdb_setup.sql
 
 ## Running Selenium functional tests
 
-There are functioal tests (test/purple/dashboard.clj) that use [clj-webdriver](https://github.com/semperos/clj-webdriver), a clojure Selenium WebDriver library. These tests automatically control a Chrome web browser and ensure proper app behavior. Before these tests can be run successfully, you need to first install Chrome and its [ChromeDriver](https://code.google.com/p/selenium/wiki/ChromeDriver). You can download the Mac version of ChromeDriver [here](https://sites.google.com/a/chromium.org/chromedriver/downloads). After unzipping the file, move it to a place that is on your PATH. For example, /opt/local/bin/chromedriver.
+There are functional tests (test/purple/dashboard.clj) that use [clj-webdriver](https://github.com/semperos/clj-webdriver), a clojure Selenium WebDriver library. These tests automatically control a Chrome web browser and ensure proper app behavior. Before these tests can be run successfully, you need to first install Chrome and its [ChromeDriver](https://code.google.com/p/selenium/wiki/ChromeDriver). You can download the Mac version of ChromeDriver [here](https://sites.google.com/a/chromium.org/chromedriver/downloads). After unzipping the file, move it to a place that is on your PATH. For example, /opt/local/bin/chromedriver.
 
 You will also need to add entries required by the functional tests to {:dev {:dependencies}}. Because we have already created a profiles.clj file, we need to add the selenium dependencies there. We also need to add ring-jetty-adapter because the functional tests run the app server on a test port so that the tests can be run without having a dev server running locally. Modify profiles.clj and add these requirements:
 
@@ -207,6 +207,26 @@ You will also need to add entries required by the functional tests to {:dev {:de
 ```
 
 These modifications should allow the tests to run properly with ChromeDriver 2.19.
+
+There are additional functional tests for the client (test/purple/client.clj). You will need a version of the client and pointer to its index.html file in profiles.clj for env. On my machine, the file is located at
+
+```bash
+file:///Users/james/PurpleInc/Purple/index.html
+```
+
+so in profiles.clj I made an entry to my {:dev {:env }} map:
+
+```clojure
+:client-index-file "file:///Users/james/PurpleInc/Purple/index.html"
+```
+
+Because the client was compiled to use port 3000, the server must be running via
+
+```bash
+$ lein ring server
+```
+
+in order for the client tests to pass.
 
 ## Deploying to Development Server
 

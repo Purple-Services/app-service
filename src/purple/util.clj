@@ -141,6 +141,10 @@
   [seq elm]  
   (some #(= elm %) seq))
 
+(defn not-nil-vec
+  [k v]
+  (when-not (nil? v) [k v]))
+
 (defn rand-str
   [ascii-codes length]
   (apply str (repeatedly length #(char (rand-nth ascii-codes)))))

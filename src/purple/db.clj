@@ -69,7 +69,6 @@
 
 ;; NOTE: table, columns, and where-map keys are not checked for SQL Injection
 ;; Thus, where-map vals are the only input that is protected from attack.
-;; TODO - allow 'all' flag for *. can be used in combination with DECRYPT still
 (defn !select
   "Select columns from table and decrypt any values whose column name is in the
   set 'decrypt'. All this, according the constraints of simple where-map."

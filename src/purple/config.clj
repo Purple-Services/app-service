@@ -17,6 +17,7 @@
     (System/setProperty "EMAIL_USER" (env :email-user))
     (System/setProperty "EMAIL_PASSWORD" (env :email-password))
     (System/setProperty "STRIPE_PRIVATE_KEY" (env :stripe-private-key))
+    (System/setProperty "SIFT_SCIENCE_API_KEY" (env :sift-science-api-key))
     (System/setProperty "SNS_APP_ARN_APNS" (env :sns-app-arn-apns))
     (System/setProperty "SNS_APP_ARN_GCM" (env :sns-app-arn-gcm))
     (System/setProperty "TWILIO_ACCOUNT_SID" (env :twilio-account-sid))
@@ -58,6 +59,8 @@
 (def stripe-api-url "https://api.stripe.com/v1/")
 (def stripe-private-key (System/getProperty "STRIPE_PRIVATE_KEY"))
 (def default-currency "usd")
+(def sift-science-api-url "https://api.siftscience.com/v203/")
+(def sift-science-api-key (System/getProperty "SIFT_SCIENCE_API_KEY"))
 
 ;;;; Dispatch 
 ;; How often to process the zone order queues (i.e., dispatch/zq) (millis)

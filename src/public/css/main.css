@@ -1,27 +1,32 @@
 body {
     font-family: 'Open Sans', sans-serif;
     text-align: center;
-    color: #333;
+    color: #2c3e50;
     padding-top: 15px;
+    background: #f7f7f7;
+}
+h2 {
+    color: #111;
 }
 a {
-    color: #6491d2;
+    color: #3498db;
 }
 table {
     margin: 0px auto 65px auto;
 }
 table thead {
     font-weight: bold;
+    color: #111;
 }
 table#couriers tbody td {
-    opacity: 0.2;
+    opacity: 0.18;
 }
 table tbody td.currently-connected, table tbody td.currently-connected ~ td {
     /*background-color: rgba(20,210,0,0.15);*/
     opacity: 1 !important;
 }
 table tbody tr:hover {
-    background: #ddd;
+    background: #ecf0f1;
 }
 table.hide-extra tbody tr:nth-child(n+8) {
     display: none;
@@ -30,7 +35,7 @@ table.hide-extra.showing-all tbody tr:nth-child(n+8) {
     display: table-row;
 }
 table td {
-    padding: 0px 10px 5px 10px;
+    padding: 3px 8px 3px 8px;
 }
 td.late {
     color: #cc0000;
@@ -45,14 +50,14 @@ td.late {
 
 .show-all {
     font-size: 16px;
-    color: #6491d2;
+    color: #3498db;
     font-weight: normal;
     cursor: pointer;
 }
 
 .fake-link {
     font-size: 16px;
-    color: #6491d2;
+    color: #3498db;
     font-weight: normal;
     cursor: pointer;
 }
@@ -67,18 +72,26 @@ td.late {
 
 /* zone colors */
 .purple, .purple a {
-    background-color: rgba(194, 0, 255, 1) !important;
+    background-color: #8e44ad !important;
     color: white;
 }
 .blue, .blue a {
-    background-color: rgba(0, 0, 255, 1) !important;
+    background-color: #2980b9 !important;
     color: white;
 }
 .yellow, .yellow a {
-    background-color: rgba(255, 255, 0, 1) !important;
-    color: black;
+    background-color: #f1c40f !important;
+    color: white;
 }
 .red, .red a {
-    background-color: rgba(230, 0, 0, 1) !important;
+    background-color: #c0392b !important;
+    color: white;
+}
+.green, .green a {
+    background-color: #2ecc71 !important;
+    color: white;
+}
+.orange, .orange a {
+    background-color: #f39c12 !important;
     color: white;
 }
