@@ -390,13 +390,17 @@
 (defn courier-assigned-zones
   "Given a courier-id, return a set of all zones they are assigned to"
   [db-conn courier-id]
-  (set
-   (map read-string
-        (split-on-comma (:zones (first
-                                 (!select db-conn
-                                          "couriers"
-                                          [:zones]
-                                          {:id courier-id})))))))
+  (let [zones (:zones (first
+                       (!select db-conn
+                                "couriers"
+                                [:zones]
+                                {:id courier-id})))]
+    (if (nil? (seq zones))
+      (set zones) ; the empty set
+      (set
+       (map read-string
+            (split-on-comma zones))))))
+
 (defn get-courier-zips
   "Given a courier-id, get all of the zip-codes that a courier is assigned to"
   [db-conn courier-id]

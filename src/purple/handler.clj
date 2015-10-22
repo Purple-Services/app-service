@@ -366,7 +366,16 @@
                                               (:id b)
                                               (:fuel_prices b)
                                               (:service_fees b)
-                                              (:service_time_bracket b))))))
+                                              (:service_time_bracket b)))))
+              ;; update a courier's assigned zones
+              (POST "/update-courier-zones" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (users/update-courier-zones!
+                        db-conn
+                        (:id b)
+                        (:zones b))))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication

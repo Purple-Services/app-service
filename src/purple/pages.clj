@@ -62,7 +62,6 @@
   [:#last-updated] (content (str "Last Updated: "
                                  (unix->full (quot (System/currentTimeMillis)
                                                    1000))))
-
   [:#couriers :tbody :tr]
   (clone-for [t (:couriers x)]
              [:td.connected]
@@ -72,7 +71,9 @@
                    (content (if (:connected t) "Yes" "No")))
 
              [:td.name]
-             (content (:name t))
+             (do->
+              (set-attr :data-courier-id (:id t))
+              (content (:name t)))
 
              [:td.courier_phone_number]
              (content (:phone_number t))
@@ -273,6 +274,10 @@
 
              [:td.only_for_first_orders]
              (content (if (:only_for_first_orders t) "Yes" "No")))
+
+  [:div#zone-ids]
+  (set-attr :style "display:none;"
+            :data-zone-ids (s/join "," (map :id (:zones x))))
 
   [:#zones :tbody :tr]
   (clone-for [zone (:zones x)]
