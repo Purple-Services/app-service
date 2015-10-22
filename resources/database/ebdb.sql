@@ -771,6 +771,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `stripe_customer_id` varchar(255) NOT NULL DEFAULT '',
   `stripe_cards` text NOT NULL DEFAULT '',
   `stripe_default_card` varchar(255) DEFAULT NULL,
+  `sift_score` int(11) DEFAULT NULL,
   `apns_token` varchar(255) NOT NULL DEFAULT '',
   `arn_endpoint` varchar(255) NOT NULL DEFAULT '',
   `os` varchar(255) NOT NULL DEFAULT '',
