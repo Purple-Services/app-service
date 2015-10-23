@@ -2,12 +2,14 @@
   (:use cheshire.core)
   (:require [clojure.test :refer :all]
             [purple.handler :refer :all]
-            [purple.db :as db]
+            [purple.test.db :refer [setup-ebdb-test-for-conn-fixture]]
             [ring.mock.request :as mock]))
+
 
 ;; note: these tests will not work unless the server is properly running.
 ;; you will need to copy the configuration stub from README.md
 ;; to src/purple/config.clj
+(use-fixtures :once setup-ebdb-test-for-conn-fixture)
 
 (deftest test-app
   (testing "not-found route"
