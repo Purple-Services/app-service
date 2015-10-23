@@ -2,7 +2,8 @@
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
             [purple.test.dashboard :refer
-             [sleep wait-until-alert-text with-server]]
+             [sleep wait-until-alert-text
+              start-server stop-server]]
             [purple.users :refer [get-user-by-id get-user]]
             [purple.test.db :refer [db-config]]
             [clojure.java.jdbc :as jdbc]
@@ -33,7 +34,16 @@
   (t)
   (stop-browser))
 
-(use-fixtures :once with-browser)
+;; the client app is currently configured to use port 3000
+(def test-port 3000)
+
+(defn with-server [t]
+  (let [server (start-server test-port)]
+    (t)
+    (stop-server server)))
+
+
+(use-fixtures :once with-browser with-server)
 ;; keeping this in place as proof it doesn't work
 ;; should work, in "theory", the science,however, is that it does not
 ;; see: http://goo.gl/mNEGZ7
