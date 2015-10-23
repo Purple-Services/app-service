@@ -101,8 +101,13 @@
              (content (:zones t))
 
              [:td.location]
-             (do->  (set-attr :data-lat (:lat t))
-                    (set-attr :data-lng (:lng t)))
+             (do->
+                   (set-attr :data-lat (:lat t))
+                   (set-attr :data-lng (:lng t))
+                   (if (and (= 0.0 (:lat t))
+                            (= 0.0 (:lng t)))
+                     (add-class "no-gps")
+                     (add-class)))
 
              [:td.location :a]
              (content "View On Map")
