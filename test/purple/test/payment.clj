@@ -2,11 +2,15 @@
   (:use cheshire.core)
   (:require [purple.payment :refer [stripe-req]]
             [clj-http.client :as client]
-            [clojure.test :refer [deftest is test-ns testing]]
+            [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [purple.config :as config]
             [purple.handler :refer :all]
             [purple.users :refer [get-user-by-id get-user]]
-            [purple.db :refer [conn]]))
+            [purple.db :refer [conn]]
+            [purple.test.db :refer [setup-ebdb-test-for-conn-fixture]]
+            ))
+
+(use-fixtures :once setup-ebdb-test-for-conn-fixture)
 
 (deftest confirm-stripe-req-merge-with
   "Confirm the proper form of merge-with merge used in purple.payment/stripe-req"
@@ -31,7 +35,7 @@
   (let [db-conn (conn)]
     (let [u (get-user db-conn "native" "test@test.com")
           customer-id (:stripe_customer_id u)]
-      #_ (testing "The test@test.com user with cc 4242424242424242 will succeed
+      (testing "The test@test.com user with cc 4242424242424242 will succeed
  as paid"
         (let [stripe-params {:customer customer-id
                              :amount 50
@@ -41,9 +45,9 @@
               resp (stripe-req "post"
                                "charges"
                                stripe-params)]
-          (is (:paid resp))))
+          #_ (is (:paid resp))))
       (let [idempotency-key  (str (java.util.UUID/randomUUID))]
-        #_ (testing "The test@test.com user with cc 4242424242424242 will only
+        (testing "The test@test.com user with cc 4242424242424242 will only
  charge once "
           (let [stripe-params {:customer customer-id
                                :amount 55
