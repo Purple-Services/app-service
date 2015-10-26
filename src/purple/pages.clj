@@ -80,6 +80,9 @@
              [:td.busy]
              (content (if (:busy t) "Yes" "No"))
 
+             [:td.last_seen]
+             (content (unix->full (:last_ping t)))
+
              [:td.lateness]
              (content (let [orders (filter #(and (= (:courier_id %)
                                                     (:id t))
