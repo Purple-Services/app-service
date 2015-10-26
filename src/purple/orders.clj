@@ -630,9 +630,7 @@ order reassignment"
         ;; remove the order from the queue
         ((resolve 'purple.dispatch/remove-order-from-zq) order)
         ;; notify courier that they have been assigned an order
-        ((resolve 'purple.users/send-push) db-conn new-courier-id
-         (str "You have been assigned a new order, please check your "
-              "Orders to view it"))
+        (notify-new-courier)
         ;; response
         {:success true
          :message (str order-id " has been assigned to " new-courier-id)})
