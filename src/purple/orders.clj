@@ -601,21 +601,21 @@ and their id matches the order's courier_id"
      :message "An order with that ID could not be found."}))
 
 (defn assign-to-courier-by-admin
-  "Assign new-courier to order-id and alert the couriers of the
+  "Assign new-courier-id to order-id and alert the couriers of the
 order reassignment"
-  [db-conn order-id new-courier]
+  [db-conn order-id new-courier-id]
   (let [order (get-by-id db-conn order-id)
-        old-courier (:courier_id order)
+        old-courier-id (:courier_id order)
         change-order-assignment #(!update db-conn "orders"
-                                          {:courier_id new-courier}
+                                          {:courier_id new-courier-id}
                                           {:id order-id})
         notify-new-courier #((resolve 'purple.users/send-push)
-                             db-conn new-courier
+                             db-conn new-courier-id
                              (str "You have been assigned a new order,"
                                   " please check your "
                                   "Orders to view it"))
         notify-old-courier #((resolve 'purple.users/send-push)
-                             db-conn old-courier
+                             db-conn old-courier-id
                              (str "You are no longer assigned to the "
                                   (:address_street order)
                                   "order"))
@@ -626,33 +626,33 @@ order reassignment"
       (do
         ;; because the accept fn sets the couriers busy status to true,
         ;; there is no need to further update the courier's status
-        (accept db-conn order-id new-courier)
+        (accept db-conn order-id new-courier-id)
         ;; remove the order from the queue
         ((resolve 'purple.dispatch/remove-order-from-zq) order)
         ;; notify courier that they have been assigned an order
-        ((resolve 'purple.users/send-push) db-conn new-courier
+        ((resolve 'purple.users/send-push) db-conn new-courier-id
          (str "You have been assigned a new order, please check your "
               "Orders to view it"))
         ;; response
         {:success true
-         :message (str order-id " has been assigned to " new-courier)})
+         :message (str order-id " has been assigned to " new-courier-id)})
       (contains? #{"accepted" "enroute" "servicing"} (:status order))
       (do
-        ;; update the order so that is assigned to new-courier
+        ;; update the order so that is assigned to new-courier-id
         (change-order-assignment)
         ;; set the new-courier to busy, because they have an order
-        (set-courier-busy db-conn new-courier true)
+        (set-courier-busy db-conn new-courier-id true)
         ;; check to see if the old-courier should have their busy status changed
-        (if (not (courier-busy? db-conn old-courier))
-          (set-courier-busy db-conn old-courier false))
+        (if (not (courier-busy? db-conn old-courier-id))
+          (set-courier-busy db-conn old-courier-id false))
         ;; notify the new-courier that they have a new order
         (notify-new-courier)
         ;; notify the old-courier that they lost an order
         (notify-old-courier)
         ;; response
         {:success true
-         :message (str order-id " has been assigned from " new-courier " to "
-                       old-courier)})
+         :message (str order-id " has been assigned from " new-courier-id " to "
+                       old-courier-id)})
       (contains? #{"complete" "cancelled"} (:status order))
       (do
         ;; update the order so that is assigned to new-courier
@@ -663,8 +663,8 @@ order reassignment"
         (notify-old-courier)
         ;; response
         {:success true
-         :message (str order-id " has been assigned from " new-courier " to "
-                       old-courier)})
+         :message (str order-id " has been assigned from " new-courier-id " to "
+                       old-courier-id)})
       :else
       {:success false
        :message "An unknown error occured."})))
