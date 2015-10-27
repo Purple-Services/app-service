@@ -134,13 +134,17 @@
   "Assign courier-name to the first route open in the dashboard. Returns the
   courier's id value"
   [courier-name]
-  (let [courier-id (value (select-option ".assign-courier"
-                                         {:text courier-name}))]
-    (click "input.assign-courier")
+  (let [courier-id (value (select-option
+                           {:xpath
+                            (str "//td[text()='unassigned']/..//"
+                                 "select[@class='assign-courier']")}
+                           {:text courier-name}))]
+    (click {:xpath "//td[text()='unassigned']/..//"
+            "input[@class='assign-courier']"})
     (wait-until-alert-text (str "Are you sure you want to assign this order to "
                                 courier-name
                                 "? (this cannot be undone) "
-                                " (courier will be notified via push"
+                                " (courier(s) will be notified via push"
                                 " notification)"))
     (accept)
     (wait-until-alert-text
