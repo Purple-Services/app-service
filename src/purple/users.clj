@@ -697,10 +697,10 @@
                                ;; wrap in doall, otherwise Exception might not
                                ;; be caught
                                (doall (->> zones
-                                          split-on-comma
-                                          (map (comp #(Integer. %) s/trim))
-                                          set))
-                                    (catch Exception e (str "Error")))
+                                           split-on-comma
+                                           (map (comp #(Integer. %) s/trim))
+                                           set))
+                               (catch Exception e (str "Error")))
         existant-zones-set (set (map :id @@(resolve 'purple.dispatch/zones)))
         all-zones-exist? (every? identity
                                  (map #(contains? existant-zones-set %)
