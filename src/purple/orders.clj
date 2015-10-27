@@ -602,7 +602,7 @@ and their id matches the order's courier_id"
 
 (defn assign-to-courier-by-admin
   "Assign new-courier-id to order-id and alert the couriers of the
-order reassignment"
+  order reassignment"
   [db-conn order-id new-courier-id]
   (let [order (get-by-id db-conn order-id)
         old-courier-id (:courier_id order)
@@ -618,9 +618,7 @@ order reassignment"
                              db-conn old-courier-id
                              (str "You are no longer assigned to the "
                                   (:address_street order)
-                                  "order"))
-        ]
-    ;; check to make sure that the status is unassigned
+                                  "order"))]
     (cond
       (= (:status order) "unassigned")
       (do
