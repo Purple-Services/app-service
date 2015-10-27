@@ -632,7 +632,7 @@ and their id matches the order's courier_id"
         ;; response
         {:success true
          :message (str order-id " has been assigned to " new-courier-id)})
-      (contains? #{"accepted" "enroute" "servicing"} (:status order))
+      (contains? #{"assigned" "accepted" "enroute" "servicing"} (:status order))
       (do
         ;; update the order so that is assigned to new-courier-id
         (change-order-assignment)
