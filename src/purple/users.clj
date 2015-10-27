@@ -706,7 +706,7 @@
                                  (map #(contains? existant-zones-set %)
                                       zones-assignment-set))]
     (cond
-      (nil? (seq zones))
+      (s/blank? zones)
       (!update db-conn
                "couriers"
                {:zones zones}

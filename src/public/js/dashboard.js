@@ -521,7 +521,7 @@ $(document).ready(function(){
 			}),
 			dataType: "json",
 			contentType: "application/json",
-			async: "false",
+			async: false,
 			success: function(response) {
 			    if (response.success) {
 				console.log($(el).find("td.name").text() +
