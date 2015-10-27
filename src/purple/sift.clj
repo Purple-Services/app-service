@@ -24,21 +24,23 @@
   (sift-req "post" "events" (merge {:$type event-type} fields)))
 
 (defn create-account
-  [user {:keys [event-time]}] ;; only needed for backfilling historical data
+  ;; [user {:keys [event-time]}] ;; only needed for backfilling historical data
+  [user] ;; only needed for backfilling historical data
   (event "$create_account"
          (conj {:$user_id (:id user)
                 :$user_email (:email user)}
-               (not-nil-vec :$time event-time)
+               ;; (not-nil-vec :$time event-time)
                (not-nil-vec :$social_sign_on_type (case (:type user)
                                                     "facebook" "$facebook"
                                                     "google" "$google"
                                                     nil)))))
 
 (defn update-account
-  [user {:keys [event-time]}] ;; only needed for backfilling historical data
+  ;; [user {:keys [event-time]}] ;; only needed for backfilling historical data
+  [user] ;; only needed for backfilling historical data
   (event "$update_account"
          (conj {:$user_id (:id user)}
-               (not-nil-vec :$time event-time)
+               ;; (not-nil-vec :$time event-time)
                (not-nil-vec :$user_email (:email user))
                (not-nil-vec :$name (:name user))
                (not-nil-vec :$phone (:phone_number user))
