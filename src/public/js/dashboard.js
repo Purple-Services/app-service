@@ -513,29 +513,31 @@ $(document).ready(function(){
 		else
 		{ // update the server
 		    $.ajax({
-		    type: "POST",
-		    url: "dashboard/update-courier-zones",
-		    data: JSON.stringify({
-			"id": courierId(el),
-			"zones": courierZones(el)
-		    }),
-		    dataType: "json",
-		    contentType: "application/json",
-		    success: function(response) {
-			if (response.success) {
-			    console.log($(el).find("td.name").text() + "'s zone " +
-					"information has been updated.");
-			} else {
+			type: "POST",
+			url: "dashboard/update-courier-zones",
+			data: JSON.stringify({
+			    "id": courierId(el),
+			    "zones": courierZones(el)
+			}),
+			dataType: "json",
+			contentType: "application/json",
+			async: "false",
+			success: function(response) {
+			    if (response.success) {
+				console.log($(el).find("td.name").text() +
+					    "'s zone " +
+					    "information has been updated.");
+			    } else {
+				alert($(el).find("td.name").text() + "'s zone "
+				      + "was NOT updated!\n" +
+				      "Server Message:" +
+				      response.message);
+			    }
+			},
+			failure: function(response) {
 			    alert($(el).find("td.name").text() + "'s zone " +
-				  "was NOT updated!\n" +
-				  "Server Message:" +
-				  response.message);
+				  "was NOT updated!");
 			}
-		    },
-		    failure: function(response) {
-			alert($(el).find("td.name").text() + "'s zone " +
-			      "was NOT updated!");
-		    }
 		    });
 		}
 	    });
