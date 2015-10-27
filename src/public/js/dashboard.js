@@ -384,15 +384,14 @@ $(document).ready(function(){
         }
     });
 
-    var saveButton = document.createElement("input");
-    saveButton.type = "submit";
-    saveButton.className = "save-zones";
-    saveButton.setAttribute("value","Save");
-
-    var editButton = document.createElement("input");
-    editButton.type = "submit";
-    editButton.className = "edit-zones";
-    editButton.setAttribute("value","Edit");
+    // create a submit element with classes,value and type
+    function inputSubmit(classes,value,type) {
+	var inputSubmit = document.createElement("input");
+	inputSubmit.type = type;
+	inputSubmit.className = classes;
+	inputSubmit.setAttribute("value",value);
+	return inputSubmit;
+    };
 
     // listener for edit
     $('#zones').on('click', 'input.edit-zones',function(){
@@ -402,13 +401,13 @@ $(document).ready(function(){
                             {el.removeAttribute("disabled");});
 
         // replace the edit button with a save button
-        $(this).replaceWith(saveButton);
+        $(this).replaceWith(inputSubmit("save-zones","Save","submit"));
     });
 
     // listener for save
     $('#zones').on('click','input.save-zones', function() {
         // replace the save button with an edit button
-        $(this).replaceWith(editButton);
+        $(this).replaceWith(inputSubmit("edit-zones","Edit","submit"));
 
         // confirm that the user would like to save
         if (confirm("Are you sure you want to save your edits to the Zones?")) {
@@ -463,5 +462,102 @@ $(document).ready(function(){
             textInputFields.map(function(index,el)
                                 {el.setAttribute("disabled",true);});
         }
+    });
+
+    var couriersZoneState = [];
+
+    // listener for edit-courier
+    $('h2.couriers').on('click', 'input.edit-couriers',function(){
+
+	// get all of the td.zones for each courier
+	var tdZones = $("td.zones");
+
+	// clear out the current state of courierZoneState
+	courierZoneState = {};
+	// replace the content with a text input
+	tdZones.map(function (index,elem) {
+	    // set the state for each courier
+	    couriersZoneState.push(
+		{id:
+		 $(elem).parent().find("td.name").data("courier-id"),
+		 zones:
+		 $(elem).text()
+		});
+
+	    $(elem).html(inputSubmit("courier-zones",$(elem).text(),"text"));
+	});
+
+        // replace the edit button with a save button
+        $(this).replaceWith(inputSubmit("save-couriers","Save","submit"));
+    });
+
+    // listener for save-courier
+    $('h2.couriers').on('click','input.save-couriers', function() {
+	// replace the save button with an edit button
+	$(this).replaceWith(inputSubmit("edit-couriers","Edit","submit"));
+
+	// confirm that the user would like to save
+	if (confirm("Are you sure you want to save your edits to the Couriers?")) {
+	    // get each courier row
+	    var courierRows = $("table#couriers tbody tr");
+
+	    // given a tr, get the courier's id
+	    var courierId = function(tr) {
+		return $(tr).find("td.name").data("courier-id");
+	    };
+
+	    // given a tr, get the zones string
+	    var courierZones = function(tr) {
+		return $(tr).find("td.zones").find("input.courier-zones").val();
+	    };
+
+	    // update each courier row
+	    courierRows.map(function(index,el) {
+		// get the current state of the courier
+		var courierState =
+		    couriersZoneState.filter(
+			function (state)
+			{return state.id === courierId(el)}).pop();
+
+		if (courierState.zones === courierZones(el))
+		{
+
+		    // do nothing
+		}
+		else
+		{ // update the server
+		    $.ajax({
+			type: "POST",
+			url: "dashboard/update-courier-zones",
+			data: JSON.stringify({
+			    "id": courierId(el),
+			    "zones": courierZones(el)
+			}),
+			dataType: "json",
+			contentType: "application/json",
+			async: false,
+			success: function(response) {
+			    if (response.success) {
+				console.log($(el).find("td.name").text() +
+					    "'s zone " +
+					    "information has been updated.");
+			    } else {
+				alert($(el).find("td.name").text() + "'s zone "
+				      + "was NOT updated!\n" +
+				      "Server Message:" +
+				      response.message);
+			    }
+			},
+			failure: function(response) {
+			    alert($(el).find("td.name").text() + "'s zone " +
+				  "was NOT updated!");
+			}
+		    });
+		}
+	    });
+
+	    // reload the page
+	    location.reload();
+	}
     });
 });

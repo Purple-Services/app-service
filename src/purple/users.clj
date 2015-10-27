@@ -689,3 +689,38 @@
     (make-call (:phone_number user)
                call-url)
     {:success true}))
+
+(defn update-courier-zones!
+  "Update the zones for courier with user-id"
+  [db-conn user-id zones]
+  (let [zones-assignment-set (try
+                               ;; wrap in doall, otherwise Exception might not
+                               ;; be caught
+                               (doall (->> zones
+                                          split-on-comma
+                                          (map (comp #(Integer. %) s/trim))
+                                          set))
+                                    (catch Exception e (str "Error")))
+        existant-zones-set (set (map :id @@(resolve 'purple.dispatch/zones)))
+        all-zones-exist? (every? identity
+                                 (map #(contains? existant-zones-set %)
+                                      zones-assignment-set))]
+    (cond
+      (s/blank? zones)
+      (!update db-conn
+               "couriers"
+               {:zones zones}
+               {:id user-id})
+      (= zones-assignment-set "Error")
+      {:success false
+       :message "Incorrectly formatted zone assignment"}
+      (not all-zones-exist?)
+      {:success false
+       :message "All zones in assignment must exist"}
+      all-zones-exist?
+      (!update db-conn
+               "couriers"
+               {:zones (s/join "," zones-assignment-set)}
+               {:id user-id})
+      :else {:success false
+             :message "Unknown error"})))
