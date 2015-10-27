@@ -106,12 +106,12 @@
 
              [:td.location]
              (do->
-                   (set-attr :data-lat (:lat t))
-                   (set-attr :data-lng (:lng t))
-                   (if (and (= 0.0 (:lat t))
-                            (= 0.0 (:lng t)))
-                     (add-class "no-gps")
-                     (add-class)))
+              (set-attr :data-lat (:lat t))
+              (set-attr :data-lng (:lng t))
+              (if (and (= 0.0 (:lat t))
+                       (= 0.0 (:lng t)))
+                (add-class "no-gps")
+                (add-class)))
 
              [:td.location :a]
              (content "View On Map")
@@ -195,7 +195,7 @@
 
              [:td.customer_name]
              (content (str ;; "(" (:customer_sift_score t) ") "
-                           (:customer_name t)))
+                       (:customer_name t)))
              
              [:td.customer_phone_number]
              (content (:customer_phone_number t))
@@ -240,42 +240,42 @@
   
   [:#users :tbody :tr]
   (clone-for [t (:users x)]
-                   [:td.name]
-                   (content (:name t))
+             [:td.name]
+             (content (:name t))
 
-                   [:td.email]
-                   (content (:email t))
+             [:td.email]
+             (content (:email t))
 
-                   [:td.phone_number]
-                   (content (:phone_number t))
+             [:td.phone_number]
+             (content (:phone_number t))
 
-                   [:td.has_added_card]
-                   (content
-                    (if (s/blank? (:stripe_default_card t))
-                      "No"
-                      "Yes"))
+             [:td.has_added_card]
+             (content
+              (if (s/blank? (:stripe_default_card t))
+                "No"
+                "Yes"))
 
-                   [:td.push_set_up]
-                   (html-content
-                    (if (s/blank? (:arn_endpoint t))
-                      "No"
-                      (str "Yes "
-                           "<input type='checkbox' "
-                           "value='" (:id t) "' "
-                           "class='send-push-to' "
-                           "/>")))
+             [:td.push_set_up]
+             (html-content
+              (if (s/blank? (:arn_endpoint t))
+                "No"
+                (str "Yes "
+                     "<input type='checkbox' "
+                     "value='" (:id t) "' "
+                     "class='send-push-to' "
+                     "/>")))
 
-                   [:td.os]
-                   (content (:os t))
+             [:td.os]
+             (content (:os t))
 
-                   [:td.app_version]
-                   (content (:app_version t))
+             [:td.app_version]
+             (content (:app_version t))
 
-                   [:td.timestamp_created]
-                   (content (unix->full
-                             (/ (.getTime (:timestamp_created t))
-                                1000)))
-                   )
+             [:td.timestamp_created]
+             (content (unix->full
+                       (/ (.getTime (:timestamp_created t))
+                          1000)))
+             )
 
   [:#users-count] (content
                    (str "(" (:users-count x) ")"))
@@ -467,10 +467,7 @@
              :couriers (map #(assoc %
                                     :name (id->name (:id %))
                                     :phone_number (id->phone_number (:id %))
-                                    :assigned_zones
-                                    (set (map read-string
-                                              (split-on-comma
-                                               (:zones %)))))
+                                    :assigned_zones (zones-str->set (:zones %)))
                             all-couriers)
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
@@ -479,7 +476,7 @@
                                   :customer_phone_number
                                   (:phone_number
                                    (first (get users-by-id (:user_id %))))
-
+                                  
                                   :customer_sift_score
                                   (:sift_score
                                    (first (get users-by-id (:user_id %))))

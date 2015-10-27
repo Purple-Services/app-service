@@ -50,7 +50,24 @@
      ~x
      ~y))
 
+(defn in? 
+  "true if seq contains elm"
+  [seq elm]  
+  (some #(= elm %) seq))
+
+(defn not-nil-vec
+  [k v]
+  (when-not (nil? v) [k v]))
+
 (defn split-on-comma [x] (s/split x #","))
+
+(defn zones-str->set
+  [zones]
+  (if (s/blank? zones)
+    #{}
+    (->> (split-on-comma zones)
+         (map read-string)
+         set)))
 
 (defn five-digit-zip-code
   [zip-code]
@@ -136,15 +153,6 @@
           time-coerce/to-long
           (quot 1000)))))
 
-(defn in? 
-  "true if seq contains elm"
-  [seq elm]  
-  (some #(= elm %) seq))
-
-(defn not-nil-vec
-  [k v]
-  (when-not (nil? v) [k v]))
-
 (defn rand-str
   [ascii-codes length]
   (apply str (repeatedly length #(char (rand-nth ascii-codes)))))
@@ -190,9 +198,9 @@
 (defn send-email [message-map]
   (try (postal/send-message config/email
                             (assoc message-map
-                              :from (str "Purple Services Inc <"
-                                         config/email-from-address
-                                         ">")))
+                                   :from (str "Purple Services Inc <"
+                                              config/email-from-address
+                                              ">")))
        {:success true}
        (catch Exception e {:success false
                            :message "Message could not be sent to that address."})))
