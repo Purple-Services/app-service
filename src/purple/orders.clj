@@ -636,11 +636,10 @@ and their id matches the order's courier_id"
       (do
         ;; update the order so that is assigned to new-courier-id
         (change-order-assignment)
-        ;; set the new-courier to busy, because they have an order
+        ;; set the new-courier to busy
         (set-courier-busy db-conn new-courier-id true)
-        ;; check to see if the old-courier should have their busy status changed
-        (if (not (courier-busy? db-conn old-courier-id))
-          (set-courier-busy db-conn old-courier-id false))
+        ;; adjust old courier to correct busy setting
+        (update-courier-busy db-conn old-courier-id)
         ;; notify the new-courier that they have a new order
         (notify-new-courier)
         ;; notify the old-courier that they lost an order
