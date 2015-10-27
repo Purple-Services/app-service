@@ -318,6 +318,20 @@ $(document).ready(function(){
         }
     });
 
+    // don't display any controls for assignment unless the order is
+    // unassigned
+    $("#orders tr").map(function(index,el) {
+	if ( $(el).find("td.status").text() != "unassigned")
+	{
+	    $(el).find(".assign-courier-interface").css("display","none");
+	}});
+
+    // display the assign-courier-interface for an element
+    $('td.courier_name').dblclick(function(){
+	$(this).find("div.assign-courier-interface").css("display","block");
+	$(this).find("div.assigned-courier").css("display","none");
+    });
+
     $('select.assign-courier').change(function(){
         var courier_id = $(this).val();
         var input_button = $(this).parent().find("input.assign-courier");
@@ -328,7 +342,7 @@ $(document).ready(function(){
         }
     });
 
-    $('input.assign-courier').click(function(){
+    $('input.assign-courier').on('click',function() {
         var selected_courier = $(this).parent().find("select option:selected").text();
         if (confirm("Are you sure you want to assign this order to " +
                     selected_courier +

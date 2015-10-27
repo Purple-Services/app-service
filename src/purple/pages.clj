@@ -144,31 +144,39 @@
                                       :data-order-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
-             (content (html [:select {:class "assign-courier"}
-                             [:option
-                              (if (= (:status t)
-                                     "unassigned")
-                                {:selected ""})
-                              "Assign to Courier"]
-                             (map
-                              #(html
-                                [:option
-                                 (if (= (:courier_id t)
-                                        (:id %))
-                                   {:value (:id %)
-                                    :selected ""}
-                                   {:value (:id %)})
-                                 (:name %) ])
-                              ;; filter out the couriers to only those assigned
-                              ;; to the zone
-                              (filter #(contains? (:assigned_zones %) (:zone t))
-                                      (:couriers x)))]
-                            [:input {:type "submit"
-                                     :class "assign-courier"
-                                     :value "Save"
-                                     :data-order-id (:id t)
-                                     :zone (:zone t)
-                                     :disabled true}]))
+             (content (html [:div
+                             {:class "assign-courier-interface"}
+                             [:select {:class "assign-courier"}
+                              [:option
+                               (if (= (:status t)
+                                      "unassigned")
+                                 {:selected ""})
+                               "Assign to Courier"]
+                              (map
+                               #(html
+                                 [:option
+                                  (if (= (:courier_id t)
+                                         (:id %))
+                                    {:value (:id %)
+                                     :selected ""}
+                                    {:value (:id %)})
+                                  (:name %) ])
+                               ;; filter out the couriers to only those assigned
+                               ;; to the zone
+                               (filter #(contains? (:assigned_zones %) (:zone t))
+                                       (:couriers x)))]
+                             [:input {:type "submit"
+                                      :class "assign-courier"
+                                      :value "Save"
+                                      :data-order-id (:id t)
+                                      :zone (:zone t)
+                                      :disabled true
+                                      }]]
+                            [:div {:class "assigned-courier"}
+                             (:name
+                              (first
+                               (filter #(= (:id %) (:courier_id t))
+                                       (:couriers x))))]))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
