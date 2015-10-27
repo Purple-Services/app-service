@@ -450,16 +450,26 @@ $(document).ready(function(){
         }
     });
 
+    var couriersZoneState = [];
+
     // listener for edit-courier
     $('h2.couriers').on('click', 'input.edit-couriers',function(){
 
-	// get the zones
-	var zoneIds = $("#zone-ids").data("zone-ids").split(",");
 	// get all of the td.zones for each courier
 	var tdZones = $("td.zones");
 
+	// clear out the current state of courierZoneState
+	courierZoneState = {};
 	// replace the content with a text input
 	tdZones.map(function (index,elem) {
+	    // set the state for each courier
+	    couriersZoneState.push(
+		{id:
+		 $(elem).parent().find("td.name").data("courier-id"),
+		 zones:
+		 $(elem).text()
+		});
+
 	    $(elem).html(inputSubmit("courier-zones",$(elem).text(),"text"));
 	});
 
@@ -489,7 +499,20 @@ $(document).ready(function(){
 
 	    // update each courier row
 	    courierRows.map(function(index,el) {
-		$.ajax({
+		// get the current state of the courier
+		var courierState =
+		    couriersZoneState.filter(
+			function (state)
+			{return state.id === courierId(el)}).pop();
+
+		if (courierState.zones === courierZones(el))
+		{
+
+		    // do nothing
+		}
+		else
+		{ // update the server
+		    $.ajax({
 		    type: "POST",
 		    url: "dashboard/update-courier-zones",
 		    data: JSON.stringify({
@@ -513,7 +536,8 @@ $(document).ready(function(){
 			alert($(el).find("td.name").text() + "'s zone " +
 			      "was NOT updated!");
 		    }
-		});
+		    });
+		}
 	    });
 
 	    // reload the page
