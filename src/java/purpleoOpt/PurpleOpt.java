@@ -34,13 +34,6 @@ public class PurpleOpt {
 //			return status.computeAssignment(couriers, orders);
 //		}
 //	}
-
-    public static String testSim(String arg1) {
-        System.out.println("testSim");
-        System.out.println(arg1);
-        
-        return "K";
-    }
     
 	public static String computeDistance(HashMap<String,Object> input) {
 		@SuppressWarnings("serial")
@@ -50,7 +43,7 @@ public class PurpleOpt {
 		@SuppressWarnings("serial")
 		class InOrder extends HashMap<String, Object> { };
 		@SuppressWarnings("serial")
-		class InOrders extends HashMap<String, InOrder> { };
+		class InOrders extends HashMap<String, HashMap> { };
 		
 		// --- read data from input to structures that are easy to use ---
 		
@@ -62,7 +55,9 @@ public class PurpleOpt {
 		System.out.println();
 		
 		// read orders
-		InOrders orders = (InOrders) input.get("orders");
+        System.out.println(input.get("orders").getClass());
+        
+		HashMap<String, Object> orders = (HashMap) input.get("orders");
 		int nOrders = orders.size();
 		System.out.println("# orders: " + nOrders);
 		
@@ -71,7 +66,7 @@ public class PurpleOpt {
 			// print order ID
 			System.out.println("  order: " + order_key);
 			// get the order by ID (key)
-			InOrder order = orders.get(order_key);
+			HashMap<String, Object> order = (HashMap) orders.get(order_key);
 			// list the keys of each order
 			System.out.println("  keys in this order: ");
 			for(String key: order.keySet()) {
@@ -83,13 +78,13 @@ public class PurpleOpt {
 			System.out.println("    lng: " + (Double) order.get("lng"));
 			System.out.println("    gas_type: " + (String) order.get("gas_type"));
 			System.out.println("    gallons: " + (Integer) order.get("gallons"));
-			System.out.println("    target_time_start: " + (Long) order.get("target_time_start"));
-			System.out.println("    target_time_end : " + (Long) order.get("target_time_end "));
+			System.out.println("    target_time_start: " + (Integer) order.get("target_time_start"));
+			System.out.println("    target_time_end : " + (Integer) order.get("target_time_end "));
 			System.out.println("    status: " + (String) order.get("status"));
 			
 			// print the status history
 			@SuppressWarnings("unchecked")
-			HashMap<String,Long> status_times = (HashMap<String,Long>) order.get("status_times");
+			HashMap<String,Long> status_times = (HashMap) order.get("status_times");
 			
 			System.out.println("    key:value pairs in this status_times: ");
 			for(String timekey: status_times.keySet()) {
@@ -98,7 +93,7 @@ public class PurpleOpt {
 		}
 		
 		// read couriers
-		InCouriers couriers = (InCouriers) input.get("couriers");
+		HashMap<String, Object> couriers = (HashMap) input.get("couriers");
 		int nCouriers = couriers.size();
 		System.out.println("# of couriers: " + nCouriers);
 		
@@ -107,7 +102,7 @@ public class PurpleOpt {
 			// print courier ID
 			System.out.println("  courier: " + courier_key);
 			// get the order by ID (key)
-			InCourier courier = couriers.get(courier_key);
+			HashMap<String, Object> courier = (HashMap) couriers.get(courier_key);
 			// list the keys of each courier_key
 			System.out.println("  keys in this couriers: ");
 			for(String key: courier.keySet()) {
@@ -117,7 +112,17 @@ public class PurpleOpt {
 			// print courier content manually
 			System.out.println("    lat: " + (Double) courier.get("lat"));
 			System.out.println("    lng: " + (Double) courier.get("lng"));
-			System.out.println("    on_duty: " + (Boolean) courier.get("on_duty"));
+            System.out.println("    connected: " + (Boolean) courier.get("connected"));
+            System.out.println("    last_ping: " + (Integer) courier.get("last_ping"));
+
+
+            // print zones
+			System.out.println("    zones:" );
+			@SuppressWarnings("unchecked")
+			List<String> zones = (List<String>) courier.get("zones");
+			for(String zone: zones) {
+				System.out.println(zone + " ");
+			}
 			
 			// print assiged_orders
 			System.out.println("    assigned_orders:" );

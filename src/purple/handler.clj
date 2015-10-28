@@ -3,7 +3,8 @@
         cheshire.core
         ring.util.response
         clojure.walk
-        [purple.db :only [conn !select !insert !update mysql-escape-str]])
+        [purple.db :only [conn !select !insert !update mysql-escape-str]]
+        [clojure.algo.generic.functor :only [fmap]])
   (:require [purple.config :as config]
             [purple.users :as users]
             [purple.orders :as orders]
@@ -17,7 +18,8 @@
             [clojure.string :as s]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :as middleware]
-            [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]))
+            [ring.middleware.basic-authentication :refer [wrap-basic-authentication]])
+  (:import [purpleOpt PurpleOpt]))
 
 (defn dashboard-auth?
   [username password]
@@ -415,6 +417,42 @@
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
+
+  (GET "/j" []
+       (wrap-page
+        (response
+         (PurpleOpt/computeDistance
+          (map->java-hash-map
+           {"orders" (->> (!select (conn)
+                                   "orders"
+                                   [:id :lat :lng :gas_type
+                                    :gallons :target_time_start
+                                    :target_time_end :status :event_log]
+                                   ;; need also zone-id
+                                   {})
+                          (take 3)
+                          (map #(assoc %
+                                       :status_times
+                                       (-> (:event_log %)
+                                           (s/split #"\||\s")
+                                           (->> (remove s/blank?)
+                                                (apply hash-map)
+                                                (fmap read-string)))))
+                          (map (juxt :id stringify-keys))
+                          (into {}))
+            "couriers" (->> (!select (conn)
+                                     "couriers"
+                                     [:id :lat :lng :last_ping
+                                      :connected :zones]
+                                     {:active true
+                                      :on_duty true})
+                            (take 3)
+                            (map #(update-in % [:zones] split-on-comma))
+                            (map #(assoc % :assigned_orders []))
+                            (map (juxt :id stringify-keys))
+                            (into {}))})))))
+
+  
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))
   (route/resources "/")
