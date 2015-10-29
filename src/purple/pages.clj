@@ -617,7 +617,8 @@
   [:#pikaday-css] (set-attr :href (str (:base-url x)
                                        "css/pikaday.css"))
   [:#dashboard-cljs] (set-attr :src (str (:base-url x)
-                                       "js/dashboard_cljs.js")))
+                                         "js/dashboard_cljs.js"))
+  [:#base-url] (set-attr :value (str (:base-url x) "dashboard/")))
 
 (defn dash-map []
   (apply str (dash-map-template {:base-url config/base-url})))
