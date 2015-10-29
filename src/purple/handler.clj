@@ -430,7 +430,7 @@
                                     :target_time_end :status :event_log]
                                    ;; need also zone-id
                                    {})
-                          (take 3)
+                          (take 25)
                           (map #(assoc %
                                        :status_times
                                        (-> (:event_log %)
@@ -446,7 +446,7 @@
                                       :connected :zones]
                                      {:active true
                                       :on_duty true})
-                            (take 3)
+                            ;(take 3)
                             (map #(update-in % [:zones] split-on-comma))
                             (map #(assoc % :assigned_orders []))
                             (map (juxt :id stringify-keys))
