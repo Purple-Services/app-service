@@ -609,3 +609,15 @@
                                        (apply str))
                                   "\")"))))
       {:success true}))
+
+(deftemplate dash-map-template "templates/dashmap.html"
+  [x]
+  [:#main-css] (set-attr :href (str (:base-url x)
+                                    "css/main.css"))
+  [:#pikaday-css] (set-attr :href (str (:base-url x)
+                                       "css/pikaday.css"))
+  [:#dashboard-cljs] (set-attr :src (str (:base-url x)
+                                       "js/dashboard_cljs.js")))
+
+(defn dash-map []
+  (apply str (dash-map-template {:base-url config/base-url})))
