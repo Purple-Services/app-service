@@ -29,6 +29,11 @@
   (and (= (:username config/basic-auth-read-only) username)
        (= (:password config/basic-auth-read-only) password)))
 
+(defn sift-webhook-auth?
+  [username password]
+  (and (= (:username config/sift-webhook-basic-auth) username)
+       (= (:password config/sift-webhook-basic-auth) password)))
+
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
 
@@ -410,6 +415,14 @@
                    (-> (pages/twiml-simple config/delayed-assignment-message)
                        response
                        wrap-xml))))
+  (POST "/sift-webhook" {body :body}
+        (do (wrap-basic-authentication
+             (let [b (keywordize-keys body)]
+               (send-email {:to "chris@purpledelivery.com"
+                            :subject "Purple debug 3"
+                            :body (str b)}))
+             sift-webhook-auth?)
+            (response {:success true})))
   (GET "/download" {headers :headers}
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}

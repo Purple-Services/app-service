@@ -26,7 +26,10 @@
     (System/setProperty "SEGMENT_WRITE_KEY" (env :segment-write-key))
     (System/setProperty "BASE_URL" (env :base-url))
     (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
-    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))))
+    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))
+    (System/setProperty "SIFT_WEBHOOK_AUTH_USERNAME" (env :sift-webhook-auth-username))
+    (System/setProperty "SIFT_WEBHOOK_AUTH_PASSWORD" (env :sift-webhook-auth-password))
+    ))
 
 ;;;; Base Url of the web service
 ;; Should include trailing forward-slash (e.g., "http://domain.com/")
@@ -54,6 +57,9 @@
 (def basic-auth-read-only
   {:username (System/getProperty "BASIC_AUTH_READ_ONLY_USERNAME")
    :password (System/getProperty "BASIC_AUTH_READ_ONLY_PASSWORD")})
+(def sift-webhook-basic-auth
+  {:username (System/getProperty "SIFT_WEBHOOK_AUTH_USERNAME")
+   :password (System/getProperty "SIFT_WEBHOOK_AUTH_PASSWORD")})
 
 ;;;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
