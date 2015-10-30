@@ -53,6 +53,25 @@
     (with-connection db-config
       (apply do-commands ebdb-sql))))
 
+(defn clear-test-database
+  []
+  ;; clear out all of the changes made to the ebdb_test database
+  (with-connection ebdb-test-config
+    (apply do-commands '("DROP DATABASE IF EXISTS ebdb_test"
+                         "CREATE DATABASE IF NOT EXISTS ebdb_test"))))
+
+(defn clear-and-populate-test-database
+  []
+   ;; start with a clean ebdb_test database
+  (clear-test-database)
+  ;; populate the tables
+  (create-tables-and-populate-database ebdb-test-config))
+
+(defn setup-ebdb-test-pool!
+  []
+  (db/set-pooled-db! ebdb-test-config)
+  (clear-and-populate-test-database))
+
 ;; THIS FIXTURE REQUIRES A LOCAL MySQL DATABASE THAT HAS GIVEN PROPER
 ;; PERMISSIONS TO purplemaster FOR ebdb_test, OTHERWISE TESTS WILL FAIL!
 ;;
@@ -63,15 +82,13 @@
 (defn database-fixture
   "Remove all test data from the database"
   [test]
-  ;; start with a clean ebdb_test database
-  (with-connection ebdb-test-config
-    (apply do-commands '("DROP DATABASE IF EXISTS ebdb_test"
-                         "CREATE DATABASE IF NOT EXISTS ebdb_test")))
-  ;; populate the tables
-  (create-tables-and-populate-database ebdb-test-config)
+  (clear-and-populate-test-database)
   ;; run the test
   (test)
-    ;; clear out all of the changes made to the ebdb_test database
-  (with-connection ebdb-test-config
-    (apply do-commands '("DROP DATABASE IF EXISTS ebdb_test"
-                         "CREATE DATABASE IF NOT EXISTS ebdb_test"))))
+  (clear-test-database))
+
+(defn setup-ebdb-test-for-conn-fixture
+  [test]
+  (setup-ebdb-test-pool!)
+  (test)
+  (clear-test-database))

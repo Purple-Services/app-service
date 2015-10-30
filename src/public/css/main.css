@@ -68,7 +68,9 @@ td.late {
     display: none;
 }
 
-
+.no-gps, .no-gps a {
+    color: red;
+}
 
 /* zone colors */
 .purple, .purple a {
