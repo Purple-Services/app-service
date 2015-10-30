@@ -60,6 +60,7 @@ td.late {
     color: #3498db;
     font-weight: normal;
     cursor: pointer;
+    text-decoration: none;
 }
 
 .only-show-orders h2:not(.part-of-orders),

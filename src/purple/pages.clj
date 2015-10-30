@@ -507,7 +507,7 @@
              :users (sort-by #(.getTime (:timestamp_created %))
                              >
                              (map (comp first val) users-by-id))
-             :coupons (sort-by :times-used
+             :coupons (sort-by (juxt :times-used :code)
                                >
                                (map #(assoc % :times-used
                                             (-> (:used_by_license_plates %)
