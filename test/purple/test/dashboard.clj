@@ -1,9 +1,11 @@
 (ns purple.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
             [purple.handler :refer [app]]
-            [purple.db :refer [!select conn]]
+            [purple.db :refer [!select]]
             [purple.dispatch :as dispatch]
-            [purple.test.db :refer [db-config]]
+            [purple.test.db :refer [ebdb-test-config
+                                    setup-ebdb-test-pool!
+                                    clear-test-database]]
             [purple.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-webdriver.taxi :refer :all]
@@ -21,17 +23,22 @@
 
 ;; the fixtures setup are based off of
 ;; https://semaphoreci.com/community/tutorials/testing-clojure-web-applications-with-selenium
-(defn start-server []
-  (loop [server (run-jetty app {:port test-port, :join? false})]
-    (if (.isStarted server)
-      server
-      (recur server))))
+(defn start-server [port]
+  (do
+    ;; setup the app to use the ebdb_test database
+    (setup-ebdb-test-pool!)
+    (loop [server (run-jetty app {:port port, :join? false})]
+      (if (.isStarted server)
+        server
+        (recur server)))))
 
 (defn stop-server [server]
-  (.stop server))
+  (do
+    (clear-test-database)
+    (.stop server)))
 
 (defn with-server [t]
-  (let [server (start-server)]
+  (let [server (start-server test-port)]
     (t)
     (stop-server server)))
 
@@ -45,6 +52,8 @@
   (start-browser)
   (t)
   (stop-browser))
+
+(use-fixtures :once with-browser with-server)
 
 ;; this function is used to slow down clojure so the browser has time to catch
 ;; up. If you are having problems with tests passing, particuarly if they appear
@@ -125,13 +134,17 @@
   "Assign courier-name to the first route open in the dashboard. Returns the
   courier's id value"
   [courier-name]
-  (let [courier-id (value (select-option ".assign-courier"
-                                         {:text courier-name}))]
-    (click "input.assign-courier")
+  (let [courier-id (value (select-option
+                           {:xpath
+                            (str "//td[text()='unassigned']/..//"
+                                 "select[@class='assign-courier']")}
+                           {:text courier-name}))]
+    (click {:xpath "//td[text()='unassigned']/..//"
+            "input[@class='assign-courier']"})
     (wait-until-alert-text (str "Are you sure you want to assign this order to "
                                 courier-name
                                 "? (this cannot be undone) "
-                                " (courier will be notified via push"
+                                " (courier(s) will be notified via push"
                                 " notification)"))
     (accept)
     (wait-until-alert-text
@@ -183,7 +196,6 @@ and the new value is equal to comp-fn"
     (is (= number-new
            (comp-fn)))))
 
-(use-fixtures :once with-browser with-server)
 
 
 ;; main test functions
@@ -198,14 +210,14 @@ and the new value is equal to comp-fn"
 (defn add-order-and-cancel-it
   []
   (testing "Add an order an cancel it in the dashboard"
-    (orders/add-order (orders/test-order db-config) db-config)
+    (orders/add-order (orders/test-order ebdb-test-config) ebdb-test-config)
     (go-to-dashboard)
     (cancel-order)))
 
 (defn add-order-assign-and-cancel
   []
   (testing "Add an order, assign it a courier and then cancel it"
-    (orders/add-order (orders/test-order db-config) db-config)
+    (orders/add-order (orders/test-order ebdb-test-config) ebdb-test-config)
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (is (true? (is-courier-busy? "Test Courier1")))
@@ -216,7 +228,7 @@ and the new value is equal to comp-fn"
   []
   (testing "An order is added, assigned to 'Test Courier1' and
 the status cycled through. Courier is checked for proper busy status"
-    (orders/add-order (orders/test-order db-config) db-config)
+    (orders/add-order (orders/test-order ebdb-test-config) ebdb-test-config)
     (go-to-dashboard)
     ;; assign the courier
     (assign-courier "Test Courier1")
@@ -236,8 +248,8 @@ the status cycled through. Courier is checked for proper busy status"
   (testing "Two orders are added, two are assigned to 'Test Courier1',
 both are cycled and the busy status of the courier is checked"
     ;; add two orders
-    (orders/add-order (orders/test-order db-config) db-config)
-    (orders/add-order (orders/test-order db-config) db-config)
+    (orders/add-order (orders/test-order ebdb-test-config) ebdb-test-config)
+    (orders/add-order (orders/test-order ebdb-test-config) ebdb-test-config)
     (go-to-dashboard)
     (assign-courier "Test Courier1")
     (is (true? (is-courier-busy? "Test Courier1")))
@@ -281,7 +293,7 @@ both are cycled and the busy status of the courier is checked"
   []
   (testing "A courier's correct phone number is displayed in the dashboard"
     (let [courier-name "Test Courier1"
-          phone-number (-> (!select db-config "users" [:phone_number]
+          phone-number (-> (!select ebdb-test-config "users" [:phone_number]
                                     {:name courier-name})
                            first
                            :phone_number)]

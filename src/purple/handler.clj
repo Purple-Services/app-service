@@ -82,7 +82,7 @@
                                    :email-override (:email_override b)
                                    :client-ip (or (get headers "x-forwarded-for")
                                                   remote-addr)))))
-              ;; Only for native users
+             ;; Only for native users
              (POST "/register" {body :body
                                 headers :headers
                                 remote-addr :remote-addr}
@@ -329,18 +329,18 @@
               ;; Dashboard admin cancels order
               (POST "/cancel-order" {body :body}
                     ;; cancel the order
-                   (response
-                    (let [b (keywordize-keys body)
-                          db-conn (conn)]
-                      (orders/cancel
-                       db-conn
-                       (:user_id b)
-                       (:order_id b)
-                       :origin-was-dashboard true
-                       :notify-customer true
-                       :suppress-user-details true
-                       :override-cancellable-statuses
-                       (conj config/cancellable-statuses "servicing")))))
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/cancel
+                        db-conn
+                        (:user_id b)
+                        (:order_id b)
+                        :origin-was-dashboard true
+                        :notify-customer true
+                        :suppress-user-details true
+                        :override-cancellable-statuses
+                        (conj config/cancellable-statuses "servicing")))))
               ;; admin updates status of order (e.g., Enroute -> Servicing)
               (POST "/update-status" {body :body}
                     (response
@@ -367,6 +367,15 @@
                                               (:fuel_prices b)
                                               (:service_fees b)
                                               (:service_time_bracket b)))))
+              ;; update a courier's assigned zones
+              (POST "/update-courier-zones" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (users/update-courier-zones!
+                        db-conn
+                        (:id b)
+                        (:zones b)))))
               (GET "/dash-map" []
                    (-> (pages/dash-map)
                        response

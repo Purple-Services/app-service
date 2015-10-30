@@ -62,7 +62,6 @@
   [:#last-updated] (content (str "Last Updated: "
                                  (unix->full (quot (System/currentTimeMillis)
                                                    1000))))
-
   [:#couriers :tbody :tr]
   (clone-for [t (:couriers x)]
              [:td.connected]
@@ -72,13 +71,18 @@
                    (content (if (:connected t) "Yes" "No")))
 
              [:td.name]
-             (content (:name t))
+             (do->
+              (set-attr :data-courier-id (:id t))
+              (content (:name t)))
 
              [:td.courier_phone_number]
              (content (:phone_number t))
 
              [:td.busy]
              (content (if (:busy t) "Yes" "No"))
+
+             [:td.last_seen]
+             (content (unix->full (:last_ping t)))
 
              [:td.lateness]
              (content (let [orders (filter #(and (= (:courier_id %)
@@ -101,8 +105,13 @@
              (content (:zones t))
 
              [:td.location]
-             (do->  (set-attr :data-lat (:lat t))
-                    (set-attr :data-lng (:lng t)))
+             (do->
+              (set-attr :data-lat (:lat t))
+              (set-attr :data-lng (:lng t))
+              (if (and (= 0.0 (:lat t))
+                       (= 0.0 (:lng t)))
+                (add-class "no-gps")
+                (add-class)))
 
              [:td.location :a]
              (content "View On Map")
@@ -144,20 +153,39 @@
                                       :data-order-id (:id t)}]))
                      (content (:status t))))
              [:td.courier_name]
-             (if (= (:status t)
-                    "unassigned")
-               (content (html [:select {:class "assign-courier"}
-                               [:option "Assign to Courier"]
-                               (map
-                                #(html
-                                  [:option {:value (:id %)} (:name %) ])
-                                (:couriers x))]
-                              [:input {:type "submit"
-                                       :class "assign-courier"
-                                       :value "Save"
-                                       :data-order-id (:id t)
-                                       :disabled true}]))
-               (content (:courier_name t)))
+             (content (html [:div
+                             {:class "assign-courier-interface"}
+                             [:select {:class "assign-courier"}
+                              [:option
+                               (if (= (:status t)
+                                      "unassigned")
+                                 {:selected ""})
+                               "Assign to Courier"]
+                              (map
+                               #(html
+                                 [:option
+                                  (if (= (:courier_id t)
+                                         (:id %))
+                                    {:value (:id %)
+                                     :selected ""}
+                                    {:value (:id %)})
+                                  (:name %) ])
+                               ;; filter out the couriers to only those assigned
+                               ;; to the zone
+                               (filter #(contains? (:assigned_zones %) (:zone t))
+                                       (:couriers x)))]
+                             [:input {:type "submit"
+                                      :class "assign-courier"
+                                      :value "Save"
+                                      :data-order-id (:id t)
+                                      :zone (:zone t)
+                                      :disabled true
+                                      }]]
+                            [:div {:class "assigned-courier"}
+                             (:name
+                              (first
+                               (filter #(= (:id %) (:courier_id t))
+                                       (:couriers x))))]))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
@@ -167,7 +195,7 @@
 
              [:td.customer_name]
              (content (str ;; "(" (:customer_sift_score t) ") "
-                           (:customer_name t)))
+                       (:customer_name t)))
              
              [:td.customer_phone_number]
              (content (:customer_phone_number t))
@@ -212,42 +240,42 @@
   
   [:#users :tbody :tr]
   (clone-for [t (:users x)]
-                   [:td.name]
-                   (content (:name t))
+             [:td.name]
+             (content (:name t))
 
-                   [:td.email]
-                   (content (:email t))
+             [:td.email]
+             (content (:email t))
 
-                   [:td.phone_number]
-                   (content (:phone_number t))
+             [:td.phone_number]
+             (content (:phone_number t))
 
-                   [:td.has_added_card]
-                   (content
-                    (if (s/blank? (:stripe_default_card t))
-                      "No"
-                      "Yes"))
+             [:td.has_added_card]
+             (content
+              (if (s/blank? (:stripe_default_card t))
+                "No"
+                "Yes"))
 
-                   [:td.push_set_up]
-                   (html-content
-                    (if (s/blank? (:arn_endpoint t))
-                      "No"
-                      (str "Yes "
-                           "<input type='checkbox' "
-                           "value='" (:id t) "' "
-                           "class='send-push-to' "
-                           "/>")))
+             [:td.push_set_up]
+             (html-content
+              (if (s/blank? (:arn_endpoint t))
+                "No"
+                (str "Yes "
+                     "<input type='checkbox' "
+                     "value='" (:id t) "' "
+                     "class='send-push-to' "
+                     "/>")))
 
-                   [:td.os]
-                   (content (:os t))
+             [:td.os]
+             (content (:os t))
 
-                   [:td.app_version]
-                   (content (:app_version t))
+             [:td.app_version]
+             (content (:app_version t))
 
-                   [:td.timestamp_created]
-                   (content (unix->full
-                             (/ (.getTime (:timestamp_created t))
-                                1000)))
-                   )
+             [:td.timestamp_created]
+             (content (unix->full
+                       (/ (.getTime (:timestamp_created t))
+                          1000)))
+             )
 
   [:#users-count] (content
                    (str "(" (:users-count x) ")"))
@@ -273,6 +301,10 @@
 
              [:td.only_for_first_orders]
              (content (if (:only_for_first_orders t) "Yes" "No")))
+
+  [:div#zone-ids]
+  (set-attr :style "display:none;"
+            :data-zone-ids (s/join "," (map :id (:zones x))))
 
   [:#zones :tbody :tr]
   (clone-for [zone (:zones x)]
@@ -344,6 +376,9 @@
 
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
                                           "css/main.css"))
+
+  [:#dashboardJS] (set-attr :src (str (:base-url x)
+                                      "js/dashboard.js"))
 
   [:#download-stats-csv]
   (let [stats-file (java.io.File. "stats.csv")]
@@ -431,7 +466,8 @@
             {:title "Purple - Dashboard"
              :couriers (map #(assoc %
                                     :name (id->name (:id %))
-                                    :phone_number (id->phone_number (:id %)))
+                                    :phone_number (id->phone_number (:id %))
+                                    :assigned_zones (zones-str->set (:zones %)))
                             all-couriers)
              :orders (map #(assoc %
                                   :courier_name (id->name (:courier_id %))
@@ -440,13 +476,19 @@
                                   :customer_phone_number
                                   (:phone_number
                                    (first (get users-by-id (:user_id %))))
-
+                                  
                                   :customer_sift_score
                                   (:sift_score
                                    (first (get users-by-id (:user_id %))))
 
                                   :zone-color
                                   (:color
+                                   ((resolve
+                                     'purple.dispatch/get-zone-by-zip-code)
+                                    (:address_zip %)))
+
+                                  :zone
+                                  (:id
                                    ((resolve
                                      'purple.dispatch/get-zone-by-zip-code)
                                     (:address_zip %)))

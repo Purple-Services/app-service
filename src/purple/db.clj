@@ -29,6 +29,10 @@
 
 (def ^:private pooled-db (delay (pool config/db-config)))
 
+(defn set-pooled-db!
+  [config]
+  (def pooled-db (delay (pool config))))
+
 (defn conn
   "Get a connection instance from the pool."
   []

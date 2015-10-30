@@ -94,7 +94,7 @@
 
 ;;;; Referral Program
 ;; Discount value in cents of using a referral code
-(def referral-referred-value -1000) ;; should be negative!
+(def referral-referred-value -1500) ;; should be negative!
 ;; The # of gallons credited to the Referrer upon usage of their coupon code
 (def referral-referrer-gallons 5)
 
