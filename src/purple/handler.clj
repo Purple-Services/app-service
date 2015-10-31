@@ -366,7 +366,31 @@
                                               (:id b)
                                               (:fuel_prices b)
                                               (:service_fees b)
-                                              (:service_time_bracket b))))))
+                                              (:service_time_bracket b)))))
+              ;; update a courier's assigned zones
+              (POST "/update-courier-zones" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (users/update-courier-zones!
+                        db-conn
+                        (:id b)
+                        (:zones b)))))
+              (GET "/dash-map" []
+                   (-> (pages/dash-map)
+                       response
+                       wrap-page))
+              ;; given a date in the format YYYY-MM-DD, return all orders
+              ;; that have occurred since then
+              (POST "/orders-since-date"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:orders (!select db-conn "orders"
+                                         [:lat :lng :status :gallons :total_price]
+                                         {}
+                                         :custom-where
+                                         (str "timestamp_created > '" (:date b) "'"))}))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
