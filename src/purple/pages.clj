@@ -508,7 +508,7 @@
                              >
                              (map (comp first val) users-by-id))
              :coupons (sort-by (juxt :times-used :code)
-                               >
+                               (comp - compare)
                                (map #(assoc % :times-used
                                             (-> (:used_by_license_plates %)
                                                 (s/split #",")
