@@ -24,7 +24,7 @@
 (defn get-user
   "Gets a user from db. Optional add WHERE constraints."
   [db-conn & {:keys [where]}]
-  (first (!select db-conn "users" ["*"] (merge {} :where))))
+  (first (!select db-conn "users" ["*"] (merge {} where))))
 
 (defn get-user-by-platform-id
   "Gets a user from db by user type and platform-id."
@@ -64,6 +64,7 @@
   [db-conn key]
   (get-user db-conn :where {:reset_key key}))
 
+;; add some tests for this. I'm not convinced it will hold for every edge case
 (defn id->type
   "Given a user id, get the type (native, facebook, google...)."
   [id]
@@ -178,7 +179,7 @@
     result))
 
 (defn login
-  "Logs in user depeding on 'type' of user."
+  "Logs in user depending on 'type' of user."
   [db-conn type platform-id auth-key & {:keys [email-override client-ip]}]
   (let [user (get-user-by-platform-id db-conn type platform-id)]
     (try
