@@ -10,7 +10,7 @@
             [overtone.at-at :as at-at]
             [clojure.string :as s]
             [purple.couriers :as couriers])
-  (:import (org.joda.time DateTime DateTimeZone)))
+  (:import [org.joda.time DateTime DateTimeZone]))
 
 (def job-pool (at-at/mk-pool))
 
