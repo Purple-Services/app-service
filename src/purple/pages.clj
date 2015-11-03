@@ -1,12 +1,15 @@
 (ns purple.pages
   (:use purple.util
         [purple.db :only [conn !select !insert !update mysql-escape-str]]
+        clojure.walk
+        [clojure.algo.generic.functor :only [fmap]]
         net.cgrand.enlive-html
         :reload)
   (:require [purple.users :as users]
             [purple.orders :as orders]
             [purple.config :as config]
-            [clojure.string :as s]))
+            [clojure.string :as s])
+  (:import [purpleOpt PurpleOpt]))
 
 (deftemplate index-template "templates/index.html"
   [x]
@@ -190,6 +193,14 @@
                               (first
                                (filter #(= (:id %) (:courier_id t))
                                        (:couriers x))))]))
+
+             [:td.etas]
+             (html-content (apply str
+                                  (map #(str (key %)
+                                             " - <strong>"
+                                             (val %)
+                                             "</strong><br />")
+                                       (sort-by second (:etas t)))))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
@@ -409,6 +420,8 @@
   [:#orders-heading] (if (:only-show-orders x)
                        (content "Declined Payments")
                        (add-class "standard"))
+
+  [:#debug] (content (:debug x))
   )
 
 
@@ -464,6 +477,35 @@
         id->vehicle #(first (get vehicles-by-id %))
         all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
         zones       (!select db-conn "zones" ["*"] {})
+        dist-map (into
+                  {}
+                  (PurpleOpt/computeDistance
+                   (map->java-hash-map
+                    {"orders" (->> all-orders
+                                   (filter #(in? ["unassigned"
+                                                  "assigned"
+                                                  "accepted"
+                                                  "enroute"]
+                                                 (:status %)))
+                                   (map #(assoc %
+                                                :status_times
+                                                (-> (:event_log %)
+                                                    (s/split #"\||\s")
+                                                    (->> (remove s/blank?)
+                                                         (apply hash-map)
+                                                         (fmap read-string)))))
+                                   (map (juxt :id stringify-keys))
+                                   (into {}))
+                     "couriers" (->> (!select (conn)
+                                              "couriers"
+                                              [:id :lat :lng :last_ping
+                                               :connected :zones]
+                                              {:active true
+                                               :on_duty true})
+                                     (map #(update-in % [:zones] split-on-comma))
+                                     (map #(assoc % :assigned_orders []))
+                                     (map (juxt :id stringify-keys))
+                                     (into {}))})))
         ]
     (apply str
            (dashboard-template
@@ -485,6 +527,14 @@
                                   (:sift_score
                                    (first (get users-by-id (:user_id %))))
 
+                                  :etas (when-let [etas (into {} (get (get dist-map (:id %)) "etas"))]
+                                          (into
+                                           {}
+                                           (map (fn [x]
+                                                  [(id->name (key x))
+                                                   (quot (val x) 60)])
+                                                etas)))
+                                  
                                   :zone-color
                                   (:color
                                    ((resolve
@@ -552,6 +602,7 @@
                                       (str "read-string :service_time_bracket"
                                            " failed: "
                                            (.getMessage e)))))))
+             :debug nil
              :read-only read-only
              :all all}))))
 

@@ -40,6 +40,14 @@ table td {
 td.late {
     color: #cc0000;
 }
+td.etas {
+    font-size: 11px;
+    white-space: nowrap;
+}
+td.etas strong {
+    font-size: 11px;
+    color: #000;
+}
 #configForm {
     margin: 20px 0px 40px 0px;
 }

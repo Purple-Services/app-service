@@ -448,7 +448,7 @@
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
-  (GET "/terms" [] (wrap-page (response (pages/terms))))
+  (GET "/terms" [] (wrap-page (response (pages/terms))))  
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))
   (route/resources "/")
