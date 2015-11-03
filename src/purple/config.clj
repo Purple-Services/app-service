@@ -26,7 +26,11 @@
     (System/setProperty "SEGMENT_WRITE_KEY" (env :segment-write-key))
     (System/setProperty "BASE_URL" (env :base-url))
     (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
-    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))))
+    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))
+    (System/setProperty "BASIC_AUTH_READ_ONLY_USERNAME"
+                        (env :basic-auth-read-only-username))
+    (System/setProperty "BASIC_AUTH_READ_ONLY_PASSWORD"
+                        (env :basic-auth-read-only-password))))
 
 ;;;; Base Url of the web service
 ;; Should include trailing forward-slash (e.g., "http://domain.com/")
