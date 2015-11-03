@@ -47,7 +47,7 @@ public class PurpleOpt {
 		class InOrders extends HashMap<String, InOrder> { };
 		
 		// print switch
-		boolean bPrint = true; // CAUTION
+		boolean bPrint = false; // CAUTION
 		
 		// --- read data from input to structures that are easy to use ---
 		// read orders hashmap
@@ -115,40 +115,32 @@ public class PurpleOpt {
 			
 			if (bPrint)
 				System.out.println("order: " + order_key + "; status: " + order_status);
-			
-			// check if the order is unassigned
-			if (order_status.equals("unassigned")) {
-			// if (order_status.equals("complete")) { // CAUTION
 				
-				if (bPrint)
-					System.out.println("  this order is unassigned");
+            // create a Hashmap for this order
+            HashMap<String, Object> outOrder = new HashMap<String, Object>();
+            // put this order in the output hashmap
+            outHashmap.put(order_key, outOrder);
 				
-				// create a Hashmap for this order
-				HashMap<String, Object> outOrder = new HashMap<String, Object>();
-				// put this order in the output hashmap
-				outHashmap.put(order_key, outOrder);
+            // specify the suggested courier for this order, will implement later
+            outOrder.put("suggested_courier_id", null);
 				
-				// specify the suggested courier for this order, will implement later
-				outOrder.put("suggested_courier_id", null);
-				
-				// create a hashmap for ETAs
-				HashMap<String, Integer> outETAs = new HashMap<String, Integer>();
-				// put the ETAs to the order object
-				outOrder.put("etas", outETAs);
+            // create a hashmap for ETAs
+            HashMap<String, Integer> outETAs = new HashMap<String, Integer>();
+            // put the ETAs to the order object
+            outOrder.put("etas", outETAs);
 
-				// get the order lat and lng
-				Double order_lat = (Double) order.get("lat");
-				Double order_lng = (Double) order.get("lng");
+            // get the order lat and lng
+            Double order_lat = (Double) order.get("lat");
+            Double order_lng = (Double) order.get("lng");
 				
-				// add this order to listDests
-				if (!listDestKeys.contains(order_key)) {
-					listDests.add(order_lat.toString()+","+order_lng.toString());
-					listDestKeys.add(order_key);
+            // add this order to listDests
+            if (!listDestKeys.contains(order_key)) {
+                listDests.add(order_lat.toString()+","+order_lng.toString());
+                listDestKeys.add(order_key);
 					
-					if (bPrint)
-						System.out.println("  add " + order_lat.toString()+","+order_lng.toString() + " to dest list");
-				}
-			}
+                if (bPrint)
+                    System.out.println("  add " + order_lat.toString()+","+order_lng.toString() + " to dest list");
+            }
 		}
 
 		
