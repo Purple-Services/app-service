@@ -7,6 +7,8 @@
     </head>
     <body>
         <span id="config" data-base-url="" data-uri-segment=""></span>
+        
+        <span id="debug"></span>
 
         <div id="last-updated" style="width: 100%; text-align: center;"></div>
 
@@ -17,9 +19,9 @@
                 <tr>
                     <td>Connected</td>
                     <td>Name</td>
-		     <td>Phone</td>
+		            <td>Phone</td>
                     <td>Busy?</td>
-		     <td>Last Seen</td>
+		            <td>Last Seen</td>
                     <td>On time %</td>
                     <td>Zones</td>
                     <td>Location</td>
@@ -29,9 +31,9 @@
                 <tr>
                     <td class="connected"></td>
                     <td class="name"></td>
-		     <td class="courier_phone_number"></td>
+		            <td class="courier_phone_number"></td>
                     <td class="busy"></td>
-		     <td class="last_seen"></td>
+		            <td class="last_seen"></td>
                     <td class="lateness"></td>
                     <td class="zones"></td>
                     <td class="location">
@@ -49,6 +51,7 @@
                     <td></td>
                     <td>Status</td>
                     <td>Courier</td>
+                    <td>ETAs (mins)</td>
                     <td width="98">Order Placed</td>
                     <td width="98">Deadline</td>
                     <td>Customer</td>
@@ -67,6 +70,7 @@
                     <td class="cancel"></td>
                     <td class="status"></td>
                     <td class="courier_name"></td>
+                    <td class="etas"></td>
                     <td class="target_time_start"></td>
                     <td class="target_time_end"></td>
                     <td class="customer_name"></td>
@@ -137,7 +141,7 @@
         </table>
 
         <h2 id="zones">Zones <input type="submit" class="edit-zones" value="Edit"></input></h2>
-	 <div id="zone-ids"></div>
+	    <div id="zone-ids"></div>
         <table id="zones" class="hide-extra">
             <thead>
                 <tr>
@@ -163,7 +167,7 @@
                     <td class="service-end"</td>
                 </tr>
             </tbody>
-         </table>
+        </table>
         <div style="text-align: center; padding-bottom: 20px;">
             stats.csv
             <span id="generate-stats-csv" class="fake-link">[initiate a refresh]</span>
