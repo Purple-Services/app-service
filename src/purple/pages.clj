@@ -655,7 +655,7 @@
 (deftemplate dash-map-template "templates/dashmap.html"
   [x]
   [:#main-css] (set-attr :href (str (:base-url x)
-                                    "css/main.css"))
+                                    "css/dashmap.css"))
   [:#pikaday-css] (set-attr :href (str (:base-url x)
                                        "css/pikaday.css"))
   [:#dashboard-cljs] (set-attr :src (str (:base-url x)
