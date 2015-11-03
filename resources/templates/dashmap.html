@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Purple - Dashboard Map</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<link id="pikaday-css" rel="stylesheet" type="text/css" href="css/pikaday.css"></link>
+	<link id="main-css" rel="stylesheet" type="text/css" href="css/main.css"></link>
+    </head>
+    <body>
+      <div id="base-url" value="http://localhost:3000/dashboard/" style="display: none;"></div>
+      <script id="dashboard-cljs" src="../js/dashboard_cljs.js"></script>
+      <div id="map"></div>
+      <script async defer
+	      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg&callback=dashboard_cljs.core.init_map">
+      </script>
+    </body>
+</html>

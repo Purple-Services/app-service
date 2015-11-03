@@ -377,7 +377,24 @@
                        (users/update-courier-zones!
                         db-conn
                         (:id b)
-                        (:zones b))))))
+                        (:zones b)))))
+              (GET "/dash-map" []
+                   (-> (pages/dash-map)
+                       response
+                       wrap-page))
+              ;; given a date in the format YYYY-MM-DD, return all orders
+              ;; that have occurred since then
+              (POST "/orders-since-date"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:orders (!select db-conn "orders"
+                                         [:lat :lng :status :gallons
+                                          :total_price :timestamp_created]
+                                         {}
+                                         :custom-where
+                                         (str "timestamp_created > '"
+                                              (:date b) "'"))}))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -404,7 +421,24 @@
                        (header "Content-Type:"
                                "text/csv; name=\"stats.csv\"")
                        (header "Content-Disposition"
-                               "attachment; filename=\"stats.csv\""))))
+                               "attachment; filename=\"stats.csv\"")))
+              (GET "/dash-map" []
+                   (-> (pages/dash-map :read-only true)
+                       response
+                       wrap-page))
+              ;; given a date in the format YYYY-MM-DD, return all orders
+              ;; that have occurred since then
+              (POST "/orders-since-date"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:orders (!select db-conn "orders"
+                                         [:lat :lng :status :gallons
+                                          :total_price :timestamp_created]
+                                         {}
+                                         :custom-where
+                                         (str "timestamp_created > '"
+                                              (:date b) "'"))}))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes

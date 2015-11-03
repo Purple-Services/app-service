@@ -120,6 +120,10 @@
                                   (:lat t)
                                   ","
                                   (:lng t))))
+  [:#dash-map]
+  (set-attr :href (str (if (:read-only x)
+                         "/stats/dash-map"
+                         "/dashboard/dash-map")))
   
   [:#orders :tbody :tr]
   (clone-for [t (:orders x)]
@@ -507,8 +511,8 @@
              :users (sort-by #(.getTime (:timestamp_created %))
                              >
                              (map (comp first val) users-by-id))
-             :coupons (sort-by :times-used
-                               >
+             :coupons (sort-by (juxt :times-used :code)
+                               (comp - compare)
                                (map #(assoc % :times-used
                                             (-> (:used_by_license_plates %)
                                                 (s/split #",")
@@ -651,3 +655,20 @@
                                        (apply str))
                                   "\")"))))
       {:success true}))
+
+(deftemplate dash-map-template "templates/dashmap.html"
+  [x]
+  [:#main-css] (set-attr :href (str (:base-url x)
+                                    "css/dashmap.css"))
+  [:#pikaday-css] (set-attr :href (str (:base-url x)
+                                       "css/pikaday.css"))
+  [:#dashboard-cljs] (set-attr :src (str (:base-url x)
+                                         "js/dashboard_cljs.js"))
+  [:#base-url] (set-attr :value (str (:base-url x)
+                                     (if (:read-only x)
+                                       "stats/"
+                                       "dashboard/"))))
+
+(defn dash-map [& {:keys [read-only]}]
+  (apply str (dash-map-template {:base-url config/base-url
+                                 :read-only read-only})))

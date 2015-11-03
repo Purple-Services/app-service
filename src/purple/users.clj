@@ -17,30 +17,30 @@
             [clojure.string :as s]))
 
 (def safe-authd-user-keys
-  "Keys of a user map that are safe to send out to auth'd user."
+  "The keys of a user map that are safe to send out to auth'd user."
   [:id :type :email :name :phone_number :referral_code
    :referral_gallons :is_courier])
 
 (defn get-user
-  "Gets a user from db by type and platform-id. Some fields unsafe for output."
+  "Gets a user from db. Optional add WHERE constraints."
+  [db-conn & {:keys [where]}]
+  (first (!select db-conn "users" ["*"] (merge {} where))))
+
+(defn get-user-by-platform-id
+  "Gets a user from db by user type and platform-id."
   [db-conn type platform-id]
-  (first (!select db-conn
-                  "users"
-                  ["*"]
-                  (merge {:type type}
-                         (case type
-                           "native" {:email platform-id}
-                           "facebook" {:id (str "fb" platform-id)}
-                           "google" {:id (str "g" platform-id)}
-                           (throw (Exception. "Unknown user type.")))))))
+  (get-user db-conn
+            :where (merge {:type type}
+                          (case type
+                            "native" {:email platform-id}
+                            "facebook" {:id (str "fb" platform-id)}
+                            "google" {:id (str "g" platform-id)}
+                            (throw (Exception. "Unknown user type."))))))
 
 (defn get-user-by-id
   "Gets a user from db by user-id."
   [db-conn user-id]
-  (first (!select db-conn
-                  "users"
-                  ["*"]
-                  {:id user-id})))
+  (get-user db-conn :where {:id user-id}))
 
 (defn get-users-by-ids
   "Gets multiple users by a list of ids."
@@ -62,16 +62,9 @@
 (defn get-user-by-reset-key
   "Gets a user from db by reset_key (for password reset)."
   [db-conn key]
-  (first (!select db-conn
-                  "users"
-                  [:id
-                   :email
-                   :type
-                   :password_hash
-                   :phone_number
-                   :name]
-                  {:reset_key key})))
+  (get-user db-conn :where {:reset_key key}))
 
+;; add some tests for this. I'm not convinced it will hold for every edge case
 (defn id->type
   "Given a user id, get the type (native, facebook, google...)."
   [id]
@@ -186,9 +179,9 @@
     result))
 
 (defn login
-  "Logs in user depeding on 'type' of user."
+  "Logs in user depending on 'type' of user."
   [db-conn type platform-id auth-key & {:keys [email-override client-ip]}]
-  (let [user (get-user db-conn type platform-id)]
+  (let [user (get-user-by-platform-id db-conn type platform-id)]
     (try
       (if user
         (if (case (:type user)
@@ -248,7 +241,7 @@
 (defn email-available?
   "Is there not a native account that is using this email address?"
   [db-conn email & {:keys [ignore-user-id]}]
-  (let [user (get-user db-conn "native" email)]
+  (let [user (get-user-by-platform-id db-conn "native" email)]
     (or (not user)
         (and ignore-user-id
              (= ignore-user-id (:id user))))))
@@ -584,7 +577,7 @@
 (defn forgot-password
   "Only for native accounts; platform-id is email address."
   [db-conn platform-id]
-  (let [user (get-user db-conn "native" platform-id)]
+  (let [user (get-user-by-platform-id db-conn "native" platform-id)]
     (if user
       (let [reset-key (rand-str-alpha-num 22)]
         (!update db-conn
