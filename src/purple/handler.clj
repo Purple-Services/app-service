@@ -387,10 +387,12 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:orders (!select db-conn "orders"
-                                         [:lat :lng :status :gallons :total_price :timestamp_created]
+                                         [:lat :lng :status :gallons
+                                          :total_price :timestamp_created]
                                          {}
                                          :custom-where
-                                         (str "timestamp_created > '" (:date b) "'"))}))))
+                                         (str "timestamp_created > '"
+                                              (:date b) "'"))}))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
