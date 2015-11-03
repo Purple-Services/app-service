@@ -120,6 +120,10 @@
                                   (:lat t)
                                   ","
                                   (:lng t))))
+  [:#dash-map]
+  (set-attr :href (str (if (:read-only x)
+                         "/stats/dash-map"
+                         "/dashboard/dash-map")))
   
   [:#orders :tbody :tr]
   (clone-for [t (:orders x)]
@@ -655,12 +659,16 @@
 (deftemplate dash-map-template "templates/dashmap.html"
   [x]
   [:#main-css] (set-attr :href (str (:base-url x)
-                                    "css/main.css"))
+                                    "css/dashmap.css"))
   [:#pikaday-css] (set-attr :href (str (:base-url x)
                                        "css/pikaday.css"))
   [:#dashboard-cljs] (set-attr :src (str (:base-url x)
                                          "js/dashboard_cljs.js"))
-  [:#base-url] (set-attr :value (str (:base-url x) "dashboard/")))
+  [:#base-url] (set-attr :value (str (:base-url x)
+                                     (if (:read-only x)
+                                       "stats/"
+                                       "dashboard/"))))
 
-(defn dash-map []
-  (apply str (dash-map-template {:base-url config/base-url})))
+(defn dash-map [& {:keys [read-only]}]
+  (apply str (dash-map-template {:base-url config/base-url
+                                 :read-only read-only})))
