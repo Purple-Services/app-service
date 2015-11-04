@@ -392,7 +392,15 @@
                                          {}
                                          :custom-where
                                          (str "timestamp_created > '"
-                                              (:date b) "'"))}))))
+                                              (:date b) "'"))})))
+              ;; return all couriers
+              (POST "/couriers" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:couriers (!select db-conn "couriers"
+                                           "*"
+                                           {})}))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -436,7 +444,15 @@
                                          {}
                                          :custom-where
                                          (str "timestamp_created > '"
-                                              (:date b) "'"))}))))
+                                              (:date b) "'"))})))
+              ;; return all couriers
+              (POST "/couriers" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:couriers (!select db-conn "couriers"
+                                           "*"
+                                           {})}))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
