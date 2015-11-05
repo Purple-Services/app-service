@@ -218,7 +218,8 @@
     (only-prod
      (send-email {:to "chris@purpledelivery.com"
                   :cc ["joe@purpledelivery.com"
-                       "bruno@purpledelivery.com"]
+                       "bruno@purpledelivery.com"
+                       "rachel@purpledelivery.com"]
                   :subject "Purple Feedback Form Response"
                   :body (if user
                           (str "From User ID: " user_id "\n\n"
