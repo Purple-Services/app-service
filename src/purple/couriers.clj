@@ -27,3 +27,11 @@
                  :on_duty true
                  :connected true
                  :busy false})))
+
+(defn all-couriers
+  "Return all couriers with their names"
+  [db-conn]
+  (map #(assoc % :name
+               (:name
+                ((resolve 'purple.users/get-user-by-id) db-conn (:id %))))
+       (!select db-conn "couriers" "*" {})))
