@@ -376,8 +376,14 @@
                         db-conn
                         (:id b)
                         (:zones b)))))
-              (GET "/dash-map" []
-                   (-> (pages/dash-map)
+              (GET "/dash-map-orders" []
+                   (-> (pages/dash-map :callback-s
+                                       "dashboard_cljs.core.init_map_orders")
+                       response
+                       wrap-page))
+              (GET "/dash-map-couriers" []
+                   (-> (pages/dash-map :callback-s
+                                       "dashboard_cljs.core.init_map_couriers")
                        response
                        wrap-page))
               ;; given a date in the format YYYY-MM-DD, return all orders
@@ -387,7 +393,7 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:orders (!select db-conn "orders"
-                                         [:lat :lng :status :gallons
+                                         [:id :lat :lng :status :gallons
                                           :total_price :timestamp_created]
                                          {}
                                          :custom-where
@@ -428,8 +434,16 @@
                                "text/csv; name=\"stats.csv\"")
                        (header "Content-Disposition"
                                "attachment; filename=\"stats.csv\"")))
-              (GET "/dash-map" []
-                   (-> (pages/dash-map :read-only true)
+              (GET "/dash-map-orders" []
+                   (-> (pages/dash-map :read-only true
+                                       :callback-s
+                                       "dashboard_cljs.core.init_map_orders")
+                       response
+                       wrap-page))
+              (GET "/dash-map-couriers" []
+                   (-> (pages/dash-map :read-only true
+                                       :callback-s
+                                       "dashboard_cljs.core.init_map_couriers")
                        response
                        wrap-page))
               ;; given a date in the format YYYY-MM-DD, return all orders
@@ -439,7 +453,7 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:orders (!select db-conn "orders"
-                                         [:lat :lng :status :gallons
+                                         [:id :lat :lng :status :gallons
                                           :total_price :timestamp_created]
                                          {}
                                          :custom-where
