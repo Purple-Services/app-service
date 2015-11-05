@@ -6,6 +6,7 @@
         [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
             [purple.users :as users]
+            [purple.couriers :as couriers]
             [purple.orders :as orders]
             [purple.dispatch :as dispatch]
             [purple.coupons :as coupons]
@@ -404,9 +405,7 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:couriers (!select db-conn "couriers"
-                                           "*"
-                                           {})}))))
+                       {:couriers (couriers/all-couriers db-conn)}))))
             dashboard-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -464,9 +463,7 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:couriers (!select db-conn "couriers"
-                                           "*"
-                                           {})}))))
+                       {:couriers (couriers/all-couriers db-conn)}))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
