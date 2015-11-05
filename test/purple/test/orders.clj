@@ -2,7 +2,7 @@
   (:require [purple.orders :as orders]
             [purple.db :refer [!select conn !update]]
             [purple.dispatch :as dispatch]
-            [purple.test.db :refer [database-fixture ebdb-test-config]]
+            [purple.test.db :refer [database-fixture ebdb-test-config db-config]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-time.core :as time]
             [purple.test.util :as util]
@@ -41,8 +41,8 @@
                :gas_price gas-price
                :gallons gallons
                :gas_type octane
-               :lat "34.074606839269514"
-               :lng "-118.39825344813232"
+               :lat (str "34.0" (rand-int 9))
+               :lng (str "-118.4" (rand-int 9) )
                :address_zip zip
                :user_id user-id}]
     order))
