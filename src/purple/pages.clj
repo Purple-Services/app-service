@@ -123,10 +123,15 @@
                                   (:lat t)
                                   ","
                                   (:lng t))))
-  [:#dash-map]
+  [:#dash-map-orders]
   (set-attr :href (str (if (:read-only x)
-                         "/stats/dash-map"
-                         "/dashboard/dash-map")))
+                         "/stats/dash-map-orders"
+                         "/dashboard/dash-map-orders")))
+
+  [:#dash-map-couriers]
+  (set-attr :href (str (if (:read-only x)
+                         "/stats/dash-map-couriers"
+                         "/dashboard/dash-map-couriers")))
   
   [:#orders :tbody :tr]
   (clone-for [t (:orders x)]
@@ -718,8 +723,15 @@
   [:#base-url] (set-attr :value (str (:base-url x)
                                      (if (:read-only x)
                                        "stats/"
-                                       "dashboard/"))))
+                                       "dashboard/")))
+  [:#map-init]
+  (set-attr :src
+            (str "https://maps.googleapis.com/maps/api/js?"
+                 "key=AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg&callback="
+                 (:callback-s x))))
 
-(defn dash-map [& {:keys [read-only]}]
+(defn dash-map
+  [& {:keys [read-only callback-s]}]
   (apply str (dash-map-template {:base-url config/base-url
-                                 :read-only read-only})))
+                                 :read-only read-only
+                                 :callback-s callback-s })))
