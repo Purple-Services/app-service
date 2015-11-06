@@ -1,4 +1,4 @@
-(defproject purple "1.2.1-SNAPSHOT"
+(defproject purple "1.2.1-MAINTENANCE" ;SNAPSHOT"
   :description "Purple"
   :url "http://purpledelivery.com"
   :dependencies [[org.clojure/clojure "1.7.0"]
@@ -30,10 +30,13 @@
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]
             ]
-  :java-source-paths ["src/java"]
+  ;:java-source-paths ["src/java"]
   :ring {:handler purple.handler/app
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources"]}
-  :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
+  :aws {:beanstalk {:environments [{:name "development"}
+                                   {:name "production"}
+                                   {:name "purple-dev-env"}]
+                    :s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
