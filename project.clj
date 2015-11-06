@@ -35,5 +35,7 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources"]}
-  :aws {:beanstalk {:s3-bucket "leinbeanstalkpurple"
+  :aws {:beanstalk {:environments [{:name "prod"}
+                                   {:name "purple-dev-env"}]
+                    :s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
