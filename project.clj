@@ -13,7 +13,7 @@
                  [com.draines/postal "1.11.3"] ;; email utility
                  [gapi "1.0.1"]  ;; Google API
                  [enlive "1.1.5"] ;; templating
-                 [overtone/at-at "1.2.0"] ;; scheduled jobs
+                 [silasdavis/at-at "1.2.0"] ;; scheduled jobs with exception handling
                  [clj-time "0.8.0"] ;; date/time utilities
                  [com.amazonaws/aws-java-sdk "1.9.24"] ;; this will be used by clj-aws below instead of its default aws version
                  [clj-aws "0.0.1-SNAPSHOT"]
