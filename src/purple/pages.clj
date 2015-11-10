@@ -676,7 +676,9 @@
   [:#map-init]
   (set-attr :src
             (str "https://maps.googleapis.com/maps/api/js?"
-                 "key=AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg&callback="
+                 "key="
+                 config/dashboard-google-browser-api-key
+                 "&callback="
                  (:callback-s x))))
 
 (defn dash-map

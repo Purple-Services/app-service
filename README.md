@@ -39,6 +39,9 @@ The file src/purple/config.clj contains all of the information needed for config
               :base-url "http://localhost:3000/"
               :basic-auth-username "purpleadmin"
               :basic-auth-password "gasdelivery8791"
+              :basic-auth-read-only-username "purplestats"
+              :basic-auth-read-only-password "gasdelivery8791"
+              :dashboard-google-browser-api-key "AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg"
               :env "dev"}
        :dependencies [[javax.servlet/servlet-api "2.5"]
                       [ring-mock "0.1.5"]]}}
