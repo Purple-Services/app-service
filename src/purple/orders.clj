@@ -394,7 +394,7 @@
                                      (concat (map (comp id->phone-number :id)
                                                   available-couriers)
                                              (only-prod ["3235782263"   ;; Bruno
-                                                         "3106919061"   ;; JP
+                                                         ;;"3106919061" ;; JP
                                                          ;;"8589228571" ;; Lee
                                                          "3103109961"   ;; Joe
                                                          "7143154380"   ;; Gustavo
