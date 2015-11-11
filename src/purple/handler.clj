@@ -393,13 +393,7 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:orders (!select db-conn "orders"
-                                         [:id :lat :lng :status :gallons
-                                          :total_price :timestamp_created]
-                                         {}
-                                         :custom-where
-                                         (str "timestamp_created > '"
-                                              (:date b) "'"))})))
+                       (orders/orders-since-date db-conn (:date b)))))
               ;; return all couriers
               (POST "/couriers" {body :body}
                     (response
@@ -451,13 +445,7 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:orders (!select db-conn "orders"
-                                         [:id :lat :lng :status :gallons
-                                          :total_price :timestamp_created]
-                                         {}
-                                         :custom-where
-                                         (str "timestamp_created > '"
-                                              (:date b) "'"))})))
+                       (orders/orders-since-date db-conn (:date b)))))
               ;; return all couriers
               (POST "/couriers" {body :body}
                     (response
