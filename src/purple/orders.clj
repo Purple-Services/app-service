@@ -740,7 +740,7 @@ and their id matches the order's courier_id"
 (defn orders-since-date
   "Get all orders since date. A blank date will return all orders."
   [db-conn date]
-  (let [orders (!select db-conn "orders"
+  (!select db-conn "orders"
                         [:id :lat :lng :status :gallons :gas_type
                          :total_price :timestamp_created :address_street
                          :address_city :address_state :address_zip :user_id
@@ -748,7 +748,13 @@ and their id matches the order's courier_id"
                         {}
                         :custom-where
                         (str "timestamp_created > '"
-                             date "'"))
+                             date "'")))
+
+(defn orders-since-date-with-supplementary-data
+  "Get all orders since date. A blank date will return all orders. Additional
+  supplementary data is assoc'd onto the orders."
+  [db-conn date]
+  (let [orders (orders-since-date db-conn date)
         all-couriers (->> (!select db-conn "couriers" ["*"] {})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))

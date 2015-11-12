@@ -31,7 +31,16 @@
 (defn all-couriers
   "Return all couriers with their names"
   [db-conn]
-  (map #(assoc % :name
-               (:name
-                ((resolve 'purple.users/get-user-by-id) db-conn (:id %))))
-       (!select db-conn "couriers" "*" {})))
+  (let [all-couriers (!select db-conn "couriers" "*" {})
+        users-by-id  (->> (!select db-conn "users"
+                                   [:id :name :email :phone_number :os
+                                    :app_version]
+                                   {:is_courier true})
+                          (group-by :id))
+        id->name   #(:name (first (get users-by-id %)))
+        id->phone_number #(:phone_number (first (get users-by-id %)))]
+    (map #(assoc % :name
+                 (id->name (:id %))
+                 :phone_number
+                 (id->phone_number (:id %)))
+         all-couriers)))
