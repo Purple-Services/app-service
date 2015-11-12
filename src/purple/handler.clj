@@ -393,7 +393,8 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       (orders/orders-since-date db-conn (:date b)))))
+                       (orders/orders-since-date-with-supplementary-data
+                        db-conn (:date b)))))
               ;; return all couriers
               (POST "/couriers" {body :body}
                     (response
@@ -445,7 +446,9 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       (orders/orders-since-date db-conn (:date b)))))
+                       (orders/orders-since-date-with-supplementary-data
+                        db-conn
+                        (:date b)))))
               ;; return all couriers
               (POST "/couriers" {body :body}
                     (response
