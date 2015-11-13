@@ -36,3 +36,7 @@ html, body {
 .info-window-td {
     display: block;
 }
+
+.info-window-value {
+    color: #999;
+}
