@@ -217,8 +217,8 @@ public class PurpleOpt {
 			strDests += dest_latlngs.get(j);
 		}
 
-		// Wotao's key
-		String server_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE";
+		// Purple prod key
+		String server_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao"; // chnage also ln 298
 
 		// generate request URL 
 		String reqURL = "https://maps.googleapis.com/maps/api/distancematrix/json?" + strOrgs + "&" + strDests;
@@ -294,8 +294,8 @@ public class PurpleOpt {
 	public static Integer getGoogleDistance(Double courier_lat, Double courier_lng, Double order_lat, Double order_lng) {
 		Integer seconds = 0;
 		
-		// Wotao's key
-		String server_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE";
+		// Purple prod key
+		String server_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao";
 		
 		// set courier as the origin
 		String org = courier_lat.toString() + "," + courier_lng.toString();
