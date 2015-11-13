@@ -34,8 +34,8 @@
         order {:time delivery-time
                :vehicle_id vehicle-id
                :address_street "123 Foo Br"
-               :address_city   "Beverly Hills"
-               :address_state  "CA"
+               ;; :address_city   "Beverly Hills"
+               ;; :address_state  "CA"
                :special_instructions ""
                :service_fee service-fee
                :total_price total-price
