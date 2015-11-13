@@ -745,7 +745,8 @@ and their id matches the order's courier_id"
                         [:id :lat :lng :status :gallons :gas_type
                          :total_price :timestamp_created :address_street
                          :address_city :address_state :address_zip :user_id
-                         :courier_id :vehicle_id :license_plate]
+                         :courier_id :vehicle_id :license_plate
+                         :target_time_start :target_time_end]
                         {}
                         :custom-where
                         (str "timestamp_created > '"
