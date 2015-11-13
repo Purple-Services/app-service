@@ -30,7 +30,9 @@
     (System/setProperty "BASIC_AUTH_READ_ONLY_USERNAME"
                         (env :basic-auth-read-only-username))
     (System/setProperty "BASIC_AUTH_READ_ONLY_PASSWORD"
-                        (env :basic-auth-read-only-password))))
+                        (env :basic-auth-read-only-password))
+    (System/setProperty "DASHBOARD_GOOGLE_BROWSER_API_KEY"
+                        (env :dashboard-google-browser-api-key))))
 
 ;;;; Base Url of the web service
 ;; Should include trailing forward-slash (e.g., "http://domain.com/")
@@ -116,3 +118,7 @@
 
 ;; Messages
 (def delayed-assignment-message "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you.")
+
+;; Google Maps API Key(s)
+(def dashboard-google-browser-api-key
+  (System/getProperty "DASHBOARD_GOOGLE_BROWSER_API_KEY"))
