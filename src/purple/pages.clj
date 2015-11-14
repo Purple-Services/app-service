@@ -323,78 +323,76 @@
                (content (if (:only_for_first_orders t) "Yes" "No"))))
 
   [:div#zone-ids]
-  (when (not (:courier-manager x))
-    (set-attr :style "display:none;"
-              :data-zone-ids (s/join "," (map :id (:zones x)))))
+  (set-attr :style "display:none;"
+            :data-zone-ids (s/join "," (map :id (:zones x))))
 
   [:#zones :tbody :tr]
-  (when (not (:courier-manager x))
-    (clone-for [zone (:zones x)]
+  (clone-for [zone (:zones x)]
 
-               [:td.zips]
-               (content (str (s/replace (:zip_codes zone)
-                                        #","
-                                        ", ")))
+             [:td.zips]
+             (content (str (s/replace (:zip_codes zone)
+                                      #","
+                                      ", ")))
 
-               [:td.color]
-               (do-> (content (str (:color zone)))
-                     (add-class (:color zone)))
+             [:td.color]
+             (do-> (content (str (:color zone)))
+                   (add-class (:color zone)))
 
-               [:td.87-price]
-               (content  (html [:input
-                                {:type "text"
-                                 :disabled true
-                                 :value (:87 (:fuel_prices zone))
-                                 :maxlength 4
-                                 :data-id (:id zone)
-                                 :size 4}]))
+             [:td.87-price]
+             (content  (html [:input
+                              {:type "text"
+                               :disabled true
+                               :value (:87 (:fuel_prices zone))
+                               :maxlength 4
+                               :data-id (:id zone)
+                               :size 4}]))
 
-               [:td.91-price]
-               (content (html [:input
-                               {:type "text"
-                                :disabled true
-                                :value (:91 (:fuel_prices zone))
-                                :maxlength 4
-                                :data-id (:id zone)
-                                :size 4}]))
+             [:td.91-price]
+             (content (html [:input
+                             {:type "text"
+                              :disabled true
+                              :value (:91 (:fuel_prices zone))
+                              :maxlength 4
+                              :data-id (:id zone)
+                              :size 4}]))
 
-               [:td.1-hr-fee]
-               (content (html [:input
-                               {:type "text"
-                                :disabled true
-                                :value (:60 (:service_fees zone))
-                                :maxlength 4
-                                :data-id (:id zone)
-                                :size 4}]))
-               [:td.3-hr-fee]
-               (content (html
-                         [:input
-                          {:type "text"
-                           :disabled true
-                           :value (:180 (:service_fees zone))
-                           :maxlength 4
-                           :data-id (:id zone)
-                           :size 4}]))
+             [:td.1-hr-fee]
+             (content (html [:input
+                             {:type "text"
+                              :disabled true
+                              :value (:60 (:service_fees zone))
+                              :maxlength 4
+                              :data-id (:id zone)
+                              :size 4}]))
+             [:td.3-hr-fee]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (:180 (:service_fees zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 4}]))
 
-               [:td.service-start]
-               (content (html
-                         [:input
-                          {:type "text"
-                           :disabled true
-                           :value (first (:service_time_bracket zone))
-                           :maxlength 4
-                           :data-id (:id zone)
-                           :size 4}]))
+             [:td.service-start]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (first (:service_time_bracket zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 4}]))
 
-               [:td.service-end]
-               (content (html
-                         [:input
-                          {:type "text"
-                           :disabled true
-                           :value (last (:service_time_bracket zone))
-                           :maxlength 4
-                           :data-id (:id zone)
-                           :size 4}]))))
+             [:td.service-end]
+             (content (html
+                       [:input
+                        {:type "text"
+                         :disabled true
+                         :value (last (:service_time_bracket zone))
+                         :maxlength 4
+                         :data-id (:id zone)
+                         :size 4}])))
 
   [:#mainStyleSheet] (set-attr :href (str (:base-url x)
                                           "css/main.css"))

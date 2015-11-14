@@ -89,7 +89,9 @@ td.etas strong {
 .manager #stats-section,
 .manager #dash-map-orders-link,
 .manager .edit-couriers,
-.manager #declined-link {
+.manager #declined-link,
+.manager #couriers-on-time-col-header,
+.manager .lateness {
     display: none;
 }
 
