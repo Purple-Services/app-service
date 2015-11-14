@@ -394,9 +394,10 @@
                                      (concat (map (comp id->phone-number :id)
                                                   available-couriers)
                                              (only-prod ["3235782263"   ;; Bruno
-                                                         "3106919061"   ;; JP
+                                                         ;;"3106919061" ;; JP
                                                          ;;"8589228571" ;; Lee
                                                          "3103109961"   ;; Joe
+                                                         "7143154380"   ;; Gustavo
                                                          ]))))))
           {:success true
            :message (str "Your order has been accepted, and a courier will be "
@@ -736,3 +737,53 @@ and their id matches the order's courier_id"
        :message "Sorry, it is too late for this order to be cancelled."})
     {:success false
      :message "An order with that ID could not be found."}))
+
+(defn orders-since-date
+  "Get all orders since date. A blank date will return all orders."
+  [db-conn date]
+  (!select db-conn "orders"
+                        [:id :lat :lng :status :gallons :gas_type
+                         :total_price :timestamp_created :address_street
+                         :address_city :address_state :address_zip :user_id
+                         :courier_id :vehicle_id :license_plate
+                         :target_time_start :target_time_end]
+                        {}
+                        :custom-where
+                        (str "timestamp_created > '"
+                             date "'")))
+
+(defn orders-since-date-with-supplementary-data
+  "Get all orders since date. A blank date will return all orders. Additional
+  supplementary data is assoc'd onto the orders."
+  [db-conn date]
+  (let [orders (orders-since-date db-conn date)
+        all-couriers (->> (!select db-conn "couriers" ["*"] {})
+                          ;; remove chriscourier@test.com
+                          (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
+        courier-ids (distinct (map :id all-couriers))
+        users-by-id (->> (!select db-conn "users"
+                                  [:id :name :email :phone_number :os
+                                   :app_version :stripe_default_card
+                                   :sift_score
+                                   :arn_endpoint :timestamp_created]
+                                  {}
+                                  :custom-where
+                                  (let [customer-ids (distinct (map
+                                                                :user_id
+                                                                orders))]
+                                    (str "id IN (\""
+                                         (s/join "\",\"" (distinct
+                                                          (concat
+                                                           customer-ids
+                                                           courier-ids)))
+                                         "\")")))
+                         (group-by :id))
+        id->name #(:name (first (get users-by-id %)))
+        id->phone_number #(:phone_number (% users-by-id))]
+    {:orders (map #(assoc %
+                          :courier_name (id->name (:courier_id %))
+                          :customer_name (id->name (:user_id %))
+                          :customer_phone_number
+                          (:phone_number
+                           (first (get users-by-id (:user_id %)))))
+                  orders)}))
