@@ -30,6 +30,11 @@
   (and (= (:username config/basic-auth-read-only) username)
        (= (:password config/basic-auth-read-only) password)))
 
+(defn courier-manager-auth?
+  [username password]
+  (and (= (:username config/basic-auth-courier-manager) username)
+       (= (:password config/basic-auth-courier-manager) password)))
+
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
 
@@ -402,6 +407,67 @@
                            db-conn (conn)]
                        {:couriers (couriers/all-couriers db-conn)}))))
             dashboard-auth?))
+  (context "/manager" []
+           (wrap-basic-authentication
+            (defroutes courier-manager-routes
+              (GET "/" []
+                   (-> (pages/dashboard (conn)
+                                        :courier-manager true)
+                       response
+                       wrap-page))
+              ;; Dashboard admin cancels order
+              (POST "/cancel-order" {body :body}
+                    ;; cancel the order
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/cancel
+                        db-conn
+                        (:user_id b)
+                        (:order_id b)
+                        :origin-was-dashboard true
+                        :notify-customer true
+                        :suppress-user-details true
+                        :override-cancellable-statuses
+                        (conj config/cancellable-statuses "servicing")))))
+              ;; admin updates status of order (e.g., Enroute -> Servicing)
+              (POST "/update-status" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/update-status-by-admin db-conn
+                                                      (:order_id b)))))
+              ;; admin assigns courier to an order
+              (POST "/assign-order" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/assign-to-courier-by-admin db-conn
+                                                          (:order_id b)
+                                                          (:courier_id b)))))
+              (GET "/dash-map-couriers" []
+                   (-> (pages/dash-map :read-only true
+                                       :courier-manager true
+                                       :callback-s
+                                       "dashboard_cljs.core.init_map_couriers")
+                       response
+                       wrap-page))
+              ;; given a date in the format YYYY-MM-DD, return all orders
+              ;; that have occurred since then
+              (POST "/orders-since-date"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/orders-since-date-with-supplementary-data
+                        db-conn
+                        (:date b)))))
+              ;; return all couriers
+              (POST "/couriers" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:couriers (couriers/all-couriers db-conn)}))))
+            courier-manager-auth?))
   (context "/stats" []
            (wrap-basic-authentication
             (defroutes stats-routes

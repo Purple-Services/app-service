@@ -123,16 +123,12 @@
                                   (:lat t)
                                   ","
                                   (:lng t))))
-  [:#dash-map-orders]
-  (set-attr :href (str (if (:read-only x)
-                         "/stats/dash-map-orders"
-                         "/dashboard/dash-map-orders")))
+  [:#dash-map-orders-link]
+  (set-attr :href (str (:uri-segment x) "dash-map-orders"))
 
-  [:#dash-map-couriers]
-  (set-attr :href (str (if (:read-only x)
-                         "/stats/dash-map-couriers"
-                         "/dashboard/dash-map-couriers")))
-  
+  [:#dash-map-couriers-link]
+  (set-attr :href (str (:uri-segment x) "dash-map-couriers"))
+
   [:#orders :tbody :tr]
   (clone-for [t (:orders x)]
              [:td.cancel]
@@ -257,70 +253,74 @@
                      (add-class "late") ;; Payment failed!
                      (add-class "not-late"))
                    (content (str "$" (cents->dollars-str (:total_price t))))))
+
   
   [:#users :tbody :tr]
-  (clone-for [t (:users x)]
-             [:td.name]
-             (content (:name t))
+  (when (not (:courier-manager x))
+    (clone-for [t (:users x)]
+               [:td.name]
+               (content (:name t))
 
-             [:td.email]
-             (content (:email t))
+               [:td.email]
+               (content (:email t))
 
-             [:td.phone_number]
-             (content (:phone_number t))
+               [:td.phone_number]
+               (content (:phone_number t))
 
-             [:td.has_added_card]
-             (content
-              (if (s/blank? (:stripe_default_card t))
-                "No"
-                "Yes"))
+               [:td.has_added_card]
+               (content
+                (if (s/blank? (:stripe_default_card t))
+                  "No"
+                  "Yes"))
 
-             [:td.push_set_up]
-             (html-content
-              (if (s/blank? (:arn_endpoint t))
-                "No"
-                (str "Yes "
-                     "<input type='checkbox' "
-                     "value='" (:id t) "' "
-                     "class='send-push-to' "
-                     "/>")))
+               [:td.push_set_up]
+               (html-content
+                (if (s/blank? (:arn_endpoint t))
+                  "No"
+                  (str "Yes "
+                       "<input type='checkbox' "
+                       "value='" (:id t) "' "
+                       "class='send-push-to' "
+                       "/>")))
 
-             [:td.os]
-             (content (:os t))
+               [:td.os]
+               (content (:os t))
 
-             [:td.app_version]
-             (content (:app_version t))
+               [:td.app_version]
+               (content (:app_version t))
 
-             [:td.timestamp_created]
-             (content (unix->full
-                       (/ (.getTime (:timestamp_created t))
-                          1000)))
-             )
+               [:td.timestamp_created]
+               (content (unix->full
+                         (/ (.getTime (:timestamp_created t))
+                            1000)))))
 
-  [:#users-count] (content
-                   (str "(" (:users-count x) ")"))
+  [:#users-count]
+  (when (not (:courier-manager x))
+    (content
+     (str "(" (:users-count x) ")")))
 
   [:#coupons :tbody :tr]
-  (clone-for [t (:coupons x)]
-             
-             [:td.code]
-             (content (:code t))
+  (when (not (:courier-manager x))
+    (clone-for [t (:coupons x)]
+               
+               [:td.code]
+               (content (:code t))
 
-             [:td.value]
-             (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
+               [:td.value]
+               (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
-             [:td.expiration_time]
-             (do-> (content (unix->fuller (:expiration_time t)))
-                   (if (< (:expiration_time t)
-                          (quot (System/currentTimeMillis) 1000))
-                     (add-class "late")
-                     (add-class "not-late")))
+               [:td.expiration_time]
+               (do-> (content (unix->fuller (:expiration_time t)))
+                     (if (< (:expiration_time t)
+                            (quot (System/currentTimeMillis) 1000))
+                       (add-class "late")
+                       (add-class "not-late")))
 
-             [:td.times_used]
-             (content (str (:times-used t)))
+               [:td.times_used]
+               (content (str (:times-used t)))
 
-             [:td.only_for_first_orders]
-             (content (if (:only_for_first_orders t) "Yes" "No")))
+               [:td.only_for_first_orders]
+               (content (if (:only_for_first_orders t) "Yes" "No"))))
 
   [:div#zone-ids]
   (set-attr :style "display:none;"
@@ -401,24 +401,26 @@
                                       "js/dashboard.js"))
 
   [:#download-stats-csv]
-  (let [stats-file (java.io.File. "stats.csv")]
-    (if (> (.length stats-file) 0)
-      (content (str "[download "
-                    (unix->full (quot (.lastModified stats-file)
-                                      1000))
-                    "]"))
-      (do-> (remove-class "fake-link")
-            (remove-attr :id)
-            (content (str "[Processing... refresh page to check status."
-                          " It may take an hour.]")))))
-  
+  (when (not (:courier-manager x))
+    (let [stats-file (java.io.File. "stats.csv")]
+      (if (> (.length stats-file) 0)
+        (content (str "[download "
+                      (unix->full (quot (.lastModified stats-file)
+                                        1000))
+                      "]"))
+        (do-> (remove-class "fake-link")
+              (remove-attr :id)
+              (content (str "[Processing... refresh page to check status."
+                            " It may take an hour.]"))))))
+
   [:#configFormSubmit] (set-attr :style (if (:read-only x)
                                           "display: none;"
                                           "display: block; margin: 0px auto;"))
-  
-  [:body] (if (:only-show-orders x)
-            (add-class "only-show-orders")
-            (add-class "standard"))
+
+  [:body] (cond
+            (:courier-manager x) (add-class "manager")
+            (:only-show-orders x) (add-class "only-show-orders")
+            :else (add-class "standard"))
   [:#orders] (if (:only-show-orders x)
                (remove-class "hide-extra")
                (add-class "hide-extra"))
@@ -431,11 +433,11 @@
 
 
 ;; If it's 'all' then we get 'all' the data from db
-;; When 'all' is false, then we only get the first 50 orders and then we get
+;; When 'all' is false, then we only get the first 100 orders and then we get
 ;; only the users and vehicles that are being referenced in those orders,
 ;; and the user accounts that are references by the couriers
 
-(defn dashboard [db-conn & {:keys [read-only all]}]
+(defn dashboard [db-conn & {:keys [all read-only courier-manager]}]
   (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
@@ -445,7 +447,11 @@
                             ["*"]
                             {}
                             :append
-                            (str "ORDER BY target_time_start DESC"
+                            (str (when courier-manager
+                                   (str "AND status IN ('unassigned', "
+                                        "'assigned', 'accepted', 'enroute', "
+                                        "'servicing')"))
+                                 "ORDER BY target_time_start DESC"
                                  (when (not all) " LIMIT 100")))
         
         users-by-id
@@ -581,8 +587,6 @@
                                          {})
                                 first
                                 :total))
-             :base-url config/base-url
-             :uri-segment (if read-only "stats/" "dashboard/")
              :zones (->> zones
                          (sort-by :id)
                          (map
@@ -607,8 +611,14 @@
                                       (str "read-string :service_time_bracket"
                                            " failed: "
                                            (.getMessage e)))))))
+             :base-url config/base-url
+             :uri-segment (cond
+                            courier-manager "manager/"
+                            read-only "stats/"
+                            :else "dashboard/")
              :debug nil
              :read-only read-only
+             :courier-manager courier-manager
              :all all}))))
 
 (defn declined [db-conn]
@@ -721,9 +731,7 @@
   [:#dashboard-cljs] (set-attr :src (str (:base-url x)
                                          "js/dashboard_cljs.js"))
   [:#base-url] (set-attr :value (str (:base-url x)
-                                     (if (:read-only x)
-                                       "stats/"
-                                       "dashboard/")))
+                                     (:uri-segment x)))
   [:#map-init]
   (set-attr :src
             (str "https://maps.googleapis.com/maps/api/js?"
@@ -733,7 +741,11 @@
                  (:callback-s x))))
 
 (defn dash-map
-  [& {:keys [read-only callback-s]}]
+  [& {:keys [read-only courier-manager callback-s]}]
   (apply str (dash-map-template {:base-url config/base-url
+                                 :uri-segment (cond
+                                                courier-manager "manager/"
+                                                read-only "stats/"
+                                                :else "dashboard/")
                                  :read-only read-only
                                  :callback-s callback-s })))
