@@ -31,6 +31,10 @@
                         (env :basic-auth-read-only-username))
     (System/setProperty "BASIC_AUTH_READ_ONLY_PASSWORD"
                         (env :basic-auth-read-only-password))
+    (System/setProperty "BASIC_AUTH_COURIER_MANAGER_USERNAME"
+                        (env :basic-auth-courier-manager-username))
+    (System/setProperty "BASIC_AUTH_COURIER_MANAGER_PASSWORD"
+                        (env :basic-auth-courier-manager-password))
     (System/setProperty "DASHBOARD_GOOGLE_BROWSER_API_KEY"
                         (env :dashboard-google-browser-api-key))))
 
@@ -60,6 +64,10 @@
 (def basic-auth-read-only
   {:username (System/getProperty "BASIC_AUTH_READ_ONLY_USERNAME")
    :password (System/getProperty "BASIC_AUTH_READ_ONLY_PASSWORD")})
+;; ...with courier manager privileges only  (/manager)
+(def basic-auth-courier-manager
+  {:username (System/getProperty "BASIC_AUTH_COURIER_MANAGER_USERNAME")
+   :password (System/getProperty "BASIC_AUTH_COURIER_MANAGER_PASSWORD")})
 
 ;;;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
