@@ -77,6 +77,24 @@ td.etas strong {
     display: none;
 }
 
+.manager #users,
+.manager #users-heading,
+.manager #coupons,
+.manager #coupons-heading,
+.manager .show-all,
+.manager #zones,
+.manager #zones-heading,
+.manager #coupons,
+.manager #coupons-heading,
+.manager #stats-section,
+.manager #dash-map-orders-link,
+.manager .edit-couriers,
+.manager #declined-link,
+.manager #couriers-on-time-col-header,
+.manager .lateness {
+    display: none;
+}
+
 .no-gps, .no-gps a {
     color: red;
 }

@@ -30,12 +30,12 @@ $("#generate-stats-csv").click(function(){
         contentType: 'application/json',
         success: function(response) {
             if (response.success === true) {
-		// remove download link
-		$("#download-stats-csv").remove();
+                // remove download link
+                $("#download-stats-csv").remove();
 
-		alert("stats.csv generation initiated." +
-		      " Please refresh the page in a minute or so," +
-		      " then try to download the CSV file..");
+                alert("stats.csv generation initiated." +
+                      " Please refresh the page in a minute or so," +
+                      " then try to download the CSV file..");
             }
         }
     });
@@ -51,7 +51,7 @@ $(document).ready(function(){
 
     function containsPostalCode(obj) {
         return obj.types.some(function (elem) {
-	    return elem === "postal_code";
+            return elem === "postal_code";
         });
     };
 
@@ -70,15 +70,15 @@ $(document).ready(function(){
     // extract a zip code from a google reverse geocoding api call
     // response
     function extractPostalCode(response) {
-	// there were no results for the given lat lng
-	if (response.status === "ZERO_RESULTS") {
-	    return "NONE";
-	}
+        // there were no results for the given lat lng
+        if (response.status === "ZERO_RESULTS") {
+            return "NONE";
+        }
 
-	return onlyResultsThatContainPostalCode(response)[0]
-	    .address_components.filter(
-		containsPostalCode)[0]
-	    .short_name;
+        return onlyResultsThatContainPostalCode(response)[0]
+            .address_components.filter(
+                containsPostalCode)[0]
+            .short_name;
     };
 
     // callback is called with the parameter zip-code
@@ -86,64 +86,64 @@ $(document).ready(function(){
     // api call
     function postalCodeForLatLng(lat,lng,callback) {
 
-	var googleAPIBaseURL =
-	    "https://maps.googleapis.com/maps/api/geocode/" +
-	    "json?";
+        var googleAPIBaseURL =
+            "https://maps.googleapis.com/maps/api/geocode/" +
+            "json?";
 
-    // this key is on chris@purpledelivery.com account
-	var googleAPIKey = "AIzaSyAflsl4cNXHnO-HaZhfGC2gcGoIxt19UW4";
+        // this key is on chris@purpledelivery.com account
+        var googleAPIKey = "AIzaSyAflsl4cNXHnO-HaZhfGC2gcGoIxt19UW4";
 
-	var requestURL =
-	    googleAPIBaseURL +
-	    "latlng=" + lat + "," + lng +
-	    "&key=" +
-	    googleAPIKey;
+        var requestURL =
+            googleAPIBaseURL +
+            "latlng=" + lat + "," + lng +
+            "&key=" +
+            googleAPIKey;
 
-	$.get(requestURL,
-	      function(response) {
-		  callback(extractPostalCode(response));
-	      });
+        $.get(requestURL,
+              function(response) {
+                  callback(extractPostalCode(response));
+              });
     };
 
     // get the color for a zip code
     function getColorForZip(zipCode) {
 
-	// create regexp for finding a zip code
-	var zipRegExp = new RegExp(zipCode);
+        // create regexp for finding a zip code
+        var zipRegExp = new RegExp(zipCode);
 
-	// get the td that corresponds to a zip code
-	// there should be a td.zips containing all of the
-	// zip codes for a zone in table#zones
-	// of dashboard
-	var zipTd = $("#zones .zips").filter(
-	    function(index,elem)
-	    {
-		return elem.innerText.match(zipRegExp);
-	    })[0];
+        // get the td that corresponds to a zip code
+        // there should be a td.zips containing all of the
+        // zip codes for a zone in table#zones
+        // of dashboard
+        var zipTd = $("#zones .zips").filter(
+            function(index,elem)
+            {
+                return elem.innerText.match(zipRegExp);
+            })[0];
 
-	// get the corresponding td.color for that zip
-	// there should be a td.color for a zone in table#zones
-	var colorTd = $(zipTd).parent().find(".color")[0];
+        // get the corresponding td.color for that zip
+        // there should be a td.color for a zone in table#zones
+        var colorTd = $(zipTd).parent().find(".color")[0];
 
-	// return the color
-	return $(colorTd).text();
+        // return the color
+        return $(colorTd).text();
     };
 
     // highlight the couriers location in the color that corresponds to the zone
     // they are in
     $("table#couriers .location").map(function(index,elem) {
-	var lat = $(elem).data('lat');
-	var lng = $(elem).data('lng');
+        var lat = $(elem).data('lat');
+        var lng = $(elem).data('lng');
 
-	// if a courier is currently connected, highlight their
-	// location with the color of the zone they are currently in
-	if ( $(elem).parent().find(".currently-connected").length > 0)
-	{
-	    postalCodeForLatLng(lat,lng,
-				function (zipCode) {
-				    $(elem).addClass(getColorForZip(zipCode));
-				});
-	}
+        // if a courier is currently connected, highlight their
+        // location with the color of the zone they are currently in
+        if ( $(elem).parent().find(".currently-connected").length > 0)
+        {
+            postalCodeForLatLng(lat,lng,
+                                function (zipCode) {
+                                    $(elem).addClass(getColorForZip(zipCode));
+                                });
+        }
     });
 
     $('.show-all').click(function(){
@@ -165,7 +165,7 @@ $(document).ready(function(){
         if (confirm("!!! Are you sure you want to send this message to all active users?: " + message)) {
             $.ajax({
                 type: "POST",
-                url: $("#config").data("base-url") + "dashboard/send-push-to-all-active-users",
+                url: $("#config").data("base-url") + $("#config").data("uri-segment") + "send-push-to-all-active-users",
                 data: JSON.stringify(
                     {
                         "message": message
@@ -202,7 +202,7 @@ $(document).ready(function(){
         if (confirm("!!! Are you sure you want to send this message to all selected users?: " + message)) {
             $.ajax({
                 type: "POST",
-                url: $("#config").data("base-url") + "dashboard/send-push-to-users-list",
+                url: $("#config").data("base-url") + $("#config").data("uri-segment") + "send-push-to-users-list",
                 data: JSON.stringify({
                     "message": message,
                     "user-ids": users
@@ -228,7 +228,7 @@ $(document).ready(function(){
             $(self).attr("disabled", true);
             $.ajax({
                 type: "POST",
-                url: "dashboard/cancel-order",
+                url: $("#config").data("base-url") + $("#config").data("uri-segment") + "cancel-order",
                 data: JSON.stringify({
                     "order_id": $(this).data("id"),
                     "user_id": $(this).data("user-id")
@@ -272,7 +272,7 @@ $(document).ready(function(){
             var cache;
             $.ajax({
                 type: "POST",
-                url: "dashboard/update-status",
+                url: $("#config").data("base-url") + $("#config").data("uri-segment") + "update-status",
                 data: JSON.stringify({
                     "order_id": $(this).data("order-id"),
                 }),
@@ -321,15 +321,15 @@ $(document).ready(function(){
     // don't display any controls for assignment unless the order is
     // unassigned
     $("#orders tr").map(function(index,el) {
-	if ( $(el).find("td.status").text() != "unassigned")
-	{
-	    $(el).find(".assign-courier-interface").css("display","none");
-	}});
+        if ( $(el).find("td.status").text() != "unassigned")
+        {
+            $(el).find(".assign-courier-interface").css("display","none");
+        }});
 
     // display the assign-courier-interface for an element
     $('td.courier_name').dblclick(function(){
-	$(this).find("div.assign-courier-interface").css("display","block");
-	$(this).find("div.assigned-courier").css("display","none");
+        $(this).find("div.assign-courier-interface").css("display","block");
+        $(this).find("div.assigned-courier").css("display","none");
     });
 
     $('select.assign-courier').change(function(){
@@ -353,7 +353,7 @@ $(document).ready(function(){
             $(this).attr("disabled",true);
             $.ajax({
                 type: "POST",
-                url: "dashboard/assign-order",
+                url: $("#config").data("base-url") + $("#config").data("uri-segment") + "assign-order",
                 data: JSON.stringify({
                     "order_id": $(this).data("order-id"),
                     "courier_id": $(this).parent().find("select").val()
@@ -386,11 +386,11 @@ $(document).ready(function(){
 
     // create a submit element with classes,value and type
     function inputSubmit(classes,value,type) {
-	var inputSubmit = document.createElement("input");
-	inputSubmit.type = type;
-	inputSubmit.className = classes;
-	inputSubmit.setAttribute("value",value);
-	return inputSubmit;
+        var inputSubmit = document.createElement("input");
+        inputSubmit.type = type;
+        inputSubmit.className = classes;
+        inputSubmit.setAttribute("value",value);
+        return inputSubmit;
     };
 
     // listener for edit
@@ -437,7 +437,7 @@ $(document).ready(function(){
             zoneRows.map(function(index,el) {
                 $.ajax({
                     type: "POST",
-                    url: "dashboard/update-zone",
+                    url: $("#config").data("base-url") + $("#config").data("uri-segment") + "update-zone",
                     data: JSON.stringify({
                         "id":  $(el).find(".87-price input").data("id"),
                         "fuel_prices": ednFuelPrices(el),
@@ -469,23 +469,23 @@ $(document).ready(function(){
     // listener for edit-courier
     $('h2.couriers').on('click', 'input.edit-couriers',function(){
 
-	// get all of the td.zones for each courier
-	var tdZones = $("td.zones");
+        // get all of the td.zones for each courier
+        var tdZones = $("td.zones");
 
-	// clear out the current state of courierZoneState
-	courierZoneState = {};
-	// replace the content with a text input
-	tdZones.map(function (index,elem) {
-	    // set the state for each courier
-	    couriersZoneState.push(
-		{id:
-		 $(elem).parent().find("td.name").data("courier-id"),
-		 zones:
-		 $(elem).text()
-		});
+        // clear out the current state of courierZoneState
+        courierZoneState = {};
+        // replace the content with a text input
+        tdZones.map(function (index,elem) {
+            // set the state for each courier
+            couriersZoneState.push(
+                {id:
+                 $(elem).parent().find("td.name").data("courier-id"),
+                 zones:
+                 $(elem).text()
+                });
 
-	    $(elem).html(inputSubmit("courier-zones",$(elem).text(),"text"));
-	});
+            $(elem).html(inputSubmit("courier-zones",$(elem).text(),"text"));
+        });
 
         // replace the edit button with a save button
         $(this).replaceWith(inputSubmit("save-couriers","Save","submit"));
@@ -493,71 +493,71 @@ $(document).ready(function(){
 
     // listener for save-courier
     $('h2.couriers').on('click','input.save-couriers', function() {
-	// replace the save button with an edit button
-	$(this).replaceWith(inputSubmit("edit-couriers","Edit","submit"));
+        // replace the save button with an edit button
+        $(this).replaceWith(inputSubmit("edit-couriers","Edit","submit"));
 
-	// confirm that the user would like to save
-	if (confirm("Are you sure you want to save your edits to the Couriers?")) {
-	    // get each courier row
-	    var courierRows = $("table#couriers tbody tr");
+        // confirm that the user would like to save
+        if (confirm("Are you sure you want to save your edits to the Couriers?")) {
+            // get each courier row
+            var courierRows = $("table#couriers tbody tr");
 
-	    // given a tr, get the courier's id
-	    var courierId = function(tr) {
-		return $(tr).find("td.name").data("courier-id");
-	    };
+            // given a tr, get the courier's id
+            var courierId = function(tr) {
+                return $(tr).find("td.name").data("courier-id");
+            };
 
-	    // given a tr, get the zones string
-	    var courierZones = function(tr) {
-		return $(tr).find("td.zones").find("input.courier-zones").val();
-	    };
+            // given a tr, get the zones string
+            var courierZones = function(tr) {
+                return $(tr).find("td.zones").find("input.courier-zones").val();
+            };
 
-	    // update each courier row
-	    courierRows.map(function(index,el) {
-		// get the current state of the courier
-		var courierState =
-		    couriersZoneState.filter(
-			function (state)
-			{return state.id === courierId(el)}).pop();
+            // update each courier row
+            courierRows.map(function(index,el) {
+                // get the current state of the courier
+                var courierState =
+                    couriersZoneState.filter(
+                        function (state)
+                        {return state.id === courierId(el)}).pop();
 
-		if (courierState.zones === courierZones(el))
-		{
+                if (courierState.zones === courierZones(el))
+                {
 
-		    // do nothing
-		}
-		else
-		{ // update the server
-		    $.ajax({
-			type: "POST",
-			url: "dashboard/update-courier-zones",
-			data: JSON.stringify({
-			    "id": courierId(el),
-			    "zones": courierZones(el)
-			}),
-			dataType: "json",
-			contentType: "application/json",
-			async: false,
-			success: function(response) {
-			    if (response.success) {
-				console.log($(el).find("td.name").text() +
-					    "'s zone " +
-					    "information has been updated.");
-			    } else {
-				alert($(el).find("td.name").text() + "'s zone "
-				      + "was NOT updated!\n" +
-				      "Server Message:" +
-				      response.message);
-			    }
-			},
-			failure: function(response) {
-			    alert($(el).find("td.name").text() + "'s zone " +
-				  "was NOT updated!");
-			}
-		    });
-		}
-	    });
+                    // do nothing
+                }
+                else
+                { // update the server
+                    $.ajax({
+                        type: "POST",
+                        url: $("#config").data("base-url") + $("#config").data("uri-segment") + "update-courier-zones",
+                        data: JSON.stringify({
+                            "id": courierId(el),
+                            "zones": courierZones(el)
+                        }),
+                        dataType: "json",
+                        contentType: "application/json",
+                        async: false,
+                        success: function(response) {
+                            if (response.success) {
+                                console.log($(el).find("td.name").text() +
+                                            "'s zone " +
+                                            "information has been updated.");
+                            } else {
+                                alert($(el).find("td.name").text() + "'s zone "
+                                      + "was NOT updated!\n" +
+                                      "Server Message:" +
+                                      response.message);
+                            }
+                        },
+                        failure: function(response) {
+                            alert($(el).find("td.name").text() + "'s zone " +
+                                  "was NOT updated!");
+                        }
+                    });
+                }
+            });
 
-	    // reload the page
-	    location.reload();
-	}
+            // reload the page
+            location.reload();
+        }
     });
 });
