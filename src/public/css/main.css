@@ -40,6 +40,14 @@ table td {
 td.late {
     color: #cc0000;
 }
+td.etas {
+    font-size: 11px;
+    white-space: nowrap;
+}
+td.etas strong {
+    font-size: 11px;
+    color: #000;
+}
 #configForm {
     margin: 20px 0px 40px 0px;
 }
@@ -66,6 +74,24 @@ td.late {
 .only-show-orders h2:not(.part-of-orders),
 .only-show-orders table:not(.part-of-orders),
 .only-show-orders div:not(.part-of-orders){
+    display: none;
+}
+
+.manager #users,
+.manager #users-heading,
+.manager #coupons,
+.manager #coupons-heading,
+.manager .show-all,
+.manager #zones,
+.manager #zones-heading,
+.manager #coupons,
+.manager #coupons-heading,
+.manager #stats-section,
+.manager #dash-map-orders-link,
+.manager .edit-couriers,
+.manager #declined-link,
+.manager #couriers-on-time-col-header,
+.manager .lateness {
     display: none;
 }
 
@@ -98,26 +124,3 @@ td.late {
     background-color: #f39c12 !important;
     color: white;
 }
-
-/* begin dashboard_cljs.js css */
-.setCenterUI {
-    background-color: #fff;
-    border: 2px solid #fff;
-    border-radius: 3px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.3);
-    cursor: pointer;
-    //float: left;
-    margin-bottom: 22px;
-    text-align: center;
-    margin-left: 10px;
-}
-
-.setCenterText {
-    color: rgb(25,25,25);
-    font-family: Roboto,Arial,sans-serif;
-    font-size: 15px;
-    line-height: 25px;
-    padding-left: 5px;
-    padding-right: 5px;
-}
-/* end google maps widget css */

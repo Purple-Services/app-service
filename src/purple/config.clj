@@ -26,7 +26,17 @@
     (System/setProperty "SEGMENT_WRITE_KEY" (env :segment-write-key))
     (System/setProperty "BASE_URL" (env :base-url))
     (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
-    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))))
+    (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))
+    (System/setProperty "BASIC_AUTH_READ_ONLY_USERNAME"
+                        (env :basic-auth-read-only-username))
+    (System/setProperty "BASIC_AUTH_READ_ONLY_PASSWORD"
+                        (env :basic-auth-read-only-password))
+    (System/setProperty "BASIC_AUTH_COURIER_MANAGER_USERNAME"
+                        (env :basic-auth-courier-manager-username))
+    (System/setProperty "BASIC_AUTH_COURIER_MANAGER_PASSWORD"
+                        (env :basic-auth-courier-manager-password))
+    (System/setProperty "DASHBOARD_GOOGLE_BROWSER_API_KEY"
+                        (env :dashboard-google-browser-api-key))))
 
 ;;;; Base Url of the web service
 ;; Should include trailing forward-slash (e.g., "http://domain.com/")
@@ -54,6 +64,10 @@
 (def basic-auth-read-only
   {:username (System/getProperty "BASIC_AUTH_READ_ONLY_USERNAME")
    :password (System/getProperty "BASIC_AUTH_READ_ONLY_PASSWORD")})
+;; ...with courier manager privileges only  (/manager)
+(def basic-auth-courier-manager
+  {:username (System/getProperty "BASIC_AUTH_COURIER_MANAGER_USERNAME")
+   :password (System/getProperty "BASIC_AUTH_COURIER_MANAGER_PASSWORD")})
 
 ;;;; Payment
 (def stripe-api-url "https://api.stripe.com/v1/")
@@ -94,7 +108,7 @@
 
 ;;;; Referral Program
 ;; Discount value in cents of using a referral code
-(def referral-referred-value -1500) ;; should be negative!
+(def referral-referred-value -1000) ;; should be negative!
 ;; The # of gallons credited to the Referrer upon usage of their coupon code
 (def referral-referrer-gallons 5)
 
@@ -112,3 +126,7 @@
 
 ;; Messages
 (def delayed-assignment-message "Hello, Purple Courier. You have been assigned a new order, but have not begun the route. Please open the app to view the order details and begin the route. Thank you.")
+
+;; Google Maps API Key(s)
+(def dashboard-google-browser-api-key
+  (System/getProperty "DASHBOARD_GOOGLE_BROWSER_API_KEY"))

@@ -7,20 +7,22 @@
     </head>
     <body>
         <span id="config" data-base-url="" data-uri-segment=""></span>
+        
+        <span id="debug"></span>
 
         <div id="last-updated" style="width: 100%; text-align: center;"></div>
 
-        <h2 class="couriers">Couriers <input type="submit" class="edit-couriers" value="Edit"></h2>
+        <h2 class="couriers">Couriers <input type="submit" class="edit-couriers" value="Edit"><a id="dash-map-couriers-link" target="_blank" class="fake-link">[view couriers on map]</a></h2>
 
         <table id="couriers">
             <thead>
                 <tr>
                     <td>Connected</td>
                     <td>Name</td>
-		     <td>Phone</td>
+		            <td>Phone</td>
                     <td>Busy?</td>
-		     <td>Last Seen</td>
-                    <td>On time %</td>
+		            <td>Last Seen</td>
+                    <td id="couriers-on-time-col-header">On time %</td>
                     <td>Zones</td>
                     <td>Location</td>
                 </tr>
@@ -29,9 +31,9 @@
                 <tr>
                     <td class="connected"></td>
                     <td class="name"></td>
-		     <td class="courier_phone_number"></td>
+		            <td class="courier_phone_number"></td>
                     <td class="busy"></td>
-		     <td class="last_seen"></td>
+		            <td class="last_seen"></td>
                     <td class="lateness"></td>
                     <td class="zones"></td>
                     <td class="location">
@@ -41,7 +43,7 @@
             </tbody>
         </table>
 
-        <h2 class="part-of-orders" id="orders-heading">Orders <span class="show-all" data-show-id="orders">[show all]</span> <a href="/dashboard/declined" class="fake-link">[view all declined payments]</a> <a href="/dashboard/dash-map" target="_blank" class="fake-link">[views orders on map]</a></h2>
+        <h2 class="part-of-orders" id="orders-heading">Orders <span class="show-all" data-show-id="orders">[show all]</span> <a id="declined-link" href="/dashboard/declined" class="fake-link">[view all declined payments]</a> <a id="dash-map-orders-link" target="_blank" class="fake-link">[view orders on map]</a></h2>
         
         <table id="orders" class="part-of-orders hide-extra">
             <thead>
@@ -49,6 +51,7 @@
                     <td></td>
                     <td>Status</td>
                     <td>Courier</td>
+                    <td>ETAs (mins)</td>
                     <td width="98">Order Placed</td>
                     <td width="98">Deadline</td>
                     <td>Customer</td>
@@ -67,6 +70,7 @@
                     <td class="cancel"></td>
                     <td class="status"></td>
                     <td class="courier_name"></td>
+                    <td class="etas"></td>
                     <td class="target_time_start"></td>
                     <td class="target_time_end"></td>
                     <td class="customer_name"></td>
@@ -84,7 +88,7 @@
             </tbody>
         </table>
         
-        <h2>Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span> <span id="send-push-to-active-users" class="fake-link">[send push notification to all active users]</span> <span id="send-push-to-selected-users" class="fake-link">[send push to selected users]</span></h2>
+        <h2 id="users-heading">Users <span class="count" id="users-count"></span> <span class="show-all" data-show-id="users">[show all]</span> <span id="send-push-to-active-users" class="fake-link">[send push notification to all active users]</span> <span id="send-push-to-selected-users" class="fake-link">[send push to selected users]</span></h2>
         
         <table id="users" class="hide-extra">
             <thead>
@@ -113,7 +117,7 @@
             </tbody>
         </table>
 
-        <h2>Coupons <span class="show-all" data-show-id="coupons">[show all]</span></h2>
+        <h2 id="coupons-heading">Coupons <span class="show-all" data-show-id="coupons">[show all]</span></h2>
         
         <table id="coupons" class="hide-extra">
             <thead>
@@ -136,8 +140,8 @@
             </tbody>
         </table>
 
-        <h2 id="zones">Zones <input type="submit" class="edit-zones" value="Edit"></input></h2>
-	 <div id="zone-ids"></div>
+        <h2 id="zones-heading">Zones <input type="submit" class="edit-zones" value="Edit"></input></h2>
+	    <div id="zone-ids"></div>
         <table id="zones" class="hide-extra">
             <thead>
                 <tr>
@@ -163,8 +167,8 @@
                     <td class="service-end"</td>
                 </tr>
             </tbody>
-         </table>
-        <div style="text-align: center; padding-bottom: 20px;">
+        </table>
+        <div id="stats-section" style="text-align: center; padding-bottom: 20px;">
             stats.csv
             <span id="generate-stats-csv" class="fake-link">[initiate a refresh]</span>
             <span id="download-stats-csv" class="fake-link">[download]</span>

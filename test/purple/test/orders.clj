@@ -2,7 +2,7 @@
   (:require [purple.orders :as orders]
             [purple.db :refer [!select conn !update]]
             [purple.dispatch :as dispatch]
-            [purple.test.db :refer [database-fixture ebdb-test-config]]
+            [purple.test.db :refer [database-fixture ebdb-test-config db-config]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-time.core :as time]
             [purple.test.util :as util]
@@ -33,7 +33,9 @@
         total-price (+ (* gallons gas-price) service-fee)
         order {:time delivery-time
                :vehicle_id vehicle-id
-               :address_street "383-399 Civic Center Dr"
+               :address_street "123 Foo Br"
+               ;; :address_city   "Beverly Hills"
+               ;; :address_state  "CA"
                :special_instructions ""
                :service_fee service-fee
                :total_price total-price
@@ -41,8 +43,8 @@
                :gas_price gas-price
                :gallons gallons
                :gas_type octane
-               :lat "34.074606839269514"
-               :lng "-118.39825344813232"
+               :lat (str "34.0" (rand-int 9))
+               :lng (str "-118.4" (rand-int 9) )
                :address_zip zip
                :user_id user-id}]
     order))

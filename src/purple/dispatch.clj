@@ -10,7 +10,7 @@
             [overtone.at-at :as at-at]
             [clojure.string :as s]
             [purple.couriers :as couriers])
-  (:import (org.joda.time DateTime DateTimeZone)))
+  (:import [org.joda.time DateTime DateTimeZone]))
 
 (def job-pool (at-at/mk-pool))
 
@@ -329,7 +329,8 @@
                                     ;; "3106919061"  ;; JP
                                     ;; "8589228571"  ;; Lee
                                     "3103109961"     ;; Joe
-                                    ])))) 
+                                    "3235782263"     ;; Gustavo
+                                    ]))))
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
 (defn process

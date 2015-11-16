@@ -1,5 +1,6 @@
 (ns purple.util
-  (:use [purple.db :only [conn !select !insert !update mysql-escape-str]])
+  (:use [purple.db :only [conn !select !insert !update mysql-escape-str]]
+        [clojure.walk :only [postwalk]])
   (:require [purple.config :as config]
             [clojure.string :as s]
             [postal.core :as postal]
@@ -88,6 +89,11 @@
          (interpose ".")
          flatten
          (apply str))))
+
+(defn map->java-hash-map
+  "Recursively convert Clojure PersistentArrayMap to Java HashMap."
+  [m]
+  (postwalk #(unless-p map? % (java.util.HashMap. %)) m))
 
 (def time-zone (time/time-zone-for-id "America/Los_Angeles"))
 
@@ -212,7 +218,8 @@
     (only-prod
      (send-email {:to "chris@purpledelivery.com"
                   :cc ["joe@purpledelivery.com"
-                       "bruno@purpledelivery.com"]
+                       "bruno@purpledelivery.com"
+                       "rachel@purpledelivery.com"]
                   :subject "Purple Feedback Form Response"
                   :body (if user
                           (str "From User ID: " user_id "\n\n"
