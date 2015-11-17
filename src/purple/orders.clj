@@ -617,9 +617,8 @@ and their id matches the order's courier_id"
                                   "Orders to view it"))
         notify-old-courier #((resolve 'purple.users/send-push)
                              db-conn old-courier-id
-                             (str "You are no longer assigned to the "
-                                  (:address_street order)
-                                  "order"))]
+                             (str "You are no longer assigned to the order at: "
+                                  (:address_street order)))]
     (cond
       (= (:status order) "unassigned")
       (do
