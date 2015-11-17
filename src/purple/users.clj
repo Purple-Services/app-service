@@ -3,6 +3,7 @@
         cheshire.core
         gapi.core
         clojure.walk
+        [clojure.set :only [join]]
         [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
             [purple.orders :as orders]
@@ -71,6 +72,12 @@
   (cond (= (count id) 20) "native"
         (= "fb" (subs id 0 2)) "facebook"
         (= "g" (subs id 0 1)) "google"))
+
+(defn include-user-data
+  "Enrich a coll of maps that have :id's of users (e.g., couriers), with user
+  data."
+  [db-conn m]
+  (join m (get-users-by-ids db-conn (map :id m)) {:id :id}))
 
 (defn auth-native?
   "Is password correct for this user map?"
