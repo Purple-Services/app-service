@@ -41,6 +41,10 @@ The file src/purple/config.clj contains all of the information needed for config
               :basic-auth-password "gasdelivery8791"
               :basic-auth-read-only-username "purplestats"
               :basic-auth-read-only-password "gasdelivery8791"
+              :basic-auth-courier-manager-username "purplemanager"
+              :basic-auth-courier-manager-password "gasdelivery8791"
+              :segment-write-key "test"
+              :sift-science-api-key "test"
               :dashboard-google-browser-api-key "AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg"
               :env "dev"}
        :dependencies [[javax.servlet/servlet-api "2.5"]
@@ -166,19 +170,23 @@ The statuses in the Dashboard cycle through as Unassigned -> Assigned -> Accepte
 
 The development test server for the MySQL database is used in the stub given above. We have provided SQL files in order to setup a local database for development. This is a preferred method of development, due to the fact that there can be problems with connection pools being occupied when multiple users are developing on the AWS MySQL server. Also, some tests rely on fixtures that use a local database call ebdb_test. Without configuring a local MySQL server, tests which use this fixture will fail.
 
-There are two files provided in the resources/database dir:
+There are three files provided in the resources/database dir:
 
 **ebdb_setup.sql** will drop and create the ebdb and ebdb_test database locally.
 
 **ebdb.sql** will create the tables in the ebdb and ebdb_test database and populate them with test data.
 
-In order to use it, you must obviously have MySQL working on your local machine. It is advisable to also use phpmyadmin.
+**ebdb_zcta.sql.gz** will create a table of Zip Code Tabulation Areas (zcta) which define the borders of a zip code
+
+In order to use it, you obviously must have MySQL working on your local machine. It is advisable to also use phpmyadmin.
 
 We have also provided a clojure script that must be run from the command line using the '[lein-exec](https://github.com/kumarshantanu/lein-exec)' plugin. In order to use it, add the following line to your {:user {:plugins }} entry of your ~/.lein/profiles.clj:
 
 {:user {:plugins [[lein-exec "0.3.5"]]}}
 
 You must provide the script with the root password of your MySQL server in order to create the permissions for 'purplemaster' needed by the Purple server application.
+
+Due to the size of ebdb_zcta.sql.gz (34MB), it takes about 2 minutes for the following script to complete on a 2.3GHz Intel Core i7 with 8GB ram and SSD disk:
 
 ```bash
 web-service $ lein exec -p resources/scripts/setupdb.clj root_password=your_secret_password
