@@ -23,7 +23,7 @@
    :referral_gallons :is_courier])
 
 (defn get-user
-  "Gets a user from db. Optional add WHERE constraints."
+  "Gets a user from db. Optionally add WHERE constraints."
   [db-conn & {:keys [where]}]
   (first (!select db-conn "users" ["*"] (merge {} where))))
 
