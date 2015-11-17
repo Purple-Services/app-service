@@ -405,7 +405,8 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:couriers (couriers/all-couriers db-conn)}))))
+                       {:couriers (->> (couriers/all-couriers db-conn)
+                                       (users/include-user-data db-conn))}))))
             dashboard-auth?))
   (context "/manager" []
            (wrap-basic-authentication
@@ -466,7 +467,8 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:couriers (couriers/all-couriers db-conn)}))))
+                       {:couriers (->> (couriers/all-couriers db-conn)
+                                       (users/include-user-data db-conn))}))))
             courier-manager-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -520,7 +522,8 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       {:couriers (couriers/all-couriers db-conn)}))))
+                       {:couriers (->> (couriers/all-couriers db-conn)
+                                       (users/include-user-data db-conn))}))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
@@ -532,7 +535,7 @@
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
-  (GET "/terms" [] (wrap-page (response (pages/terms))))  
+  (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))
   (route/resources "/")
