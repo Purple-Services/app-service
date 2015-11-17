@@ -9,11 +9,11 @@
    ;; also in resources/database/ebdb_setup.sql
    :db-password "localpurpledevelopment2015"
    ;; sql for creating ebdb database and allowing access to purplemaster
-   :ebdb-setup-sql "resources/database/ebdb_setup.sql"
+   :ebdb-setup-sql "database/ebdb_setup.sql"
    ;; sql for creating tables and populating them in the ebdb database
-   :ebdb-create-sql "resources/database/ebdb.sql"
+   :ebdb-create-sql "database/ebdb.sql"
    ;; sql for zcta data, gzipped
-   :ebdb-zcta-sql   "resources/database/ebdb_zcta.sql.gz"})
+   :ebdb-zcta-sql   "database/ebdb_zcta.sql.gz"})
 
 (def root-ebdb-config (atom {:classname "com.mysql.jdbc.Driver"
                              :subprotocol "mysql"
