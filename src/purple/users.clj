@@ -77,7 +77,10 @@
   "Enrich a coll of maps that have :id's of users (e.g., couriers), with user
   data."
   [db-conn m]
-  (join m (get-users-by-ids db-conn (map :id m)) {:id :id}))
+  (join m
+        (map #(select-keys % safe-authd-user-keys)
+             (get-users-by-ids db-conn (map :id m)))
+        {:id :id}))
 
 (defn auth-native?
   "Is password correct for this user map?"
