@@ -523,13 +523,11 @@ and their id matches the order's courier_id"
                     "Your app seems to be out of sync. Try going back to the Orders list and pulling down to refresh it. Or, you might need to close the app completely and restart it.")}
         (let [update-result
               (case status
-                "assigned" (if (in? (map :id
-                                         (couriers/available-couriers db-conn))
-                                    user-id)
+                "assigned" (if (couriers/on-duty? db-conn user-id) ;; security
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))
                              {:success false
-                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
+                              :message "Your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
                 "enroute" (if (= user-id (:courier_id order))
                             (begin-route db-conn order)
                             {:success false
@@ -563,12 +561,15 @@ and their id matches the order's courier_id"
       (cond
         (contains? #{"complete" "cancelled" "unassigned"} (:status order))
         {:success false
-         :message "An order's status can not be advanced if it already complete, cancelled, or unassigned"}
+         :message (str "An order's status can not be advanced if it is already"
+                       " complete, cancelled, or unassigned.")}
         ;; Likewise, the dashboard user should not be allowed to advanced
         ;; to "assigned" or "accepted", but we check it on the server anyway.
         (contains? #{"assigned" "accepted"} advanced-status)
         {:success false
-         :message "An order's status can not be advanced to assigned or acccepted. Please assign a courier to this order in order to advance this order. "}
+         :message (str "An order's status can not be advanced to assigned or"
+                       " acccepted. Please assign a courier to this order in"
+                       " order to advance this order.")}
         ;; update the status to "enroute"
         (= advanced-status "enroute")
         (do (begin-route db-conn order)
