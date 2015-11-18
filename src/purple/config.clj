@@ -1,5 +1,6 @@
 (ns purple.config
-  (:require [environ.core :refer [env]]))
+  (:require [clojure.string :as s]
+            [environ.core :refer [env]]))
 
 (defn test-or-dev-env? [env]
   "Given env, return true if we are in test or dev"
@@ -9,6 +10,8 @@
   (do
     (System/setProperty "AWS_ACCESS_KEY_ID" (env :aws-access-key-id))
     (System/setProperty "AWS_SECRET_KEY" (env :aws-secret-key))
+    (System/setProperty "BASE_URL" (env :base-url))
+    (System/setProperty "HAS_SSL" (env :has-ssl))
     (System/setProperty "DB_HOST" (env :db-host))
     (System/setProperty "DB_NAME" (env :db-name))
     (System/setProperty "DB_PORT" (env :db-port))
@@ -24,7 +27,6 @@
     (System/setProperty "TWILIO_AUTH_TOKEN" (env :twilio-auto-token))
     (System/setProperty "TWILIO_FROM_NUMBER" (env :twilio-form-number))
     (System/setProperty "SEGMENT_WRITE_KEY" (env :segment-write-key))
-    (System/setProperty "BASE_URL" (env :base-url))
     (System/setProperty "BASIC_AUTH_USERNAME" (env :basic-auth-username))
     (System/setProperty "BASIC_AUTH_PASSWORD" (env :basic-auth-password))
     (System/setProperty "BASIC_AUTH_READ_ONLY_USERNAME"
@@ -41,6 +43,11 @@
 ;;;; Base Url of the web service
 ;; Should include trailing forward-slash (e.g., "http://domain.com/")
 (def base-url (System/getProperty "BASE_URL"))
+
+(when-not *compile-files*
+  (def has-ssl? (case (s/lower-case (System/getProperty "HAS_SSL"))
+                  "yes" true
+                  "no" false)))
 
 ;;;; Database
 (def db-host (System/getProperty "DB_HOST"))

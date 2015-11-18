@@ -31,5 +31,3 @@
                                 :on_duty true
                                 :connected true
                                 :busy false}))
-
-
