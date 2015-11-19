@@ -424,7 +424,7 @@
         zip-codes (apply concat (map :zip_codes courier-zones))]
     (set zip-codes)))
 
-(defn get-zcta-for-zips
+(defn get-zctas-for-zips
   "Given a string of comma-seperated zips and db-conn, return a list of
   zone/coordinates maps."
   [db-conn zips]
@@ -433,5 +433,5 @@
                                (map #(str "'" % "'")
                                     (split-on-comma zips)))
                        ")")]
-    (!select db-conn "zcta" ["*"] {}
+    (!select db-conn "zctas" ["*"] {}
              :custom-where (str "zip in " in-clause))))
