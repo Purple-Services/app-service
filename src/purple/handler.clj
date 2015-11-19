@@ -123,8 +123,6 @@
                     (response
                      (let [b (keywordize-keys body)]
                        (users/change-password (conn) (:key b) (:password b)))))
-              
-              ;; You can send in one :user and/or one :vehicle key to edit those
               (POST "/edit" {body :body}
                     (response
                      (let [b (keywordize-keys body)
