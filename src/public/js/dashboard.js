@@ -394,7 +394,7 @@ $(document).ready(function(){
     };
 
     // listener for edit
-    $('#zones').on('click', 'input.edit-zones',function(){
+    $('#zones-heading').on('click', 'input.edit-zones',function(){
         // get all zone text input fields and activate them
         var textInputFields = $("table#zones").find('input:text');
         textInputFields.map(function(index,el)
@@ -405,7 +405,7 @@ $(document).ready(function(){
     });
 
     // listener for save
-    $('#zones').on('click','input.save-zones', function() {
+    $('#zones-heading').on('click','input.save-zones', function() {
         // replace the save button with an edit button
         $(this).replaceWith(inputSubmit("edit-zones","Edit","submit"));
 
