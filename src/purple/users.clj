@@ -153,10 +153,15 @@
      :user (assoc (select-keys user safe-authd-user-keys)
                   :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
+     :saved_locations (merge {:home {:displayText ""
+                                     :googlePlaceId ""}
+                              :work {:displayText ""
+                                     :googlePlaceId ""}}
+                             (parse-string (:saved_locations user) true))
+     :cards (into [] (get-users-cards user))
      :orders (into [] (if (:is_courier user)
                         (orders/get-by-courier db-conn (:id user))
                         (orders/get-by-user db-conn (:id user))))
-     :cards (into [] (get-users-cards user))
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
