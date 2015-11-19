@@ -335,10 +335,15 @@
          :user (assoc (select-keys user safe-authd-user-keys)
                       :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
          :vehicles (into [] (get-users-vehicles db-conn user-id))
+         :saved_locations (merge {:home {:displayText ""
+                                         :googlePlaceId ""}
+                                  :work {:displayText ""
+                                         :googlePlaceId ""}}
+                                 (parse-string (:saved_locations user) true))
+         :cards (into [] (get-users-cards user))
          :orders (into [] (if (:is_courier user)
                             (orders/get-by-courier db-conn (:id user))
                             (orders/get-by-user db-conn (:id user))))
-         :cards (into [] (get-users-cards user))
          :system {:referral_referred_value config/referral-referred-value
                   :referral_referrer_gallons config/referral-referrer-gallons}})
     {:success false
@@ -445,8 +450,9 @@
       ;; unknown error
       :else {:success false :message "Unknown error"})))
 
+;; The user-id given is assumed to have been auth'd already.
 (defn update-vehicle
-  "The user-id given is assumed to have been auth'd already."
+  "Update a user's vehicles."
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-vehicle-fields))
@@ -463,6 +469,20 @@
        :message "Please enter a valid license plate."})
     {:success false
      :message "Required fields cannot be empty."}))
+
+(defn update-saved-locations
+  "Update a user's saved locations. (E.g., home address, work address)"
+  [db-conn user-id locations-map]
+  (!update db-conn
+           "users"
+           {:saved_locations
+            (generate-string
+             (merge {:home {:displayText ""
+                            :googlePlaceId ""}
+                     :work {:displayText ""
+                            :googlePlaceId ""}}
+                    locations-map))}
+           {:id user-id}))
 
 (def cc-fields-to-keep [:id :last4 :brand])
 
@@ -548,6 +568,10 @@
                    (if (= "new" (:id vehicle))
                      (add-vehicle db-conn user-id vehicle)
                      (update-vehicle db-conn user-id vehicle))))
+
+                (:saved_locations body)
+                (merge-unless-failed
+                 (update-saved-locations db-conn user-id (:saved_locations body)))
                 
                 (:card body)
                 (merge-unless-failed
