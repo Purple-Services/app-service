@@ -5,7 +5,8 @@
             [purple.dispatch :as dispatch]
             [purple.test.db :refer [ebdb-test-config
                                     setup-ebdb-test-pool!
-                                    clear-test-database]]
+                                    clear-test-database
+                                    db-config]]
             [purple.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-webdriver.taxi :refer :all]

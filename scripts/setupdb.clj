@@ -13,7 +13,7 @@
    ;; sql for creating tables and populating them in the ebdb database
    :ebdb-create-sql "database/ebdb.sql"
    ;; sql for zcta data, gzipped
-   :ebdb-zcta-sql   "database/ebdb_zcta.sql.gz"})
+   :ebdb-zcta-sql   "database/ebdb_zctas.sql.gz"})
 
 (def root-ebdb-config (atom {:classname "com.mysql.jdbc.Driver"
                              :subprotocol "mysql"

@@ -412,7 +412,7 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:zctas
-                        (dispatch/get-zcta-for-zips db-conn (:zips b))})))
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
               (POST "/zones" {body :body}
                     (response
@@ -484,7 +484,7 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:zctas
-                        (dispatch/get-zcta-for-zips db-conn (:zips b))})))
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
               (POST "/zones" {body :body}
                     (response
@@ -549,7 +549,7 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:zctas
-                        (dispatch/get-zcta-for-zips db-conn (:zips b))})))
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
               (POST "/zones" {body :body}
                     (response
