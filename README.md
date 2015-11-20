@@ -37,6 +37,7 @@ The file src/purple/config.clj contains all of the information needed for config
               :twilio-auto-token "3da1b036da5fb7716a95008c318ff154"
               :twilio-form-number "+13239243338"
               :base-url "http://localhost:3000/"
+              :has-ssl "NO"
               :basic-auth-username "purpleadmin"
               :basic-auth-password "gasdelivery8791"
               :basic-auth-read-only-username "purplestats"
