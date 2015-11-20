@@ -206,6 +206,32 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
+<<<<<<< HEAD
+                       {:couriers (couriers/all-couriers db-conn)})))
+              ;; return ZCTA defintions for zips
+              (POST "/zctas" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:zctas
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+              ;; return all zones
+              (POST "/zones" {body :body}
+                    (response
+                     {:zones @dispatch/zones})))
+            dashboard-auth?))
+  (context "/manager" []
+           (wrap-basic-authentication
+            (defroutes courier-manager-routes
+              (GET "/" []
+                   (-> (pages/dashboard (conn)
+                                        :courier-manager true)
+                       response
+                       wrap-page))
+              ;; Dashboard admin cancels order
+              (POST "/cancel-order" {body :body}
+                    ;; cancel the order
+=======
                        (demand-user-auth
                         db-conn
                         (:user_id b)
@@ -216,6 +242,7 @@
                                                          (:status b))))))
               ;; Customer tries to cancel order
               (POST "/cancel" {body :body}
+>>>>>>> dev
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
@@ -297,6 +324,85 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
+<<<<<<< HEAD
+                       {:couriers (couriers/all-couriers db-conn)})))
+              ;; return ZCTA definitions for zips
+              (POST "/zctas" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:zctas
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+              ;; return all zones
+              (POST "/zones" {body :body}
+                    (response
+                     {:zones @dispatch/zones})))
+            courier-manager-auth?))
+  (context "/stats" []
+           (wrap-basic-authentication
+            (defroutes stats-routes
+              (GET "/" []
+                   (-> (pages/dashboard (conn) :read-only true)
+                       response
+                       wrap-page))
+              (GET "/all" []
+                   (-> (pages/dashboard (conn)
+                                        :read-only true
+                                        :all true)
+                       response
+                       wrap-page))
+              (GET "/declined" []
+                   (-> (pages/declined (conn))
+                       response
+                       wrap-page))
+              (GET "/generate-stats-csv" []
+                   (do (future (analytics/gen-stats-csv))
+                       (response {:success true})))
+              (GET "/download-stats-csv" []
+                   (-> (response (java.io.File. "stats.csv"))
+                       (header "Content-Type:"
+                               "text/csv; name=\"stats.csv\"")
+                       (header "Content-Disposition"
+                               "attachment; filename=\"stats.csv\"")))
+              (GET "/dash-map-orders" []
+                   (-> (pages/dash-map :read-only true
+                                       :callback-s
+                                       "dashboard_cljs.core.init_map_orders")
+                       response
+                       wrap-page))
+              (GET "/dash-map-couriers" []
+                   (-> (pages/dash-map :read-only true
+                                       :callback-s
+                                       "dashboard_cljs.core.init_map_couriers")
+                       response
+                       wrap-page))
+              ;; given a date in the format YYYY-MM-DD, return all orders
+              ;; that have occurred since then
+              (POST "/orders-since-date"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (orders/orders-since-date-with-supplementary-data
+                        db-conn
+                        (:date b)))))
+              ;; return all couriers
+              (POST "/couriers" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:couriers (couriers/all-couriers db-conn)})))
+              ;; return ZCTA definitions for zips
+              (POST "/zctas" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:zctas
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+              ;; return all zones
+              (POST "/zones" {body :body}
+                    (response
+                     {:zones @dispatch/zones})))
+=======
                        ;; they don't have to send user auth
                        ;; but if they do, it should be correct
                        (if-not (nil? (:user_id b))
@@ -572,6 +678,7 @@
                (POST "/zones" {body :body}
                      (response
                       {:zones @dispatch/zones}))))
+>>>>>>> dev
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes

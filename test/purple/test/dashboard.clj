@@ -5,7 +5,8 @@
             [purple.dispatch :as dispatch]
             [purple.test.db :refer [ebdb-test-config
                                     setup-ebdb-test-pool!
-                                    clear-test-database]]
+                                    clear-test-database
+                                    db-config]]
             [purple.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-webdriver.taxi :refer :all]
@@ -139,8 +140,8 @@
                             (str "//td[text()='unassigned']/..//"
                                  "select[@class='assign-courier']")}
                            {:text courier-name}))]
-    (click {:xpath "//td[text()='unassigned']/..//"
-            "input[@class='assign-courier']"})
+    (click {:xpath (str "//td[text()='unassigned']/..//"
+                        "input[@class='assign-courier']")})
     (wait-until-alert-text (str "Are you sure you want to assign this order to "
                                 courier-name
                                 "? (this cannot be undone) "

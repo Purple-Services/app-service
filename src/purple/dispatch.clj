@@ -14,20 +14,32 @@
 
 (def job-pool (at-at/mk-pool))
 
-(defn get-all-zones
+(defn get-all-zones-from-db
   "Get all zones from the database."
   [db-conn]
   (!select db-conn "zones" ["*"] {}))
 
 ;; holds all zone definitions in local memory, some parsing in there too
 (! (def zones (atom (map #(update-in % [:zip_codes] split-on-comma)
-                         (get-all-zones (conn))))))
+                         (get-all-zones-from-db (conn))))))
 
 (defn update-zones!
   "Update the zones var held in memory with that in the database"
   [db-conn]
   (reset! zones (map #(update-in % [:zip_codes] split-on-comma)
-                     (get-all-zones db-conn))))
+                     (get-all-zones-from-db db-conn))))
+
+(defn get-zones-by-ids
+  "Given a string of comma-seperated zones, return all zones in
+  string"
+  [zones-str]
+  (let [zone-matches-id?
+        (fn [zone]
+          (some
+           identity
+           (map #(= (:id zone) %)
+                (map read-string (split-on-comma zones-str)))))]
+    (filter zone-matches-id? @zones)))
 
 ;; When server is booted up, we have to construct 'zones' map; which is a map
 ;; of priority-maps of orders in each zone.
@@ -411,3 +423,15 @@
                               @zones)
         zip-codes (apply concat (map :zip_codes courier-zones))]
     (set zip-codes)))
+
+(defn get-zctas-for-zips
+  "Given a string of comma-seperated zips and db-conn, return a list of
+  zone/coordinates maps."
+  [db-conn zips]
+  (let [in-clause (str "("
+                       (s/join ","
+                               (map #(str "'" % "'")
+                                    (split-on-comma zips)))
+                       ")")]
+    (!select db-conn "zctas" ["*"] {}
+             :custom-where (str "zip in " in-clause))))
