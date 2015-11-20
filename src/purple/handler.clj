@@ -419,7 +419,18 @@
                       (let [b (keywordize-keys body)
                             db-conn (conn)]
                         {:couriers (->> (couriers/all-couriers db-conn)
-                                        (users/include-user-data db-conn))})))))
+                                        (users/include-user-data db-conn))})))
+               ;; return ZCTA defintions for zips
+               (POST "/zctas" {body :body}
+                     (response
+                      (let [b (keywordize-keys body)
+                            db-conn (conn)]
+                        {:zctas
+                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+               ;; return all zones
+               (POST "/zones" {body :body}
+                     (response
+                      {:zones @dispatch/zones}))))
             dashboard-auth?))
   (context "/manager" []
            (wrap-basic-authentication
@@ -482,7 +493,18 @@
                       (let [b (keywordize-keys body)
                             db-conn (conn)]
                         {:couriers (->> (couriers/all-couriers db-conn)
-                                        (users/include-user-data db-conn))})))))
+                                        (users/include-user-data db-conn))})))
+               ;; return ZCTA defintions for zips
+               (POST "/zctas" {body :body}
+                     (response
+                      (let [b (keywordize-keys body)
+                            db-conn (conn)]
+                        {:zctas
+                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+               ;; return all zones
+               (POST "/zones" {body :body}
+                     (response
+                      {:zones @dispatch/zones}))))
             courier-manager-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -538,7 +560,18 @@
                       (let [b (keywordize-keys body)
                             db-conn (conn)]
                         {:couriers (->> (couriers/all-couriers db-conn)
-                                        (users/include-user-data db-conn))})))))
+                                        (users/include-user-data db-conn))})))
+               ;; return ZCTA defintions for zips
+               (POST "/zctas" {body :body}
+                     (response
+                      (let [b (keywordize-keys body)
+                            db-conn (conn)]
+                        {:zctas
+                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+               ;; return all zones
+               (POST "/zones" {body :body}
+                     (response
+                      {:zones @dispatch/zones}))))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
