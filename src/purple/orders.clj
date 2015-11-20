@@ -523,13 +523,11 @@ and their id matches the order's courier_id"
                     "Your app seems to be out of sync. Try going back to the Orders list and pulling down to refresh it. Or, you might need to close the app completely and restart it.")}
         (let [update-result
               (case status
-                "assigned" (if (in? (map :id
-                                         (couriers/available-couriers db-conn))
-                                    user-id)
+                "assigned" (if (couriers/on-duty? db-conn user-id) ;; security
                              (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
                                  (assign-to-courier db-conn order-id user-id))
                              {:success false
-                              :message "You can only have one order at a time. If you aren't working on any orders right now, your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
+                              :message "Your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
                 "enroute" (if (= user-id (:courier_id order))
                             (begin-route db-conn order)
                             {:success false
@@ -563,12 +561,15 @@ and their id matches the order's courier_id"
       (cond
         (contains? #{"complete" "cancelled" "unassigned"} (:status order))
         {:success false
-         :message "An order's status can not be advanced if it already complete, cancelled, or unassigned"}
+         :message (str "An order's status can not be advanced if it is already"
+                       " complete, cancelled, or unassigned.")}
         ;; Likewise, the dashboard user should not be allowed to advanced
         ;; to "assigned" or "accepted", but we check it on the server anyway.
         (contains? #{"assigned" "accepted"} advanced-status)
         {:success false
-         :message "An order's status can not be advanced to assigned or acccepted. Please assign a courier to this order in order to advance this order. "}
+         :message (str "An order's status can not be advanced to assigned or"
+                       " acccepted. Please assign a courier to this order in"
+                       " order to advance this order.")}
         ;; update the status to "enroute"
         (= advanced-status "enroute")
         (do (begin-route db-conn order)
@@ -617,9 +618,8 @@ and their id matches the order's courier_id"
                                   "Orders to view it"))
         notify-old-courier #((resolve 'purple.users/send-push)
                              db-conn old-courier-id
-                             (str "You are no longer assigned to the "
-                                  (:address_street order)
-                                  "order"))]
+                             (str "You are no longer assigned to the order at: "
+                                  (:address_street order)))]
     (cond
       (= (:status order) "unassigned")
       (do
@@ -742,48 +742,32 @@ and their id matches the order's courier_id"
   "Get all orders since date. A blank date will return all orders."
   [db-conn date]
   (!select db-conn "orders"
-                        [:id :lat :lng :status :gallons :gas_type
-                         :total_price :timestamp_created :address_street
-                         :address_city :address_state :address_zip :user_id
-                         :courier_id :vehicle_id :license_plate
-                         :target_time_start :target_time_end]
-                        {}
-                        :custom-where
-                        (str "timestamp_created > '"
-                             date "'")))
+           [:id :lat :lng :status :gallons :gas_type
+            :total_price :timestamp_created :address_street
+            :address_city :address_state :address_zip :user_id
+            :courier_id :vehicle_id :license_plate
+            :target_time_start :target_time_end]
+           {}
+           :custom-where
+           (str "timestamp_created > '"
+                date "'")))
 
 (defn orders-since-date-with-supplementary-data
   "Get all orders since date. A blank date will return all orders. Additional
   supplementary data is assoc'd onto the orders."
   [db-conn date]
-  (let [orders (orders-since-date db-conn date)
-        all-couriers (->> (!select db-conn "couriers" ["*"] {})
-                          ;; remove chriscourier@test.com
-                          (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
-        courier-ids (distinct (map :id all-couriers))
-        users-by-id (->> (!select db-conn "users"
-                                  [:id :name :email :phone_number :os
-                                   :app_version :stripe_default_card
-                                   :sift_score
-                                   :arn_endpoint :timestamp_created]
-                                  {}
-                                  :custom-where
-                                  (let [customer-ids (distinct (map
-                                                                :user_id
-                                                                orders))]
-                                    (str "id IN (\""
-                                         (s/join "\",\"" (distinct
-                                                          (concat
-                                                           customer-ids
-                                                           courier-ids)))
-                                         "\")")))
-                         (group-by :id))
-        id->name #(:name (first (get users-by-id %)))
-        id->phone_number #(:phone_number (% users-by-id))]
+  (let [os (orders-since-date db-conn date)
+        users-by-id (into {}
+                          (map (juxt :id identity)
+                               ((resolve 'purple.users/get-users-by-ids)
+                                db-conn
+                                (distinct
+                                 (concat (map :user_id os)
+                                         (map :courier_id os))))))
+        id->name #(:name (get users-by-id %))
+        id->phone_number #(:phone_number (get users-by-id %))]
     {:orders (map #(assoc %
                           :courier_name (id->name (:courier_id %))
                           :customer_name (id->name (:user_id %))
-                          :customer_phone_number
-                          (:phone_number
-                           (first (get users-by-id (:user_id %)))))
-                  orders)}))
+                          :customer_phone_number (id->phone_number (:user_id %)))
+                  os)}))
