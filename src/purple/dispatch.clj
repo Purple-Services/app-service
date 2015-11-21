@@ -140,21 +140,15 @@
          (orders/get-all-unassigned (conn))))
 
 (defn delivery-times-map
-  "Given a service fee, create the delivery-times map"
+  "Given a service fee, create the delivery-times map."
   [service-fees]
-  (let [fee #(if (= % 0)
-               "free"
-               (str "$" (cents->dollars-str %)))]
+  (let [fee #(if (= % 0) "free" (str "$" (cents->dollars-str %)))]
     {180 {:service_fee (:180 service-fees)
-          :text (str "within 3 hours ("
-                     (fee (:180 service-fees))
-                     ")")
+          :text (str "within 3 hours (" (fee (:180 service-fees)) ")")
           :order 0}
      60 {:service_fee (:60 service-fees)
-         :text (str "within 1 hour ("
-                    (fee (:60 service-fees)) ")")
-         :order 1
-         }}))
+         :text (str "within 1 hour (" (fee (:60 service-fees)) ")")
+         :order 1}}))
 
 (defn available
   [good-time?-fn zip-code octane]
@@ -174,6 +168,7 @@
     (segment/track segment-client user-id "Availability Check"
                    {:address_zip (five-digit-zip-code zip-code)})
     (if (zip-in-zones? zip-code)
+      ;; good ZIP, but let's check if good time
       (let [opening-minute (first (get-service-time-bracket zip-code))
             closing-minute (last  (get-service-time-bracket zip-code))
             current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
@@ -189,7 +184,7 @@
         {:success true
          :availabilities (map (partial available good-time?-fn zip-code)
                               ["87" "91"])
-         ;; if unavailable, this is the explanation:
+         ;; if unavailable (as the client will determine from :availabilities)
          :unavailable-reason
          (str "Sorry, the service hours for this ZIP code are "
               (minute-of-day->hmma opening-minute)
@@ -197,7 +192,7 @@
               (minute-of-day->hmma closing-minute)
               " every day.")
          :user (select-keys user [:referral_gallons :referral_code])
-         ;; we're still sending this for old versions of the app
+         ;; LEGACY: we're still sending this for old versions of the app
          :availability [{:octane "87"
                          :gallons (if (zip-in-zones? zip-code)
                                     15 0) ;; just assume 15 gallons
@@ -210,6 +205,7 @@
                          :time [1 3]
                          :price_per_gallon (:91 (get-fuel-prices zip-code))
                          :service_fee [100 0]}]})
+      ;; bad ZIP, we don't service there yet
       {:success true
        :user (select-keys user [:referral_gallons :referral_code])
        :availabilities [{:octane "87"
@@ -240,16 +236,17 @@
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
   [db-conn]
-  (let [expired-courier-ids (map :id
-                                 (!select db-conn
-                                          "couriers"
-                                          ["*"]
-                                          {}
-                                          :custom-where
-                                          (str "active = 1 AND connected = 1 AND ("
-                                               (quot (System/currentTimeMillis) 1000)
-                                               " - last_ping) > "
-                                               config/max-courier-abandon-time)))
+  (let [expired-courier-ids ;; TODO move to this a function in couriers ns
+        (map :id
+             (!select db-conn
+                      "couriers"
+                      ["*"]
+                      {}
+                      :custom-where
+                      (str "active = 1 AND connected = 1 AND ("
+                           (quot (System/currentTimeMillis) 1000)
+                           " - last_ping) > "
+                           config/max-courier-abandon-time)))
         ;; as user rows
         expired-couriers (users/get-users-by-ids db-conn expired-courier-ids)]
     (when-not (empty? expired-couriers)
@@ -292,7 +289,7 @@
 (defn match-orders-with-couriers
   [db-conn]
   (run! #(take-order-from-zones db-conn (:id %) (:zones %))
-        (couriers/available-couriers db-conn)))
+        (couriers/get-all-available db-conn)))
 
 (defn remind-couriers
   "Notifies couriers if they have not responded to new orders assigned to them."
@@ -330,7 +327,7 @@
   "If there are no couriers connected, but there are orders, then warn us."
   [db-conn]
   (when (and (seq (filter #(seq @(val %)) zq))
-             (empty? (couriers/available-couriers db-conn))
+             (empty? (couriers/get-all-available db-conn))
              (< (* 60 20) ;; only warn every 20 minutes
                 (- (quot (System/currentTimeMillis) 1000)
                    @last-orphan-warning)))
