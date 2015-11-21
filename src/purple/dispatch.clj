@@ -100,6 +100,8 @@
       :service_time_bracket
       (read-string)))
 
+;; This is only considering the time element. They could be disallowed
+;; for other reasons.
 (defn get-one-hour-orders-allowed
   "Given a zip-code, return the time in minutes that one hour orders are
   allowed."
