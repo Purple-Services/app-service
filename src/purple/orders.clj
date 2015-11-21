@@ -194,8 +194,10 @@
                num-couriers (->> (couriers/get-all-available db-conn)
                                  (filter #(in? (:zones %) zone-id))
                                  count)]
-           (< num-orders-in-queue
-              num-couriers)))
+           ;; (< num-orders-in-queue
+           ;;    num-couriers)
+           false
+           ))
     true)) ;; 3-hour or greater is always available
 
 (defn within-time-bracket?
