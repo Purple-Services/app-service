@@ -191,7 +191,7 @@
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
                pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
                num-orders-in-queue (count @pm)
-               num-couriers (->> (couriers/available-couriers db-conn)
+               num-couriers (->> (couriers/get-all-available db-conn)
                                  (filter #(in? (:zones %) zone-id))
                                  count)]
            (< num-orders-in-queue
@@ -325,23 +325,11 @@
                                        (:coupon_code o)
                                        (:license_plate o)
                                        (:user_id o)))
-          (future (let [connected-couriers (couriers/get-all-connected db-conn)
-
-                        available-couriers
-                        (->> connected-couriers
-                             (remove :busy)
-                             (filter
-                              #(contains?
-                                (:zones %)
-                                ((resolve 'purple.dispatch/order->zone-id) o)
-                                )))
-                        users-by-id
-                        (group-by :id
-                                  ((resolve 'purple.users/get-users-by-ids)
-                                   db-conn (map :id connected-couriers)))
-                        
-                        id->phone-number
-                        #(:phone_number (first (get users-by-id %)))
+          (future (let [available-couriers
+                        (->> (couriers/get-all-available db-conn)
+                             (couriers/filter-by-zone
+                              ((resolve 'purple.dispatch/order->zone-id) o))
+                             ((resolve 'purple.users/include-user-data) db-conn))
                         
                         auth-charge-result
                         (if (zero? (:total_price o))
@@ -380,25 +368,25 @@
                     (segment/track segment-client (:user_id o) "Request Order"
                                    (assoc (segment-props o)
                                           :charge-authorized charge-authorized?))
-                    (only-prod (send-email {:to "chris@purpledelivery.com"
-                                            :subject "Purple - New Order"
-                                            :body (str o)}))
-                    (only-prod (run! #((resolve 'purple.users/send-push)
-                                       db-conn (:id %) (str "New order available. "
-                                                            "Please press Accept "
-                                                            "Order ASAP."))
-                                     available-couriers))
-                    (only-prod (run! #(send-sms % (new-order-text db-conn
-                                                                  o
-                                                                  charge-authorized?))
-                                     (concat (map (comp id->phone-number :id)
-                                                  available-couriers)
-                                             (only-prod ["3235782263"   ;; Bruno
-                                                         ;;"3106919061" ;; JP
-                                                         ;;"8589228571" ;; Lee
-                                                         "3103109961"   ;; Joe
-                                                         "7143154380"   ;; Gustavo
-                                                         ]))))))
+                    (only-prod
+                     (send-email {:to "chris@purpledelivery.com"
+                                  :subject "Purple - New Order"
+                                  :body (str o)}))
+                    (only-prod
+                     (run! #((resolve 'purple.users/send-push)
+                             db-conn (:id %) (str "New order available. "
+                                                  "Please press Accept "
+                                                  "Order ASAP."))
+                           available-couriers))
+                    (only-prod
+                     (run! #(send-sms % (new-order-text db-conn
+                                                        o
+                                                        charge-authorized?))
+                           (concat (map :phone_number available-couriers)
+                                   (only-prod ["3235782263"   ;; Bruno
+                                               "3103109961"   ;; Joe
+                                               "7143154380"   ;; Gustavo
+                                               ]))))))
           {:success true
            :message (str "Your order has been accepted, and a courier will be "
                          "on the way soon! Please ensure that the fueling door "
