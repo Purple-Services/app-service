@@ -185,19 +185,19 @@
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
   [db-conn o]
   (if (< (:time-limit o) 180)
+    ;; if less than 3 hours time limit, check if it is allowed according to:
+    ;; time of day & number of available couriers
     (and (>= (unix->minute-of-day (:target_time_start o))
              ((resolve 'purple.dispatch/get-one-hour-orders-allowed)
               (:address_zip o)))
-         (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)
-               pm ((resolve 'purple.dispatch/get-map-by-zone-id) zone-id)
-               num-orders-in-queue (count @pm)
-               num-couriers (->> (couriers/get-all-available db-conn)
-                                 (filter #(in? (:zones %) zone-id))
-                                 count)]
-           ;; (< num-orders-in-queue
-           ;;    num-couriers)
-           false
-           ))
+         (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)]
+           ;; Are there more available couriers assigned to this zone
+           ;; than the number of unassigned orders?
+           (< (->> (get-all-unassigned db-conn)
+                   count)
+              (->> (couriers/get-all-available db-conn)
+                   (couriers/filter-by-zone zone-id)
+                   count))))
     true)) ;; 3-hour or greater is always available
 
 (defn within-time-bracket?

@@ -45,5 +45,5 @@
 
 (defn filter-by-zone
   "Only couriers that work in this zone."
-  [zone]
-  (partial (filter #(contains? (:zones %) zone))))
+  [zone-id couriers]
+  (filter #(in? (:zones %) zone-id) couriers))
