@@ -56,39 +56,39 @@
                              (mysql-escape-str user-id)
                              "\") AND status != \"cancelled\""))))]
     (cond
-     (not (and coupon license-plate))
-     {:success false
-      :message "Sorry, that code is invalid."
-      :value 0}
+      (not (and coupon license-plate))
+      {:success false
+       :message "Sorry, that code is invalid."
+       :value 0}
 
-     (< (:expiration_time coupon) (quot (System/currentTimeMillis) 1000))
-     {:success false
-      :message "Sorry, that code is expired."
-      :value 0}
+      (< (:expiration_time coupon) (quot (System/currentTimeMillis) 1000))
+      {:success false
+       :message "Sorry, that code is expired."
+       :value 0}
 
-     (is-owner? coupon user-id)
-     {:success false
-      :message "Sorry, you cannot use your own coupon code. Send it to your friends to earn free gallons!"
-      :value 0}
+      (is-owner? coupon user-id)
+      {:success false
+       :message "Sorry, you cannot use your own coupon code. Send it to your friends to earn free gallons!"
+       :value 0}
 
-     (or (used-by-license-plate? coupon license-plate)
-         (used-by-user-id? coupon user-id))
-     {:success false
-      :message "Sorry, you have already used that code. (Or, your license plate may be invalid.)"
-      :value 0}
+      (or (used-by-license-plate? coupon license-plate)
+          (used-by-user-id? coupon user-id))
+      {:success false
+       :message "Sorry, you have already used that code. (Or, your license plate may be invalid.)"
+       :value 0}
 
-     (and (:only_for_first_orders coupon)
-          (has-ordered? db-conn license-plate user-id))
-     {:success false
-      :message "Sorry, that code is only for a first-time order. (Or, your license plate may be invalid.)"
-      :value 0}
+      (and (:only_for_first_orders coupon)
+           (has-ordered? db-conn license-plate user-id))
+      {:success false
+       :message "Sorry, that code is only for a first-time order. (Or, your license plate may be invalid.)"
+       :value 0}
 
-     :else
-     (case (:type coupon)
-       "standard" {:success true
-                   :value (:value coupon)}
-       "referral" {:success true
-                   :value config/referral-referred-value}))))
+      :else
+      (case (:type coupon)
+        "standard" {:success true
+                    :value (:value coupon)}
+        "referral" {:success true
+                    :value config/referral-referred-value}))))
 
 (defn mark-code-as-used
   "Mark a coupon as used given its code."
@@ -161,7 +161,7 @@
 
 (defn is-code-available?
   [db-conn code]
-  (empty? (!select db-conn "coupons" [:id] {:code code})))
+  (empty? (doall (!select db-conn "coupons" [:id] {:code code}))))
 
 (defn create-standard-coupon
   [db-conn code value expiration-time]
@@ -177,14 +177,13 @@
 (defn create-referral-coupon
   "Creates a new referral coupon and returns its code."
   [db-conn user-id]
-  (loop []
-    (let [code (gen-coupon-code)]
-      (if (is-code-available? db-conn code)
-        (do (!insert db-conn "coupons" {:id (rand-str-alpha-num 20)
-                                        :code code
-                                        :type "referral"
-                                        :value 0
-                                        :owner_user_id user-id
-                                        :expiration_time 1999999999})
-            code)
-        (recur)))))
+  (let [code (->> (repeatedly gen-coupon-code)
+                  (filter (partial is-code-available? db-conn))
+                  first)]
+    (!insert db-conn "coupons" {:id (rand-str-alpha-num 20)
+                                :code code
+                                :type "referral"
+                                :value 0
+                                :owner_user_id user-id
+                                :expiration_time 1999999999})
+    code))

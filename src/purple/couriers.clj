@@ -4,7 +4,7 @@
   (:require [purple.config :as config]
             [clojure.string :as s]))
 
-;; Note that this converts "zones" from string to a set of Integer's
+;; Note that this converts couriers' "zones" from string to a set of Integer's
 (defn get-couriers
   "Gets couriers from db. Optionally add WHERE constraints."
   [db-conn & {:keys [where]}]
@@ -30,8 +30,8 @@
                                 :on_duty true
                                 :connected true}))
 
-(defn available-couriers
-  "All connected couriers that aren't busy."
+(defn get-all-available
+  "All the connected couriers that aren't busy."
   [db-conn]
   (get-couriers db-conn :where {:active true
                                 :on_duty true
@@ -42,3 +42,8 @@
   "Is this courier on duty?"
   [db-conn id]
   (in? (map :id (get-all-on-duty db-conn)) id))
+
+(defn filter-by-zone
+  "Only couriers that work in this zone."
+  [zone-id couriers]
+  (filter #(in? (:zones %) zone-id) couriers))
