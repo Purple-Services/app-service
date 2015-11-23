@@ -430,7 +430,7 @@
                ;; return all zones
                (POST "/zones" {body :body}
                      (response
-                      {:zones @dispatch/zones}))))
+                      {:zones (dispatch/get-all-zones-from-db (conn))}))))
             dashboard-auth?))
   (context "/manager" []
            (wrap-basic-authentication
