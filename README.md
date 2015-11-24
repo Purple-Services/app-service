@@ -48,7 +48,7 @@ Because profiles.clj will override the entires for :profiles in project.clj, the
 
 ### Request addition of your IP address to RDS
 
-Navigate to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed in order to access the test database so that you will be able to develope locally. This must be done before continuing further!
+Navigate to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed in order to access the test database so that you will be able to develope locally. This must be done before continuing further if you plan to connect to the development database on AWS as opposed to using your local MySQL database.
 
 ### Start the local server for development
 
