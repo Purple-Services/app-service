@@ -4,18 +4,6 @@ The RESTful web service that the Purple mobile app uses. Also, provides a Dashbo
 
 ## Running Locally
 
-### Fork and clone locally
-
-1. Fork the project on GitHub by navigating to the 'web-service' repository in Purple Services Inc. github page. (https://github.com/Purple-Services/web-service). Click on 'Fork' near the top right-hand side of the page.
-2. Fork it into your own GitHub account. The repository will remain private on your GitHub account.
-3. Go to the 'web-service' repo in your GitHub account and select the HTTPS clone url on the right hand side of the repo.
-4. On your machine, you can use the following command in a bash shell on Mac OS X:
-```bash
-$ clone https://github.com/jborden/web-service.git
-```
-
-This will clone your fork into a local 'web-service' dir on your machine.
-
 ### Configuration
 
 The file src/purple/config.clj contains all of the information needed for configuration. For local development, <project_root>/profiles.clj is used to define environment variables. However, profiles.clj is included in .gitignore and is not included in the repository. When you first start working on the project, you will have to create profiles.clj in the project root dir using the following template:
