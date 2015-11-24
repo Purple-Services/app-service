@@ -61,6 +61,34 @@
      "https://play.google.com/store/apps/details?id=com.purple.app"
      "https://itunes.apple.com/us/app/purple-services/id970824802")))
 
+(defroutes dashboard-read-only
+  ;; given a date in the format YYYY-MM-DD, return all orders
+  ;; that have occurred since then
+  (POST "/orders-since-date"  {body :body}
+        (response
+         (let [b (keywordize-keys body)
+               db-conn (conn)]
+           (orders/orders-since-date-with-supplementary-data
+            db-conn (:date b)))))
+  ;; return all couriers
+  (POST "/couriers" {body :body}
+        (response
+         (let [b (keywordize-keys body)
+               db-conn (conn)]
+           {:couriers (->> (couriers/all-couriers db-conn)
+                           (users/include-user-data db-conn))})))
+  ;; return ZCTA defintions for zips
+  (POST "/zctas" {body :body}
+        (response
+         (let [b (keywordize-keys body)
+               db-conn (conn)]
+           {:zctas
+            (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+  ;; return all zones
+  (POST "/zones" {body :body}
+        (response
+         {:zones (dispatch/get-all-zones-from-db (conn))})))
+
 (defroutes app-routes
   (context "/user" []
            (wrap-force-ssl
@@ -405,32 +433,7 @@
                                         "dashboard_cljs.core.init_map_couriers")
                         response
                         wrap-page))
-               ;; given a date in the format YYYY-MM-DD, return all orders
-               ;; that have occurred since then
-               (POST "/orders-since-date"  {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        (orders/orders-since-date-with-supplementary-data
-                         db-conn (:date b)))))
-               ;; return all couriers
-               (POST "/couriers" {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        {:couriers (->> (couriers/all-couriers db-conn)
-                                        (users/include-user-data db-conn))})))
-               ;; return ZCTA defintions for zips
-               (POST "/zctas" {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        {:zctas
-                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
-               ;; return all zones
-               (POST "/zones" {body :body}
-                     (response
-                      {:zones @dispatch/zones}))))
+               dashboard-read-only))
             dashboard-auth?))
   (context "/manager" []
            (wrap-basic-authentication
@@ -478,33 +481,7 @@
                                         "dashboard_cljs.core.init_map_couriers")
                         response
                         wrap-page))
-               ;; given a date in the format YYYY-MM-DD, return all orders
-               ;; that have occurred since then
-               (POST "/orders-since-date"  {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        (orders/orders-since-date-with-supplementary-data
-                         db-conn
-                         (:date b)))))
-               ;; return all couriers
-               (POST "/couriers" {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        {:couriers (->> (couriers/all-couriers db-conn)
-                                        (users/include-user-data db-conn))})))
-               ;; return ZCTA defintions for zips
-               (POST "/zctas" {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        {:zctas
-                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
-               ;; return all zones
-               (POST "/zones" {body :body}
-                     (response
-                      {:zones @dispatch/zones}))))
+               dashboard-read-only))
             courier-manager-auth?))
   (context "/stats" []
            (wrap-basic-authentication
@@ -545,33 +522,7 @@
                                         "dashboard_cljs.core.init_map_couriers")
                         response
                         wrap-page))
-               ;; given a date in the format YYYY-MM-DD, return all orders
-               ;; that have occurred since then
-               (POST "/orders-since-date"  {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        (orders/orders-since-date-with-supplementary-data
-                         db-conn
-                         (:date b)))))
-               ;; return all couriers
-               (POST "/couriers" {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        {:couriers (->> (couriers/all-couriers db-conn)
-                                        (users/include-user-data db-conn))})))
-               ;; return ZCTA defintions for zips
-               (POST "/zctas" {body :body}
-                     (response
-                      (let [b (keywordize-keys body)
-                            db-conn (conn)]
-                        {:zctas
-                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
-               ;; return all zones
-               (POST "/zones" {body :body}
-                     (response
-                      {:zones @dispatch/zones}))))
+               dashboard-read-only))
             stats-auth?))
   (context "/twiml" []
            (defroutes twiml-routes
