@@ -303,8 +303,10 @@
 
   [:#coupons :tbody :tr]
   (when (not (:courier-manager x))
-    (clone-for [t (:coupons x)]
-               
+    (clone-for [t (filter #(< (:expiration_time %)
+                              (quot (System/currentTimeMillis) 1000))
+                          (:coupons x))]
+
                [:td.code]
                (content (:code t))
 
@@ -312,11 +314,7 @@
                (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
                [:td.expiration_time]
-               (do-> (content (unix->fuller (:expiration_time t)))
-                     (if (< (:expiration_time t)
-                            (quot (System/currentTimeMillis) 1000))
-                       (add-class "late")
-                       (add-class "not-late")))
+               (content (unix->fuller (:expiration_time t)))
 
                [:td.times_used]
                (content (str (:times-used t)))
