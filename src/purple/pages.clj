@@ -303,8 +303,8 @@
 
   [:#coupons :tbody :tr]
   (when (not (:courier-manager x))
-    (clone-for [t (filter #(< (:expiration_time %)
-                              (quot (System/currentTimeMillis) 1000))
+    (clone-for [t (filter #(< (quot (System/currentTimeMillis) 1000)
+                              (:expiration_time %))
                           (:coupons x))]
 
                [:td.code]
