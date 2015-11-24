@@ -4,26 +4,14 @@ The RESTful web service that the Purple mobile app uses. Also, provides a Dashbo
 
 ## Running Locally
 
-### Fork and clone locally
-
-1. Fork the project on GitHub by navigating to the 'web-service' repository in Purple Services Inc. github page. (https://github.com/Purple-Services/web-service). Click on 'Fork' near the top right-hand side of the page.
-2. Fork it into your own GitHub account. The repository will remain private on your GitHub account.
-3. Go to the 'web-service' repo in your GitHub account and select the HTTPS clone url on the right hand side of the repo.
-4. On your machine, you can use the following command in a bash shell on Mac OS X:
-```bash
-$ clone https://github.com/jborden/web-service.git
-```
-
-This will clone your fork into a local 'web-service' dir on your machine.
-
 ### Configuration
 
 The file src/purple/config.clj contains all of the information needed for configuration. For local development, <project_root>/profiles.clj is used to define environment variables. However, profiles.clj is included in .gitignore and is not included in the repository. When you first start working on the project, you will have to create profiles.clj in the project root dir using the following template:
 
 ```clojure
-{:dev { :env {:aws-access-key-id "AKIAJLB35GOFQUJZCX5A"
-              :aws-secret-key "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"
-              :db-host "localhost" ; AWS host: aaey4vi1u5i4jq.cqxql2suz5ru.us-west-2.rds.amazonaws.com
+{:dev { :env {:aws-access-key-id "ANYTHINGWHENLOCAL"
+              :aws-secret-key "ANYTHINGWHENLOCAL"
+              :db-host "localhost" ; AWS host: "purple-dev-db.cqxql2suz5ru.us-west-2.rds.amazonaws.com"
               :db-name "ebdb"
               :db-port "3306"
               :db-user "purplemaster"
@@ -31,8 +19,8 @@ The file src/purple/config.clj contains all of the information needed for config
               :email-user "no-reply@purpledelivery.com"
               :email-password "HJdhj34HJd"
               :stripe-private-key "sk_test_6Nbxf0bpbBod335kK11SFGw3"
-              :sns-app-arn-apns "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple"
-              :sns-app-arn-gcm  "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple"
+              :sns-app-arn-apns "arn:aws:sns:us-west-2:336714665684:app/APNS_SANDBOX/Purple" ;; sandbox is also used for couriers on prod
+              :sns-app-arn-gcm  "arn:aws:sns:us-west-2:336714665684:app/GCM/Purple" ;; also used on prod
               :twilio-account-sid "AC0a0954acca9ba8c527f628a3bfaf1329"
               :twilio-auto-token "3da1b036da5fb7716a95008c318ff154"
               :twilio-form-number "+13239243338"
@@ -60,7 +48,7 @@ Because profiles.clj will override the entires for :profiles in project.clj, the
 
 ### Request addition of your IP address to RDS
 
-Navigate to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed in order to access the test database so that you will be able to develope locally. This must be done before continuing further!
+Navigate to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed in order to access the test database so that you will be able to develope locally. This must be done before continuing further if you plan to connect to the development database on AWS as opposed to using your local MySQL database.
 
 ### Start the local server for development
 

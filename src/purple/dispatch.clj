@@ -295,6 +295,8 @@
 
 (defn remind-couriers
   "Notifies couriers if they have not responded to new orders assigned to them."
+  ;; well, actually it currently notifies couriers that have 'accepted' an order
+  ;; and haven't started the route yet
   [db-conn]
   (let [accepted-orders (!select db-conn
                                  "orders"
@@ -328,7 +330,8 @@
 (defn warn-orphaned-order
   "If there are no couriers connected, but there are orders, then warn us."
   [db-conn]
-  (when (and (seq (filter #(seq @(val %)) zq))
+  (when (and false ;; turning this off for now
+             (seq (filter #(seq @(val %)) zq))
              (empty? (couriers/get-all-available db-conn))
              (< (* 60 20) ;; only warn every 20 minutes
                 (- (quot (System/currentTimeMillis) 1000)

@@ -197,11 +197,13 @@
 
              [:td.etas]
              (html-content (apply str
-                                  (map #(str (key %)
-                                             " - <strong>"
-                                             (val %)
+                                  (map #(str (:name %)
+                                             " - <strong class='"
+                                             (when (:busy %) "late")
+                                             "'>"
+                                             (:minutes %)
                                              "</strong><br />")
-                                       (sort-by second (:etas t)))))
+                                       (sort-by :minutes (:etas t)))))
 
              [:td.target_time_start]
              (content (unix->full (:target_time_start t)))
@@ -301,8 +303,10 @@
 
   [:#coupons :tbody :tr]
   (when (not (:courier-manager x))
-    (clone-for [t (:coupons x)]
-               
+    (clone-for [t (filter #(< (:expiration_time %)
+                              (quot (System/currentTimeMillis) 1000))
+                          (:coupons x))]
+
                [:td.code]
                (content (:code t))
 
@@ -310,11 +314,7 @@
                (content (str "$" (cents->dollars-str (Math/abs (:value t)))))
 
                [:td.expiration_time]
-               (do-> (content (unix->fuller (:expiration_time t)))
-                     (if (< (:expiration_time t)
-                            (quot (System/currentTimeMillis) 1000))
-                       (add-class "late")
-                       (add-class "not-late")))
+               (content (unix->fuller (:expiration_time t)))
 
                [:td.times_used]
                (content (str (:times-used t)))
@@ -441,6 +441,9 @@
   (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
+
+        couriers-by-id (into {} (map (juxt (comp keyword :id) identity) all-couriers))
+        
         courier-ids (distinct (map :id all-couriers))
         all-orders (!select db-conn
                             "orders"
@@ -538,13 +541,14 @@
                                   (:sift_score
                                    (first (get users-by-id (:user_id %))))
 
-                                  :etas (when-let [etas (into {} (get (get dist-map (:id %)) "etas"))]
-                                          (into
-                                           {}
-                                           (map (fn [x]
-                                                  [(id->name (key x))
-                                                   (quot (val x) 60)])
-                                                etas)))
+                                  :etas (if-let [this-dist-map (get dist-map (:id %))]
+                                          (map (fn [x]
+                                                 {:name (id->name (key x))
+                                                  :busy (:busy
+                                                         ((keyword (key x))
+                                                          couriers-by-id))
+                                                  :minutes (quot (val x) 60)})
+                                               (into {} (get this-dist-map "etas"))))
                                   
                                   :zone-color
                                   (:color
