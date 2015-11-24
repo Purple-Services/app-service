@@ -37,7 +37,7 @@ table.hide-extra.showing-all tbody tr:nth-child(n+8) {
 table td {
     padding: 3px 8px 3px 8px;
 }
-td.late {
+.late {
     color: #cc0000;
 }
 td.etas {
@@ -46,7 +46,6 @@ td.etas {
 }
 td.etas strong {
     font-size: 11px;
-    color: #000;
 }
 #configForm {
     margin: 20px 0px 40px 0px;
