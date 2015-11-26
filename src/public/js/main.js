@@ -2,8 +2,8 @@ $(document).ready(function($) {
     "use strict";
 
 	// Video control
-	document.getElementById("bgVid").defaultPlaybackRate = 0.5;
-	document.getElementById("bgVid").playbackRate = 0.5;
+	// document.getElementById("bgVid").defaultPlaybackRate = 0.5;
+	// document.getElementById("bgVid").playbackRate = 0.5;
 
     // Fast hack to Init the header black if doc already scrolled
       if ($(document).scrollTop() > 350){
