@@ -50,6 +50,7 @@ body {
 	overflow-x: hidden;
 	font-family: Open Sans,Helvetica Neue,Helvetica,Arial,sans-serif;
 	color: #222222;
+    background-color: #752B90;
 }
 
 .body {
@@ -569,7 +570,7 @@ button {
 #intro.intro2 {
 	padding: 36.5% 0 6%;
 	position: relative;
-	background: #000 url(../images/bg/bg-landing.jpg) no-repeat top center fixed;
+	background: #000;
 	background-size: 100% auto;
 	overflow: hidden;
 }
@@ -934,6 +935,7 @@ button {
 	background-position-x: 50%;
 	/* background-image: url(../images/laRoad.png); */
     background-image: url('//s3-us-west-1.amazonaws.com/purple-services/images/la-road.jpg');
+    background-size: cover;
 	opacity: 0.6;
 }
 
@@ -1243,7 +1245,8 @@ border: 2px solid;
 	  font-size: 2.5em;
   font-weight: 400;
 	color: #fff;
-	margin-bottom:65px;
+	margin-bottom:40px;
+    text-transform: uppercase;
 	font-family: Open Sans,Helvetica Neue,Helvetica,Arial,sans-serif;;
 }
 
@@ -1593,10 +1596,13 @@ border: 2px solid;
 }
 
 .map {
-	background-image: url(../images/bgmap.jpg)!important;
-	background-position: center center!important;
-	background-repeat: no-repeat!important;
-	background-size: cover!important;
+    max-width: 1500px;
+    padding: 10% 0px;
+    margin: 0px auto;
+	background-image: url(../images/area-of-service.jpg)!important;
+	background-position: center center !important;
+	background-repeat: no-repeat !important;
+	background-size: cover !important;
 }
 
 #punchline-area{
@@ -2875,15 +2881,15 @@ border: 2px solid;
   }
 
   .map {
-       background-image: url(../images/bgmap.jpg)!important;
-  background-repeat: no-repeat!important;
-  background-size: contain!important;
-  background-size: 202%!important;
-  background-position-y: 20%!important;
-  background-size: 158%!important;
+      /* background-image: url(../images/bgmap.jpg)!important; */
+      /* background-repeat: no-repeat!important; */
+      /* background-size: contain!important; */
+      /* background-size: 202%!important; */
+      /* background-position-y: 20%!important; */
+      /* background-size: 158%!important; */
 
-   padding-top: 3%;
-  height: 355px;
+      padding-top: 3%;
+      height: 355px;
   }
 
 
@@ -3067,9 +3073,9 @@ border: 2px solid;
   }
 
   #starterpack {
-  margin: -30px 0px 40px -20px;
-  font-size: 48px;
-
+      margin: -30px 0px 0px -20px !important;
+      font-size: 48px !important;
+      text-transform: uppercase !important;
   }
 
   .chevron {
