@@ -427,6 +427,9 @@
   [:#orders-heading] (if (:only-show-orders x)
                        (content "Declined Payments")
                        (add-class "standard"))
+  [:#orders-count] (content
+                    (str "(" (:today (:orders-count x)) " today, "
+                         (:yesterday (:orders-count x)) " yesterday)"))
 
   [:#debug] (content (:debug x))
   )
@@ -573,6 +576,10 @@
                                             (:target_time_end %))))
                                   :vehicle (id->vehicle (:vehicle_id %)))
                           all-orders)
+             :orders-count {:today (->> all-orders
+                                        (filter identity)
+                                        count)
+                            :yesterday 10}
              :users (sort-by #(.getTime (:timestamp_created %))
                              >
                              (map (comp first val) users-by-id))
