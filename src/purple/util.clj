@@ -244,7 +244,6 @@
   [client device-token user-id sns-app-arn]
   (try
     (let [req (CreatePlatformEndpointRequest.)]
-      (.setCustomUserData req user-id)
       (.setToken req device-token)
       (.setPlatformApplicationArn req sns-app-arn)
       (.getEndpointArn (.createPlatformEndpoint client req)))

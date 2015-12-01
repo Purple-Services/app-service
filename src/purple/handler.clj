@@ -343,10 +343,12 @@
                     (-> (pages/dashboard (conn))
                         response
                         wrap-page))
-               (GET "/all" []
-                    (-> (pages/dashboard (conn) :all true)
-                        response
-                        wrap-page))
+               ;; removing this temporarily, it's causing the server to crash
+               ;; seems to be a memory leak or general memory problem
+               ;; (GET "/all" []
+               ;;      (-> (pages/dashboard (conn) :all true)
+               ;;          response
+               ;;          wrap-page))
                (GET "/declined" []
                     (-> (pages/declined (conn))
                         response
@@ -489,12 +491,14 @@
                     (-> (pages/dashboard (conn) :read-only true)
                         response
                         wrap-page))
-               (GET "/all" []
-                    (-> (pages/dashboard (conn)
-                                         :read-only true
-                                         :all true)
-                        response
-                        wrap-page))
+               ;; removing this temporarily, it's causing the server to crash
+               ;; seems to be a memory leak or general memory problem
+               ;; (GET "/all" []
+               ;;      (-> (pages/dashboard (conn)
+               ;;                           :read-only true
+               ;;                           :all true)
+               ;;          response
+               ;;          wrap-page))
                (GET "/declined" []
                     (-> (pages/declined (conn))
                         response
