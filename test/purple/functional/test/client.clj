@@ -1,7 +1,7 @@
-(ns purple.test.client
+(ns purple.functional.test.client
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
-            [purple.test.dashboard :refer
+            [purple.functional.test.dashboard :refer
              [sleep wait-until-alert-text
               start-server stop-server]]
             [purple.users :refer [get-user-by-id get-user]]

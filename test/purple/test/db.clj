@@ -26,7 +26,7 @@
         db-name "ebdb_test"
         db-password "localpurpledevelopment2015"
         db-user "purplemaster"
-        db-sql "resources/database/ebdb.sql"
+        db-sql "database/ebdb.sql"
         db-config {:classname "com.mysql.jdbc.Driver"
                    :subprotocol "mysql"
                    :subname (str "//" db-host ":" db-port "/" db-name)
@@ -76,9 +76,9 @@
 ;; PERMISSIONS TO purplemaster FOR ebdb_test, OTHERWISE TESTS WILL FAIL!
 ;;
 ;; YOU SHOULD RUN THE FOLLOWING SCRIPT DESCRIBED IN README.md FIRST!
-;; $ lein exec -p resources/scripts/setupdb.clj root_password=<mysql_root_pwd>
+;; $ lein exec -p scripts/setupdb.clj root_password=<mysql_root_pwd>
 ;;
-;; see: resources/database/ebdb_setup.sql for proper permissions
+;; see: database/ebdb_setup.sql for proper permissions
 (defn database-fixture
   "Remove all test data from the database"
   [test]

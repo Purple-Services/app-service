@@ -64,7 +64,10 @@
 
   [:#last-updated] (content (str "Last Updated: "
                                  (unix->full (quot (System/currentTimeMillis)
-                                                   1000))))
+                                                   1000)))
+                            (html [:a {:id "logout"
+                                       :href "/dashboard/logout"
+                                       :class "fake-link"} "   Logout"]))
   [:#couriers :tbody :tr]
   (clone-for [t (:couriers x)]
              [:td.connected]
@@ -753,3 +756,22 @@
                                                 :else "dashboard/")
                                  :read-only read-only
                                  :callback-s callback-s })))
+
+(deftemplate dash-login-template "templates/dashmap.html"
+  [x]
+  [:title] (content "Purple - Dashboard Login")
+
+  [:#pikaday-css] unwrap
+
+  [:#main-css] unwrap
+
+  [:#base-url] (set-attr :value (str (:base-url x)))
+
+  [:#map] (set-attr :id "login")
+
+  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.login();"])))
+
+(defn dash-login
+  []
+  (apply str (dash-login-template {:base-url
+                                   (str config/base-url "dashboard/")})))
