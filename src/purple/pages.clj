@@ -127,10 +127,10 @@
                                   ","
                                   (:lng t))))
   [:#dash-map-orders-link]
-  (set-attr :href (str (:uri-segment x) "dash-map-orders"))
+  (set-attr :href (str (:base-url x) (:uri-segment x) "dash-map-orders"))
 
   [:#dash-map-couriers-link]
-  (set-attr :href (str (:uri-segment x) "dash-map-couriers"))
+  (set-attr :href (str (:base-url x) (:uri-segment x) "dash-map-couriers"))
 
   [:#orders :tbody :tr]
   (clone-for [t (:orders x)]

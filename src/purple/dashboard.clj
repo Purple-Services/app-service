@@ -1,8 +1,7 @@
 (ns purple.dashboard
   (:require [purple.db :as db]
             [purple.util :as util]
-            [purple.users :refer [valid-email? valid-password? auth-native?
-                                  init-session]]
+            [purple.users :refer [valid-email? valid-password? auth-native?]]
             [crypto.password.bcrypt :as bcrypt]))
 
 (def safe-authd-user-keys
@@ -32,6 +31,18 @@
   (db/!insert db-conn
            "dashboard_users"
            (assoc user :password_hash (bcrypt/encrypt password))))
+
+(defn init-session
+  [db-conn user client-ip]
+  (let [token (util/new-auth-token)]
+    (db/!insert db-conn
+             "sessions"
+             {:user_id (:id user)
+              :token token
+              :ip (or client-ip "")})
+    {:success true
+     :token token
+     :user  (select-keys user safe-authd-user-keys)}))
 
 (defn login
   "Given an email, password and client-ip, create a new session and return it"

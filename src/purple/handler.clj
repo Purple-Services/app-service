@@ -64,7 +64,7 @@
    {:pattern #".*/dashboard/logout" ; this route must always be allowed access
     :handler (constantly true)}
    {:pattern #".*/dashboard(/.*|$)"
-    :handler valid-session-wrapper
+    :handler valid-session-wrapper?
     :redirect "/dashboard/login"}])
 
 (defroutes app-routes
