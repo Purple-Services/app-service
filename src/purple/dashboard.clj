@@ -25,6 +25,17 @@
   (let [user (get-user-by-email db-conn email)]
     (empty? user)))
 
+(defn get-permissions
+  "Given a user id, return the permissions as a set"
+  [db-conn user-id]
+  (let [user (get-user db-conn :where {:id user-id})
+        perms (:permissions user)]
+    (if (not (nil? perms))
+      (-> (:permissions user)
+          (util/split-on-comma)
+          set)
+      (set nil))))
+
 (defn- add
   "Add a new user with password"
   [db-conn user & {:keys [password]}]
@@ -50,7 +61,7 @@
   (let [user (get-user-by-email db-conn email)]
     (cond (nil? user)
           {:success false
-           :message "User does not exist."}
+           :message "Incorrect email / password combination."}
           (auth-native? user password)
           (init-session db-conn user client-ip)
           :else {:success false

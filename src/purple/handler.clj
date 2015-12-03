@@ -50,15 +50,15 @@
      "https://itunes.apple.com/us/app/purple-services/id970824802")))
 
 (defn valid-session-wrapper?
-  "Given a request r, determine if the user-id has a valid session"
-  [r]
+  "Given a request, determine if the user-id has a valid session"
+  [request]
   (let [cookies (keywordize-keys
-                 ((resolve 'ring.middleware.cookies/parse-cookies) r))
+                 ((resolve 'ring.middleware.cookies/parse-cookies) request))
         user-id (get-in cookies [:user-id :value])
         token   (get-in cookies [:token :value])]
     (users/valid-session? (conn) user-id token)))
 
-(def rules
+(def login-rules
   [{:pattern #".*/dashboard/login" ; this route must always be allowed access
     :handler (constantly true)}
    {:pattern #".*/dashboard/logout" ; this route must always be allowed access
@@ -66,6 +66,78 @@
    {:pattern #".*/dashboard(/.*|$)"
     :handler valid-session-wrapper?
     :redirect "/dashboard/login"}])
+
+;; if the route is omitted, it is accessible by all dashboard users
+(def dashboard-uri-permissions
+  [{:url "/dashboard"
+    :permissions ["view-dash"]}
+   {:url "/dashboard/"
+    :permissions ["view-dash"]}
+   {:url "/dashboard/all"
+    :permissions ["view-dash"]}
+   {:url "/dashboard/declined"
+    :permissions ["view-dash"]}
+   {:url "/dashboard/generate-stats-csv"
+    :permissions ["download-stats"]}
+   {:url "/dashboard/download-stats-csv"
+    :permissions ["download-stats"]}
+   {:url "/dashboard/send-push-to-all-active-users"
+    :permissions ["view-users"]}
+   {:url "/dashboard/send-push-users-lists"
+    :permissions ["view-users"]}
+   {:url "/dashboard/cancel-order"
+    :permissions ["view-orders" "view-users"]}
+   {:url "/dashboard/update-status"
+    :permissions ["view-orders" "view-users"]}
+   {:url "/dashboard/assign-order"
+    :permissions ["view-orders" "view-users"]}
+   {:url "/dashboard/update-zone"
+    :permissions ["view-zones"]}
+   {:url "/dashboard/update-courier-zones"
+    :permissions ["view-user"]}
+   {:url "/dashboard/dash-map-orders"
+    :permissions ["view-orders" "view-zones"]}
+   {:url "/dashboard/dash-map-couriers"
+    :permissions ["view-orders" "view-couriers" "view-zones"]}
+   {:url "/dashboard/orders-since-date"
+    :permissions ["view-orders"]}
+   {:url "/dashboard/couriers"
+    :permissions ["view-users"]}
+   {:url "/dashboard/zctas"
+    :permissions ["view-zones"]}
+   {:url "/dashboard/zones"
+    :permissions ["view-zones"]}])
+
+(defn allowed?
+  "Given a vector of uri-permission maps and a request map, determine if the
+  user has permission to access the response of a request"
+  [uri-permissions request]
+  (let [cookies   (keywordize-keys
+                   ((resolve 'ring.middleware.cookies/parse-cookies) request))
+        user-id   (get-in cookies [:user-id :value])
+        user-permission (dashboard/get-permissions (conn) user-id)
+        uri       (:uri request)
+        uri-permission  (:permissions (first (filter #(= uri (:url %))
+                                                     uri-permissions)))
+        user-uri-permission-compare (map #(contains? user-permission %)
+                                         uri-permission )
+        user-has-permission? (boolean (and (every? identity
+                                                   user-uri-permission-compare)
+                                           (seq user-uri-permission-compare)))]
+    (cond (empty? uri-permission) ; no permission associated with uri, allow
+          true
+          :else user-has-permission?)))
+
+(defn on-error
+  [request value]
+  {:status 403
+   :header {}
+   :body (str "You do not have permission to access " (:uri request))})
+
+(def access-rules
+  [{:pattern #".*/dashboard(/.*|$)"
+    :handler (partial allowed? dashboard-uri-permissions)
+    :on-error on-error}])
 
 (defroutes app-routes
   (context "/user" []
@@ -471,7 +543,8 @@
   (-> (handler/site app-routes)
       (wrap-cors :access-control-allow-origin [#".*"]
                  :access-control-allow-methods [:get :put :post :delete])
-      (wrap-access-rules {:rules rules})
+      (wrap-access-rules {:rules login-rules})
+      (wrap-access-rules {:rules access-rules})
       (wrap-cookies)
       (middleware/wrap-json-body)
       (middleware/wrap-json-response)))
