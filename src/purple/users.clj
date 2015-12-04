@@ -504,15 +504,23 @@
             :stripe_default_card (:default_card customer-resp)}
            {:id user-id}))
 
+(defn set-default-card
+  [db-conn user-id card-id]
+  (let [user (get-user-by-id db-conn user-id)
+        customer-id (:stripe_customer_id user)
+        customer-resp (payment/set-default-stripe-card customer-id card-id)]
+    (update-user-stripe-fields db-conn user-id customer-resp)))
+
 (defn add-card
   "Add card. If user's first card, create Stripe customer object (+ card) instead."
   [db-conn user-id stripe-token]
   (let [user (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id user)
-        customer-resp (if (s/blank? customer-id)
-                        (payment/create-stripe-customer user-id stripe-token)
-                        (when (payment/add-stripe-card customer-id stripe-token)
-                          (payment/get-stripe-customer customer-id)))]
+        customer-resp
+        (if (s/blank? customer-id)
+          (payment/create-stripe-customer user-id stripe-token)
+          (when-let [card-resp (payment/add-stripe-card customer-id stripe-token)]
+            (payment/set-default-stripe-card customer-id (:id card-resp))))]
     (if customer-resp
       (do (segment/track segment-client user-id "Add Credit Card")
           (update-user-stripe-fields db-conn user-id customer-resp))
@@ -525,13 +533,6 @@
         customer-id (:stripe_customer_id user)
         customer-resp (do (payment/delete-stripe-card customer-id card-id)
                           (payment/get-stripe-customer customer-id))]
-    (update-user-stripe-fields db-conn user-id customer-resp)))
-
-(defn set-default-card
-  [db-conn user-id card-id]
-  (let [user (get-user-by-id db-conn user-id)
-        customer-id (:stripe_customer_id user)
-        customer-resp (payment/set-default-stripe-card customer-id card-id)]
     (update-user-stripe-fields db-conn user-id customer-resp)))
 
 (defn edit
@@ -584,6 +585,7 @@
                    (case (:action card)
                      "delete" (delete-card db-conn user-id (:id card))
                      "makeDefault" (set-default-card db-conn user-id (:id card))
+                     ;; adding a card will also make it default
                      nil (add-card db-conn user-id (:stripe_token card))))))
               (details db-conn user-id))))
 
