@@ -237,13 +237,12 @@
      (def sns-client (sns/client aws-creds))
      (.setEndpoint sns-client "https://sns.us-west-2.amazonaws.com")))
 
-;; todo - recreate/update endpoint_arn with new device_token if a certain exception is thrown
-
 ;; if the user doesn't have an endpoint_arn then we need to create one for them
 (defn sns-create-endpoint
   [client device-token user-id sns-app-arn]
   (try
     (let [req (CreatePlatformEndpointRequest.)]
+      ;; (.setCustomUserData req "no custom data")
       (.setToken req device-token)
       (.setPlatformApplicationArn req sns-app-arn)
       (.getEndpointArn (.createPlatformEndpoint client req)))
