@@ -392,6 +392,11 @@
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
+              ;; demo for the Om app, no perms associated with it
+              (GET "/dash-app" []
+                   (-> (pages/dash-app)
+                       response
+                       wrap-page))
               (GET "/login" []
                    (-> (pages/dash-login)
                        response
@@ -510,7 +515,8 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:couriers (->> (couriers/all-couriers db-conn)
-                                       (users/include-user-data db-conn))})))
+                                       (users/include-user-data db-conn)
+                                       (couriers/include-lateness db-conn))})))
               ;; return ZCTA defintions for zips
               (POST "/zctas" {body :body}
                     (response
@@ -543,8 +549,8 @@
   (-> (handler/site app-routes)
       (wrap-cors :access-control-allow-origin [#".*"]
                  :access-control-allow-methods [:get :put :post :delete])
-      (wrap-access-rules {:rules login-rules})
       (wrap-access-rules {:rules access-rules})
+      (wrap-access-rules {:rules login-rules})
       (wrap-cookies)
       (middleware/wrap-json-body)
       (middleware/wrap-json-response)))

@@ -236,6 +236,23 @@ Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your
 
     lein beanstalk deploy development
 
+## Dashboard users
+
+The dashboard system has its own separate users. Currently, users must be added to it manually. In a local dev env, this can be accomplished at the repl with the following steps:
+
+1. Load the purple.test.db and purple.dashboard namespaced.
+2. user> (use 'purple.dashboard)
+3. user> (register purple.test.db/db-config "foo@bar.com" "password" "127.0.0.1")
+
+Now, start the server with a 'lein ring server' if you haven't already. You will be allowed to login, but will
+not have access to the dashboard. You will need to manually edit the dashboard_users.permissions column of the database. See the dashboard-uri-permissions var in src/purple/handler.clj for the appropriate permissions.
+
+For example,
+dashboard_users.permissions
+= "view-dash" to view /dashboard
+= "view-orders,view-couriers,view-zones" to view /dashboard/dash-map-couriers
+.. but because /dashboard/couriers needs the perms "view-users"
+= "view-users,view-orders,view-couriers,view-zones" to view /dashboard/couriers
 ## License
 
 Copyright © 2015 Purple Services Inc

@@ -47,3 +47,40 @@
   "Only couriers that work in this zone."
   [zone-id couriers]
   (filter #(in? (:zones %) zone-id) couriers))
+
+(defn include-lateness
+  "Given a courier map m, return a map with :lateness included using
+  the past 100 orders"
+  [db-conn m]
+  (let [db-orders (->>
+                   (!select
+                    db-conn "orders" ["*"] {}
+                    :append (str "ORDER BY target_time_start DESC LIMIT 100"))
+                   (map #(assoc %
+                                :was-late
+                                (let [completion-time
+                                      (-> (str "kludgeFix 1|" (:event_log %))
+                                          (s/split #"\||\s")
+                                          (->> (apply hash-map))
+                                          (get "complete"))]
+                                  (and completion-time
+                                       (> (Integer. completion-time)
+                                          (:target_time_end %)))))))]
+    (map (fn [courier]
+           (assoc courier
+                  :lateness
+                  (let [orders (filter #(and (= (:courier_id %)
+                                                (:id courier))
+                                             (= (:status %)
+                                                "complete"))
+                                       db-orders)
+                        total (count orders)
+                        late (count (filter :was-late orders))]
+                    (if (pos? total)
+                      (str (format "%.0f"
+                                   (float (- 100
+                                             (* (/ late
+                                                   total)
+                                                100))))
+                           "%")
+                      "No orders.")))) m)))

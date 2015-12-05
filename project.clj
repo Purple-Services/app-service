@@ -33,7 +33,7 @@
   :java-source-paths ["src/java"]
   :ring {:handler purple.handler/app
          :auto-reload? true
-         :auto-refresh? true
+         :auto-refresh? false
          :reload-paths ["src" "resources"]}
   :aws {:beanstalk {:environments [{:name "prod"}
                                    {:name "purple-dev-env"}]

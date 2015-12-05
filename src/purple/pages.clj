@@ -763,7 +763,8 @@
 
   [:#pikaday-css] unwrap
 
-  [:#main-css] unwrap
+  [:#main-css] (set-attr :href (str config/base-url
+                                    "css/main.css"))
 
   [:#base-url] (set-attr :value (str (:base-url x)))
 
@@ -771,7 +772,28 @@
 
   [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.login();"])))
 
+
 (defn dash-login
   []
   (apply str (dash-login-template {:base-url
                                    (str config/base-url "dashboard/")})))
+
+(deftemplate dash-app-template "templates/dashmap.html"
+  [x]
+  [:title] (content "Purple - Dashboard Login")
+
+  [:#pikaday-css] unwrap
+
+  [:#main-css] (set-attr :href (str config/base-url "css/main.css"))
+
+  [:#base-url] (set-attr :value (str (:base-url x)))
+
+  [:#map] (set-attr :id "app")
+
+  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.init_app();"])))
+
+
+(defn dash-app
+  []
+  (apply str (dash-app-template {:base-url
+                                 (str config/base-url "dashboard/")})))
