@@ -211,7 +211,7 @@
              (content (:customer_phone_number t))
 
              [:td.address_street]
-             (add-class (:zone-color t))
+             (set-attr :style (str "background-color: " (:zone-color t) ";"))
              [:td.address_street :a]
              (content (:address_street t))
              [:td.address_street :a]
