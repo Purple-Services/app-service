@@ -321,14 +321,21 @@
   [:#zones :tbody :tr]
   (clone-for [zone (:zones x)]
 
+             [:td.id]
+             (do-> (if (:active zone)
+                     (add-class "currently-connected")
+                     (add-class "currently-not-connected"))
+                   (content (str (:id zone))))
+                          
+             [:td.name]
+             (do-> (content (str (:name zone)))
+                   (set-attr :style
+                             (str "background-color: " (:color zone) ";")))
+
              [:td.zips]
              (content (str (s/replace (:zip_codes zone)
                                       #","
                                       ", ")))
-
-             [:td.color]
-             (do-> (content (str (:color zone)))
-                   (add-class (:color zone)))
 
              [:td.87-price]
              (content  (html [:input

@@ -18,10 +18,12 @@ table thead {
     font-weight: bold;
     color: #111;
 }
-table#couriers tbody td {
+table#couriers tbody td,
+table#zones tbody td {
     opacity: 0.18;
 }
-table tbody td.currently-connected, table tbody td.currently-connected ~ td {
+table tbody td.currently-connected,
+table tbody td.currently-connected ~ td {
     /*background-color: rgba(20,210,0,0.15);*/
     opacity: 1 !important;
 }
@@ -98,28 +100,6 @@ td.etas strong {
     color: red;
 }
 
-/* zone colors */
-.purple, .purple a {
-    background-color: #8e44ad !important;
-    color: white;
-}
-.blue, .blue a {
-    background-color: #2980b9 !important;
-    color: white;
-}
-.yellow, .yellow a {
-    background-color: #f1c40f !important;
-    color: white;
-}
-.red, .red a {
-    background-color: #c0392b !important;
-    color: white;
-}
-.green, .green a {
-    background-color: #2ecc71 !important;
-    color: white;
-}
-.orange, .orange a {
-    background-color: #f39c12 !important;
+#zones .name {
     color: white;
 }
