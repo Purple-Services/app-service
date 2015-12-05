@@ -152,6 +152,7 @@
          :text (str "within 1 hour (" (fee (:60 service-fees)) ")")
          :order 1}}))
 
+;; TODO this function should consider if a zone is actually "active"
 (defn available
   [good-time?-fn zip-code octane]
   (let [service-fees (get-service-fees zip-code)
