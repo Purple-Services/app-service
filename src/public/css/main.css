@@ -42,6 +42,12 @@ table td {
 .late {
     color: #cc0000;
 }
+
+.address_street a {
+    color: white;
+    text-decoration: none;
+}
+
 td.etas {
     font-size: 11px;
     white-space: nowrap;
