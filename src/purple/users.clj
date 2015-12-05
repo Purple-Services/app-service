@@ -598,10 +598,15 @@
 ;; requested. For couriers, this is called at the first time they log in as a
 ;; courier. That means, a new courier should create their account, log out,
 ;; have me mark them as courier in the database (is_courier), then log back in.
+;;
+;; TODO with the new version of the app 1.0.8, the push notifications are setup
+;; at a different time, and this needs to be revised to handle couriers correctly.
 (defn add-sns
   "cred for APNS (apple) is the device token, for GCM (android) it is regid"
   [db-conn user-id push-platform cred]
   (let [user (get-user-by-id db-conn user-id)
+        ;; the reason we always try to create the endpoint is because we want
+        ;; push notifications to go to any new device they are currently using
         arn-endpoint (sns-create-endpoint sns-client
                                           cred
                                           user-id

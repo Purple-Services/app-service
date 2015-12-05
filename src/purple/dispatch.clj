@@ -169,7 +169,8 @@
   (let [user (users/get-user-by-id db-conn user-id)]
     (segment/track segment-client user-id "Availability Check"
                    {:address_zip (five-digit-zip-code zip-code)})
-    (if (zip-in-zones? zip-code)
+    (if (and (zip-in-zones? zip-code)
+             (:active (get-zone-by-zip-code zip-code)))
       ;; good ZIP, but let's check if good time
       (let [opening-minute (first (get-service-time-bracket zip-code))
             closing-minute (last  (get-service-time-bracket zip-code))
