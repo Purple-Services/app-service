@@ -326,7 +326,7 @@
                      (add-class "currently-connected")
                      (add-class "currently-not-connected"))
                    (content (str (:id zone))))
-                          
+             
              [:td.name]
              (do-> (content (str (:name zone)))
                    (set-attr :style
@@ -488,7 +488,11 @@
              (group-by :id))
         
         id->vehicle #(first (get vehicles-by-id %))
-        all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
+        all-coupons (!select db-conn "coupons" ["*"]
+                             {}
+                             :custom-where (str "type = 'standard' AND "
+                                                ;; remove groupon coupons
+                                                "code NOT LIKE 'GR%'"))
         zones       (!select db-conn "zones" ["*"] {})
         dist-map (into
                   {}
