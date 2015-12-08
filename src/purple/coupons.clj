@@ -174,6 +174,8 @@
     {:success false
      :message "Sorry, that code is already being used."}))
 
+;; this could be faster if just tried the insert and then retried if failing
+;; on duplicate unique key: code
 (defn create-referral-coupon
   "Creates a new referral coupon and returns its code."
   [db-conn user-id]
