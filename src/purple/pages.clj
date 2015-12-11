@@ -211,7 +211,7 @@
              (content (:customer_phone_number t))
 
              [:td.address_street]
-             (add-class (:zone-color t))
+             (set-attr :style (str "background-color: " (:zone-color t) ";"))
              [:td.address_street :a]
              (content (:address_street t))
              [:td.address_street :a]
@@ -321,14 +321,21 @@
   [:#zones :tbody :tr]
   (clone-for [zone (:zones x)]
 
+             [:td.id]
+             (do-> (if (:active zone)
+                     (add-class "currently-connected")
+                     (add-class "currently-not-connected"))
+                   (content (str (:id zone))))
+             
+             [:td.name]
+             (do-> (content (str (:name zone)))
+                   (set-attr :style
+                             (str "background-color: " (:color zone) ";")))
+
              [:td.zips]
              (content (str (s/replace (:zip_codes zone)
                                       #","
                                       ", ")))
-
-             [:td.color]
-             (do-> (content (str (:color zone)))
-                   (add-class (:color zone)))
 
              [:td.87-price]
              (content  (html [:input
@@ -481,7 +488,11 @@
              (group-by :id))
         
         id->vehicle #(first (get vehicles-by-id %))
-        all-coupons (!select db-conn "coupons" ["*"] {:type "standard"})
+        all-coupons (!select db-conn "coupons" ["*"]
+                             {}
+                             :custom-where (str "type = 'standard' AND "
+                                                ;; remove groupon coupons
+                                                "code NOT LIKE 'GR%'"))
         zones       (!select db-conn "zones" ["*"] {})
         dist-map (into
                   {}

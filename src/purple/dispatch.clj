@@ -109,7 +109,7 @@
   (-> zip-code
       (get-service-time-bracket)
       first
-      (+ (* 60 3))))
+      (+ 90)))
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices"
@@ -152,6 +152,7 @@
          :text (str "within 1 hour (" (fee (:60 service-fees)) ")")
          :order 1}}))
 
+;; TODO this function should consider if a zone is actually "active"
 (defn available
   [good-time?-fn zip-code octane]
   (let [service-fees (get-service-fees zip-code)
@@ -169,7 +170,8 @@
   (let [user (users/get-user-by-id db-conn user-id)]
     (segment/track segment-client user-id "Availability Check"
                    {:address_zip (five-digit-zip-code zip-code)})
-    (if (zip-in-zones? zip-code)
+    (if (and (zip-in-zones? zip-code)
+             (:active (get-zone-by-zip-code zip-code)))
       ;; good ZIP, but let's check if good time
       (let [opening-minute (first (get-service-time-bracket zip-code))
             closing-minute (last  (get-service-time-bracket zip-code))

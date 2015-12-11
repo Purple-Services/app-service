@@ -291,20 +291,17 @@
        :message (str "Sorry, we currently are experiencing high demand and "
                      "can't promise a delivery within that time limit. Please "
                      "go back and choose the \"within 3 hours\" option.")}
-      
+
       (not (within-time-bracket? o))
       {:success false
-       :message (str "Sorry, the service hours for this ZIP code are "
-                     (minute-of-day->hmma
-                      (first
-                       ((resolve 'purple.dispatch/get-service-time-bracket)
-                        (:address_zip o))))
-                     " to "
-                     (minute-of-day->hmma
-                      (last
-                       ((resolve 'purple.dispatch/get-service-time-bracket)
-                        (:address_zip o))))
-                     " every day.")}
+       :message (let [service-time-bracket ((resolve 'purple.dispatch/get-service-time-bracket)
+                                            (:address_zip o))]
+                  (str "Sorry, the service hours for this ZIP code are "
+                       (minute-of-day->hmma (first service-time-bracket))
+                       " to "
+                       (minute-of-day->hmma (last service-time-bracket))
+                       " every day."))}
+      
       :else
       (do (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
                                                     :status :target_time_start

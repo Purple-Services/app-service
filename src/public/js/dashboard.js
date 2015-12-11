@@ -123,10 +123,10 @@ $(document).ready(function(){
 
         // get the corresponding td.color for that zip
         // there should be a td.color for a zone in table#zones
-        var colorTd = $(zipTd).parent().find(".color")[0];
-
+        var colorTd = $(zipTd).parent().find(".name")[0];
+        
         // return the color
-        return $(colorTd).text();
+        return $(colorTd).css('background-color');
     };
 
     // highlight the couriers location in the color that corresponds to the zone
@@ -141,7 +141,8 @@ $(document).ready(function(){
         {
             postalCodeForLatLng(lat,lng,
                                 function (zipCode) {
-                                    $(elem).addClass(getColorForZip(zipCode));
+                                    $(elem).css("background-color", getColorForZip(zipCode));
+                                    $(elem).find("a").css("color", "white");
                                 });
         }
     });
@@ -153,7 +154,11 @@ $(document).ready(function(){
             $(this).html('[show all]');
         } else {
             table.addClass('showing-all');
-            $(this).html('[hide after 7]');
+            if ($(this).data('show-id') === 'couriers') {
+                $(this).html('[hide disconnected]');
+            } else {
+                $(this).html('[hide after 7]');
+            }
         }
     });
 
