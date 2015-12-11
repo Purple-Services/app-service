@@ -27,6 +27,18 @@ table tbody td.currently-connected ~ td {
     /*background-color: rgba(20,210,0,0.15);*/
     opacity: 1 !important;
 }
+table#couriers tbody td,
+table#couriers tbody td ~ td {
+    display: none;
+}
+table.showing-all#couriers tbody td,
+table.showing-all#couriers tbody td ~ td {
+    display: table-cell;
+}
+table#couriers tbody td.currently-connected,
+table#couriers tbody td.currently-connected ~ td {
+    display: table-cell;
+}
 table tbody tr:hover {
     background: #ecf0f1;
 }
