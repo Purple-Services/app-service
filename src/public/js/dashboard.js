@@ -154,7 +154,11 @@ $(document).ready(function(){
             $(this).html('[show all]');
         } else {
             table.addClass('showing-all');
-            $(this).html('[hide after 7]');
+            if ($(this).data('show-id') === 'couriers') {
+                $(this).html('[hide disconnected]');
+            } else {
+                $(this).html('[hide after 7]');
+            }
         }
     });
 
