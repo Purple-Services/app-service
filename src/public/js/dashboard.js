@@ -90,8 +90,8 @@ $(document).ready(function(){
             "https://maps.googleapis.com/maps/api/geocode/" +
             "json?";
 
-        // this key is on chris@purpledelivery.com account
-        var googleAPIKey = "AIzaSyAflsl4cNXHnO-HaZhfGC2gcGoIxt19UW4";
+        // this key is on purpleservicesinc@gmail.com account
+        var googleAPIKey = "AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg";
 
         var requestURL =
             googleAPIBaseURL +
