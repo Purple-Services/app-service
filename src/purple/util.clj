@@ -13,9 +13,10 @@
             [ardoq.analytics-clj :as segment])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
-            DeleteTopicRequest GetTopicAttributesRequest SubscribeRequest
-            PublishRequest CreatePlatformEndpointRequest
-            CreatePlatformEndpointResult MessageAttributeValue]
+            DeleteTopicRequest DeleteEndpointRequest GetTopicAttributesRequest
+            SubscribeRequest PublishRequest CreatePlatformEndpointRequest
+            CreatePlatformEndpointResult MessageAttributeValue
+            GetEndpointAttributesRequest]
            [com.twilio.sdk TwilioRestClient TwilioRestException]
            [com.twilio.sdk.resource.factory MessageFactory CallFactory]
            [com.twilio.sdk.resource.instance Message Call]
