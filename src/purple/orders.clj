@@ -371,12 +371,12 @@
                      (send-email {:to "chris@purpledelivery.com"
                                   :subject "Purple - New Order"
                                   :body (str o)}))
-                    (only-prod
-                     (run! #((resolve 'purple.users/send-push)
-                             db-conn (:id %) (str "New order available. "
-                                                  "Please press Accept "
-                                                  "Order ASAP."))
-                           available-couriers))
+                    ;; (only-prod
+                    ;;  (run! #((resolve 'purple.users/send-push)
+                    ;;          db-conn (:id %) (str "New order available. "
+                    ;;                               "Please press Accept "
+                    ;;                               "Order ASAP."))
+                    ;;        available-couriers))
                     (only-prod
                      (run! #(send-sms % (new-order-text db-conn
                                                         o
