@@ -94,7 +94,7 @@
    {:url "/dashboard/update-zone"
     :permissions ["view-zones"]}
    {:url "/dashboard/update-courier-zones"
-    :permissions ["view-user"]}
+    :permissions ["view-users"]}
    {:url "/dashboard/dash-map-orders"
     :permissions ["view-orders" "view-zones"]}
    {:url "/dashboard/dash-map-couriers"
@@ -392,11 +392,17 @@
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
-              ;; demo for the Om app, no perms associated with it
-              (GET "/dash-app" []
-                   (-> (pages/dash-app)
-                       response
-                       wrap-page))
+              ;; demo for the Reagent app, no perms associated with it
+              (GET "/dash-app" {cookies :cookies}
+                   (let [user-perms (dashboard/get-permissions
+                                     (conn)
+                                     (get-in cookies ["user-id" :value]))
+                         accessible-routes (dashboard/accessible-routes
+                                            dashboard-uri-permissions
+                                            user-perms)]
+                     (-> (pages/dash-app accessible-routes)
+                         response
+                         wrap-page)))
               (GET "/login" []
                    (-> (pages/dash-login)
                        response
@@ -482,15 +488,6 @@
                                               (:fuel_prices b)
                                               (:service_fees b)
                                               (:service_time_bracket b)))))
-              ;; update a courier's assigned zones
-              (POST "/update-courier-zones" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       (users/update-courier-zones!
-                        db-conn
-                        (:id b)
-                        (:zones b)))))
               (GET "/dash-map-orders" []
                    (-> (pages/dash-map :callback-s
                                        "dashboard_cljs.core.init_map_orders")
@@ -510,13 +507,22 @@
                        (orders/orders-since-date-with-supplementary-data
                         db-conn (:date b)))))
               ;; return all couriers
-              (POST "/couriers" {body :body}
+              (GET "/couriers" {body :body}
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        {:couriers (->> (couriers/all-couriers db-conn)
                                        (users/include-user-data db-conn)
                                        (couriers/include-lateness db-conn))})))
+              ;; update a courier
+              ;; currently, only the zones can be updated
+              (POST "/couriers" {body :body}
+                    (let [b (keywordize-keys body)
+                          db-conn (conn)]
+                      (response (users/update-courier-zones!
+                                 db-conn
+                                 (:id b)
+                                 (:zones b)))))
               ;; return ZCTA defintions for zips
               (POST "/zctas" {body :body}
                     (response

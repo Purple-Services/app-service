@@ -790,10 +790,15 @@
 
   [:#map] (set-attr :id "app")
 
-  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.init_app();"])))
+  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.init_app();"]))
 
+  [:body] (prepend (html [:div {:id "accessible-routes"
+                                :value (:accessible-routes x)}])))
 
 (defn dash-app
-  []
+  [accessible-routes]
   (apply str (dash-app-template {:base-url
-                                 (str config/base-url "dashboard/")})))
+                                 (str config/base-url "dashboard/")
+                                 :accessible-routes
+                                 accessible-routes
+                                 })))
