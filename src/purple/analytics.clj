@@ -195,7 +195,7 @@
 
 
 (defn hamming
-  [x y]
+  [[x y]]
   (count (filter true? (map (partial reduce not=) (map vector x y)))))
 
 (defn scan-user-for-referral-abuse
@@ -210,6 +210,22 @@
         used-by-license-plates (->> (:used_by_license_plates coupon)
                                     split-on-comma)]
     (count-filter used-by-license-plates)))
+
+(defn combo-hack
+  "To be used in conjunction with combo/combinations to get combo including duplicate elements."
+  [x]
+  (str x (rand-str-alpha-num 10)))
+
+(defn reverse-combo-hack
+  [[x y]]
+  [(drop-last 10 x) (drop-last 10 y)])
+
+(count-filter (partial < 1)
+              (map (comp hamming reverse-combo-hack (juxt first second))
+                   (combo/combinations (map combo-hack testsub)
+                                       2)))
+
+(def  testsub (split-on-comma "6FXZ665,CABOKDZ,6YHN60803053X1,6RBR947,6TAJ224TESTVEHICLE,7NJH120,6TFS098,7EVZ756,6YRE223,7HDJ179,7DZL447,7AEU8414ADK7887AKW537,6JSY459,7MSP935,6RXV444,6PWM793,NOTAVAILAVLE,7BZP642X418RR,5CPU960,7HNM057,7HAL3716PM6796YJP659,7LLM850,7JRB527,7BBH864,7LPL864,4VHK371,6FPC183,7FHP585,6ZVM631,6BBE179,1UBJ365,BATMAN,6WUN094,6JEY6856TOE093,6LEW502,4CXV097,6Y0K9447KPA410,HAPPY,7GFT903,3VVD437,6HRS579,6YYT058,6ZBY937,BEVERLYHILLS,7GRS01582545F1,5MYS249,7COL394,NONE,7CYF481,7LVA293,7DCT411,6MFJ303,7BAB893,4CDV023,5XMH817,5AOF867,7GHU271,6RUJ877,6UHV234,7GTF248,CA,7CMU684,KE243,7MZS704,6WFG973,6THE273,6HOU881,6NCS929,7FYT786,7WIM66,NOLICENSEPLATE,A,7AOY404,7AGJ962,7KKB029,8J53470,7DFU150,4DQM428,5MHB087,7LFL374IDKJJI,6RCU202,6TMX903"))
 
 (scan-user-for-referral-abuse (conn) "z5kZavElDQPcmlYzxYLr")
 
