@@ -106,7 +106,11 @@
    {:url "/dashboard/zctas"
     :permissions ["view-zones"]}
    {:url "/dashboard/zones"
-    :permissions ["view-zones"]}])
+    :permissions ["view-zones"]}
+   {:url "/dashboard/users"
+    :permissions ["view-users"]}
+   {:url "/dashboard/coupons"
+    :permissions ["view-coupons"]}])
 
 (defn allowed?
   "Given a vector of uri-permission maps and a request map, determine if the
@@ -500,12 +504,12 @@
                        wrap-page))
               ;; given a date in the format YYYY-MM-DD, return all orders
               ;; that have occurred since then
-              (POST "/orders-since-date"  {body :body}
+              (GET "/orders-since-date"  {body :body}
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       (orders/orders-since-date-with-supplementary-data
-                        db-conn (:date b)))))
+                       (into [] (orders/orders-since-date-with-supplementary-data
+                                 db-conn (:date b))))))
               ;; return all couriers
               (GET "/couriers" {body :body}
                     (response
@@ -523,6 +527,25 @@
                                  db-conn
                                  (:id b)
                                  (:zones b)))))
+              ;; return all users
+              (GET "/users" []
+                   (response
+                    (into []
+                          (map
+                           #(assoc % :timestamp_created
+                                   (/ (.getTime
+                                       (:timestamp_created %))
+                                      1000))
+                           (!select (conn) "users"
+                                           [:id :name :email :phone_number :os
+                                            :app_version :stripe_default_card
+                                            :sift_score :arn_endpoint :timestamp_created]
+                                           {})))))
+              ;; get the current coupon codes
+              (GET "/coupons" []
+                   (response
+                    (into []
+                          (!select (conn) "coupons" ["*"] {:type "standard"}))))
               ;; return ZCTA defintions for zips
               (POST "/zctas" {body :body}
                     (response
@@ -531,9 +554,9 @@
                        {:zctas
                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
-              (POST "/zones" {body :body}
+              (GET "/zones" {body :body}
                     (response
-                     {:zones (dispatch/get-all-zones-from-db (conn))}))
+                     (into [] (dispatch/get-all-zones-from-db (conn)))))
               )))
   (context "/twiml" []
            (defroutes twiml-routes

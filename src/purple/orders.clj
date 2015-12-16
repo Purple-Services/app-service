@@ -756,8 +756,8 @@ and their id matches the order's courier_id"
                                          (map :courier_id os))))))
         id->name #(:name (get users-by-id %))
         id->phone_number #(:phone_number (get users-by-id %))]
-    {:orders (map #(assoc %
-                          :courier_name (id->name (:courier_id %))
-                          :customer_name (id->name (:user_id %))
-                          :customer_phone_number (id->phone_number (:user_id %)))
-                  os)}))
+    (map #(assoc %
+                    :courier_name (id->name (:courier_id %))
+                    :customer_name (id->name (:user_id %))
+                    :customer_phone_number (id->phone_number (:user_id %)))
+         os)))
