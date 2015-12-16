@@ -120,6 +120,9 @@
                                     ;; because the plugin we are using doesn't allow
                                     ;; to modify scope of auth_key, but it does
                                     ;; give the email address in the JS object
+                                    ;; UPDATE - this now does not seem to be
+                                    ;; necessary, but we keep it here for legacy
+                                    ;; versions (is security risk?)
                                     :email-override (:email_override b)
                                     :client-ip (or (get headers "x-forwarded-for")
                                                    remote-addr)))))

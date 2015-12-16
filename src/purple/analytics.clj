@@ -2,13 +2,15 @@
   (:use purple.util
         [purple.db :only [conn !select !insert !update mysql-escape-str]])
   (:require [purple.config :as config]
+            [purple.users :as users]
             [clojure.string :as s]
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clj-time.core :as time]
             [clj-time.periodic :as periodic]
             [clj-time.coerce :as time-coerce]
-            [clj-time.format :as time-format]))
+            [clj-time.format :as time-format]
+            [clojure.math.combinatorics :as combo]))
 
 (def count-filter (comp count filter))
 
@@ -190,3 +192,24 @@
                                                  ])))
                                        dates)
                                   ))))))
+
+
+(defn hamming
+  [x y]
+  (count (filter true? (map (partial reduce not=) (map vector x y)))))
+
+(defn scan-user-for-referral-abuse
+  "Returns the number of suspected 'fake' uses."
+  [db-conn user-id]
+  (let [user (first (!select db-conn "users" ["*"] {:id user-id}))
+        coupon (first (!select db-conn "coupons" ["*"]
+                               {:code (:referral_code user)}))
+        used-by-users (->> (:used_by_user_ids coupon)
+                           split-on-comma
+                           (users/get-users-by-ids db-conn))
+        used-by-license-plates (->> (:used_by_license_plates coupon)
+                                    split-on-comma)]
+    (count-filter used-by-license-plates)))
+
+(scan-user-for-referral-abuse (conn) "z5kZavElDQPcmlYzxYLr")
+
