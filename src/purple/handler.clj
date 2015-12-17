@@ -508,8 +508,15 @@
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
-                       (into [] (orders/orders-since-date-with-supplementary-data
-                                 db-conn (:date b))))))
+                       (into [] (->>
+                                 (orders/orders-since-date db-conn (:date b))
+                                 (orders/include-user-name-phone-and-courier
+                                  db-conn)
+                                 (orders/include-vehicle db-conn)
+                                 (orders/include-zone-info)
+                                 (orders/include-eta db-conn)
+                                 (orders/include-was-late)
+                                 )))))
               ;; return all couriers
               (GET "/couriers" {body :body}
                     (response
@@ -531,16 +538,7 @@
               (GET "/users" []
                    (response
                     (into []
-                          (map
-                           #(assoc % :timestamp_created
-                                   (/ (.getTime
-                                       (:timestamp_created %))
-                                      1000))
-                           (!select (conn) "users"
-                                           [:id :name :email :phone_number :os
-                                            :app_version :stripe_default_card
-                                            :sift_score :arn_endpoint :timestamp_created]
-                                           {})))))
+                          (users/dash-users (conn)))))
               ;; get the current coupon codes
               (GET "/coupons" []
                    (response
@@ -555,8 +553,16 @@
                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
               (GET "/zones" {body :body}
-                    (response
-                     (into [] (dispatch/get-all-zones-from-db (conn)))))
+                   (response
+                    ;; needed because cljs.reader/read-string can't handle
+                    ;; keywords that begin with numbers
+                    (mapv
+                     #(assoc %
+                             :fuel_prices (stringify-keys
+                                           (read-string (:fuel_prices %)))
+                             :service_fees (stringify-keys
+                                            (read-string (:service_fees %))))
+                     (into [] (dispatch/get-all-zones-from-db (conn))))))
               )))
   (context "/twiml" []
            (defroutes twiml-routes

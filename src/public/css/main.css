@@ -123,3 +123,8 @@ td.etas strong {
     background-color: #f39c12 !important;
     color: white;
 }
+
+.address_street a {
+    color: white;
+    text-decoration: none;
+}

@@ -758,3 +758,37 @@
                {:id user-id})
       :else {:success false
              :message "Unknown error"})))
+
+(defn dash-users
+  "Return all users who are either couriers or a user who has placed an
+   orders"
+  [db-conn]
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+                          ;; remove chriscourier@test.com
+                          (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
+        couriers-by-id (into {} (map (juxt (comp keyword :id) identity)
+                                     all-couriers))
+        courier-ids (distinct (map :id all-couriers))
+        recent-orders (!select db-conn
+                               "orders"
+                               ["*"]
+                               {})
+        users (!select db-conn "users"
+                       [:id :name :email :phone_number :os
+                        :app_version :stripe_default_card
+                        :sift_score
+                        :arn_endpoint :timestamp_created]
+                       {}
+                       :custom-where
+                       (let [customer-ids
+                             (distinct (map :user_id recent-orders))]
+                         (str "id IN (\""
+                              (s/join "\",\"" (distinct
+                                               (concat customer-ids
+                                                       courier-ids)))
+                              "\")")))]
+    (map #(assoc % :timestamp_created
+                 (/ (.getTime
+                     (:timestamp_created %))
+                    1000))
+         users)))
