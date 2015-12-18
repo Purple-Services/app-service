@@ -481,17 +481,6 @@
                        (orders/assign-to-courier-by-admin db-conn
                                                           (:order_id b)
                                                           (:courier_id b)))))
-              ;; update a zones description. Currently only supports
-              ;; updating fuel_prices, service_fees and service_time_bracket
-              (POST "/update-zone" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       (dispatch/update-zone! db-conn
-                                              (:id b)
-                                              (:fuel_prices b)
-                                              (:service_fees b)
-                                              (:service_time_bracket b)))))
               (GET "/dash-map-orders" []
                    (-> (pages/dash-map :callback-s
                                        "dashboard_cljs.core.init_map_orders")
@@ -527,7 +516,7 @@
                                        (couriers/include-lateness db-conn))})))
               ;; update a courier
               ;; currently, only the zones can be updated
-              (POST "/couriers" {body :body}
+              (POST "/courier" {body :body}
                     (let [b (keywordize-keys body)
                           db-conn (conn)]
                       (response (users/update-courier-zones!
@@ -563,6 +552,31 @@
                              :service_fees (stringify-keys
                                             (read-string (:service_fees %))))
                      (into [] (dispatch/get-all-zones-from-db (conn))))))
+              ;; update a zone's description. Currently only supports
+              ;; updating fuel_prices, service_fees and service_time_bracket
+              (POST "/update-zone" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (dispatch/update-zone! db-conn
+                                              (:id b)
+                                              (:fuel_prices b)
+                                              (:service_fees b)
+                                              (:service_time_bracket b)))))
+              ;; update a zone's description. Currently only supports
+              ;; updating fuel_prices, service_fees and service_time_bracket
+              (POST "/zone" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (dispatch/update-zone! db-conn
+                                              (:id b)
+                                              (str (:fuel_prices b))
+                                              (str (:service_fees b))
+                                              (str (:service_time_bracket b)))
+                       ;; error responses are forthcoming, for now, assume all
+                       ;; data is valid
+                       {:success true})))
               )))
   (context "/twiml" []
            (defroutes twiml-routes
