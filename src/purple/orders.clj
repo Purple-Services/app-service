@@ -382,7 +382,7 @@
                                                         o
                                                         charge-authorized?))
                            (concat (map :phone_number available-couriers)
-                                   (only-prod ["3235782263"   ;; Bruno
+                                   (only-prod [;; "3235782263"   ;; Bruno
                                                "3103109961"   ;; Joe
                                                "7143154380"   ;; Gustavo
                                                ]))))))
