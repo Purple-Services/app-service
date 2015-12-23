@@ -81,6 +81,8 @@
     :permissions ["download-stats"]}
    {:url "/dashboard/download-stats-csv"
     :permissions ["download-stats"]}
+   {:url "/dashboard/status-stats-csv"
+    :permissions ["download-stats"]}
    {:url "/dashboard/send-push-to-all-active-users"
     :permissions ["view-users"]}
    {:url "/dashboard/send-push-users-lists"
@@ -440,6 +442,14 @@
                                "text/csv; name=\"stats.csv\"")
                        (header "Content-Disposition"
                                "attachment; filename=\"stats.csv\"")))
+              (GET "/status-stats-csv" []
+                   (response
+                    (let [stats-file (java.io.File. "stats.csv")]
+                      (if (> (.length stats-file) 0)
+                        {:processing false
+                         :timestamp (quot (.lastModified stats-file)
+                                          1000)}
+                        {:processing true}))))
               (POST "/send-push-to-all-active-users" {body :body}
                     (response
                      (let [b (keywordize-keys body)]

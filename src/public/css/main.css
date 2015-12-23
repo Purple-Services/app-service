@@ -13,6 +13,7 @@ a {
 }
 table {
     margin: 0px auto 65px auto;
+    text-align: left;
 }
 table thead {
     font-weight: bold;
@@ -144,4 +145,9 @@ td.etas strong {
 .address_street a {
     color: white;
     text-decoration: none;
+}
+
+.stats {
+    text-align: center;
+    padding-bottom: 3em;
 }
