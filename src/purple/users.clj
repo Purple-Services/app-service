@@ -761,7 +761,7 @@
 
 (defn dash-users
   "Return all users who are either couriers or a user who has placed an
-   orders"
+   order"
   [db-conn]
   (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
                           ;; remove chriscourier@test.com
@@ -772,7 +772,8 @@
         recent-orders (!select db-conn
                                "orders"
                                ["*"]
-                               {})
+                               {}
+                               :append " LIMIT 100")
         users (!select db-conn "users"
                        [:id :name :email :phone_number :os
                         :app_version :stripe_default_card

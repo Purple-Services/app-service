@@ -503,7 +503,7 @@
                        wrap-page))
               ;; given a date in the format YYYY-MM-DD, return all orders
               ;; that have occurred since then
-              (GET "/orders-since-date"  {body :body}
+              (POST "/orders-since-date"  {body :body}
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
@@ -517,7 +517,7 @@
                                  (orders/include-was-late)
                                  )))))
               ;; return all couriers
-              (GET "/couriers" {body :body}
+              (POST "/couriers" {body :body}
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
@@ -538,6 +538,11 @@
                    (response
                     (into []
                           (users/dash-users (conn)))))
+              ;; return all users
+              (GET "/users-count" []
+                   (response
+                    (into []
+                          (!select (conn) "users" ["COUNT(*) as total"] {}))))
               ;; get the current coupon codes
               (GET "/coupons" []
                    (response
