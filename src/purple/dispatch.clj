@@ -177,9 +177,9 @@
             closing-minute (last  (get-service-time-bracket zip-code))
             current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
                                                       1000))
-            during-holiday? (< 1451613600 ;; 6pm Dec 31st
+            during-holiday? (< 1451700047 ;; 6pm Jan 1st
                                (quot (System/currentTimeMillis) 1000)
-                               1451638800) ;; Jan 1st
+                               1451725247) ;; Jan 2nd
             good-time?-fn (fn [minutes-needed]
                             (and (not during-holiday?)
                                  (<= opening-minute
@@ -195,7 +195,7 @@
          ;; if unavailable (as the client will determine from :availabilities)
          :unavailable-reason
          (if during-holiday?
-           "Sorry, we're closed for the holiday. We'll be back January 1st!"
+           "Sorry, we're closed for the holiday. We'll be back January 2nd!"
            (str "Sorry, the service hours for this ZIP code are "
                 (minute-of-day->hmma opening-minute)
                 " to "
