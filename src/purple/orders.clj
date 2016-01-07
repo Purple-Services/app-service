@@ -37,6 +37,21 @@
            {:status "unassigned"}
            :append "ORDER BY target_time_start DESC"))
 
+(defn get-all-current
+  "Unassigned or in process."
+  [db-conn]
+  (!select db-conn
+           "orders"
+           ["*"]
+           {}
+           :append (str "AND status IN ("
+                        "'unassigned',"
+                        "'assigned',"
+                        "'accepted',"
+                        "'enroute',"
+                        "'servicing'"
+                        ") ORDER BY target_time_start DESC")))
+
 (defn get-by-id
   "Gets an order from db by order's id."
   [db-conn id]
@@ -99,6 +114,13 @@
                  :vehicle
                  (first (get vehicles (:vehicle_id %))))
          orders)))
+
+(defn orders-in-same-market
+  [o os]
+  (let [order->zone-id (resolve 'purple.dispatch/order->zone-id)
+        order->market-id #(quot (order->zone-id %) 50)
+        market-id-of-o (order->market-id o)]
+    (filter (comp (partial = market-id-of-o) order->market-id) os)))
 
 (defn segment-props
   "Get a map of all the standard properties we track on orders via segment."
@@ -191,12 +213,16 @@
              ((resolve 'purple.dispatch/get-one-hour-orders-allowed)
               (:address_zip o)))
          (let [zone-id ((resolve 'purple.dispatch/order->zone-id) o)]
-           ;; Are there more available couriers assigned to this zone
-           ;; than the number of unassigned orders?
-           (< (->> (get-all-unassigned db-conn)
+           ;; Less one-hour orders in this zone (unassigned or current)
+           ;; than connected couriers who are assigned to this zone?
+           (< (->> (get-all-current db-conn)
+                   (orders-in-same-market o)
+                   (filter #(= (* 60 60) ;; only one-hour orders
+                               (- (:target_time_end %)
+                                  (:target_time_start %))))
                    count)
-              (->> (couriers/get-all-available db-conn)
-                   (couriers/filter-by-zone zone-id)
+              (->> (couriers/get-all-connected db-conn)
+                   (couriers/filter-by-market (quot zone-id 50))
                    count))))
     true)) ;; 3-hour or greater is always available
 
@@ -294,8 +320,9 @@
 
       (not (within-time-bracket? o))
       {:success false
-       :message (let [service-time-bracket ((resolve 'purple.dispatch/get-service-time-bracket)
-                                            (:address_zip o))]
+       :message (let [service-time-bracket
+                      ((resolve 'purple.dispatch/get-service-time-bracket)
+                       (:address_zip o))]
                   (str "Sorry, the service hours for this ZIP code are "
                        (minute-of-day->hmma (first service-time-bracket))
                        " to "
@@ -324,68 +351,61 @@
                                        (:coupon_code o)
                                        (:license_plate o)
                                        (:user_id o)))
-          (future (let [available-couriers
-                        (->> (couriers/get-all-available db-conn)
-                             (couriers/filter-by-zone
-                              ((resolve 'purple.dispatch/order->zone-id) o))
-                             ((resolve 'purple.users/include-user-data) db-conn))
-                        
-                        auth-charge-result
-                        (if (zero? (:total_price o))
-                          {:success true}
-                          ((resolve 'purple.users/auth-charge-user)
-                           db-conn
-                           (:user_id o)
-                           (:id o)
-                           (:total_price o)
-                           (gen-charge-description db-conn o)))
-                        
-                        charge-authorized? (:success auth-charge-result)]
-                    (when (and charge-authorized?
-                               (not (zero? (:total_price o))))
-                      (stamp-with-charge db-conn
-                                         (:id o)
-                                         (:charge auth-charge-result)))
+          (future
+            (let [order->zone-id (resolve 'purple.dispatch/order->zone-id)
+                  include-user-data (resolve 'purple.users/include-user-data)
+                  auth-charge-user (resolve 'purple.users/auth-charge-user)
 
-                    ;; fraud detection
-                    (when (not (zero? (:total_price o)))
-                      (let [c (:charge auth-charge-result)]
-                        (sift/charge-authorization
-                         o user
-                         (if charge-authorized?
-                           {:stripe-charge-id (:id c)
-                            :successful? true
-                            :card-last4 (:last4 (:card c))
-                            :stripe-cvc-check (:cvc_check (:card c))
-                            :stripe-funding (:funding (:card c))
-                            :stripe-brand (:brand (:card c))
-                            :stripe-customer-id (:customer c)}
-                           {:stripe-charge-id (:charge (:error c))
-                            :successful? false
-                            :decline-reason-code (:decline_code (:error c))}))))
-                    
-                    (segment/track segment-client (:user_id o) "Request Order"
-                                   (assoc (segment-props o)
-                                          :charge-authorized charge-authorized?))
-                    (only-prod
-                     (send-email {:to "chris@purpledelivery.com"
-                                  :subject "Purple - New Order"
-                                  :body (str o)}))
-                    (only-prod
-                     (run! #((resolve 'purple.users/send-push)
-                             db-conn (:id %) (str "New order available. "
-                                                  "Please press Accept "
-                                                  "Order ASAP."))
-                           available-couriers))
-                    (only-prod
-                     (run! #(send-sms % (new-order-text db-conn
-                                                        o
-                                                        charge-authorized?))
-                           (concat (map :phone_number available-couriers)
-                                   (only-prod ["3235782263"   ;; Bruno
-                                               "3103109961"   ;; Joe
-                                               "7143154380"   ;; Gustavo
-                                               ]))))))
+                  available-couriers
+                  (->> (couriers/get-all-available db-conn)
+                       (couriers/filter-by-zone (order->zone-id o))
+                       (include-user-data db-conn))
+                  
+                  auth-charge-result
+                  (if (zero? (:total_price o))
+                    {:success true}
+                    (auth-charge-user db-conn
+                                      (:user_id o)
+                                      (:id o)
+                                      (:total_price o)
+                                      (gen-charge-description db-conn
+                                                              o)))
+                  
+                  charge-authorized? (:success auth-charge-result)]
+              
+              (when (and charge-authorized? (not (zero? (:total_price o))))
+                (stamp-with-charge db-conn (:id o) (:charge auth-charge-result)))
+
+              ;; fraud detection
+              (when (not (zero? (:total_price o)))
+                (let [c (:charge auth-charge-result)]
+                  (sift/charge-authorization
+                   o user
+                   (if charge-authorized?
+                     {:stripe-charge-id (:id c)
+                      :successful? true
+                      :card-last4 (:last4 (:card c))
+                      :stripe-cvc-check (:cvc_check (:card c))
+                      :stripe-funding (:funding (:card c))
+                      :stripe-brand (:brand (:card c))
+                      :stripe-customer-id (:customer c)}
+                     {:stripe-charge-id (:charge (:error c))
+                      :successful? false
+                      :decline-reason-code (:decline_code (:error c))}))))
+              
+              (only-prod
+               (run! #(send-sms % (new-order-text db-conn o charge-authorized?))
+                     (concat (map :phone_number available-couriers)
+                             (only-prod ["3103109961" ;; Joe
+                                         "7143154380" ;; Gustavo
+                                         ])))
+               (send-email {:to "chris@purpledelivery.com"
+                            :subject "Purple - New Order"
+                            :body (str o)}))
+              
+              (segment/track segment-client (:user_id o) "Request Order"
+                             (assoc (segment-props o)
+                                    :charge-authorized charge-authorized?))))
           {:success true
            :message (str "Your order has been accepted, and a courier will be "
                          "on the way soon! Please ensure that the fueling door "
@@ -398,7 +418,9 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE orders SET "
+          ;; change status
           "status = \"" (mysql-escape-str status) "\", "
+          ;; update event log
           "event_log = CONCAT(event_log, \""
           (mysql-escape-str status) " " (quot (System/currentTimeMillis) 1000)
           "\", '|') WHERE id = \""

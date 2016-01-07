@@ -177,24 +177,30 @@
             closing-minute (last  (get-service-time-bracket zip-code))
             current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
                                                       1000))
+            during-holiday? (< 1451700047 ;; 6pm Jan 1st
+                               (quot (System/currentTimeMillis) 1000)
+                               1451725247) ;; Jan 2nd
             good-time?-fn (fn [minutes-needed]
-                            (<= opening-minute
-                                current-minute
-                                ;;(- closing-minute minutes-needed)
-                                ;; removed the check for enough time
-                                ;; because our end time just means we accept orders
-                                ;; until then (regardless of deadline)
-                                closing-minute))]
+                            (and (not during-holiday?)
+                                 (<= opening-minute
+                                     current-minute
+                                     ;;(- closing-minute minutes-needed)
+                                     ;; removed the check for enough time
+                                     ;; because our end time just means we accept orders
+                                     ;; until then (regardless of deadline)
+                                     closing-minute)))]
         {:success true
          :availabilities (map (partial available good-time?-fn zip-code)
                               ["87" "91"])
          ;; if unavailable (as the client will determine from :availabilities)
          :unavailable-reason
-         (str "Sorry, the service hours for this ZIP code are "
-              (minute-of-day->hmma opening-minute)
-              " to "
-              (minute-of-day->hmma closing-minute)
-              " every day.")
+         (if during-holiday?
+           "Sorry, we're closed for the holiday. We'll be back January 2nd!"
+           (str "Sorry, the service hours for this ZIP code are "
+                (minute-of-day->hmma opening-minute)
+                " to "
+                (minute-of-day->hmma closing-minute)
+                " every day."))
          :user (select-keys user [:referral_gallons :referral_code])
          ;; LEGACY: we're still sending this for old versions of the app
          :availability [{:octane "87"
@@ -341,11 +347,8 @@
     (only-prod (run!
                 #(send-sms % "There are orders, but no available couriers.")
                 (concat [] ;; put your number in here when dev'ing
-                        (only-prod ["3235782263"     ;; Bruno
-                                    ;; "3106919061"  ;; JP
-                                    ;; "8589228571"  ;; Lee
-                                    "3103109961"     ;; Joe
-                                    "3235782263"     ;; Gustavo
+                        (only-prod ["3103109961"     ;; Joe
+                                    "7143154380"     ;; Gustavo
                                     ]))))
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
