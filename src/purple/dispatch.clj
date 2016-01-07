@@ -347,8 +347,7 @@
     (only-prod (run!
                 #(send-sms % "There are orders, but no available couriers.")
                 (concat [] ;; put your number in here when dev'ing
-                        (only-prod [;; "3235782263"     ;; Bruno
-                                    "3103109961"     ;; Joe
+                        (only-prod ["3103109961"     ;; Joe
                                     "7143154380"     ;; Gustavo
                                     ]))))
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
