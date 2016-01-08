@@ -273,9 +273,9 @@
 
 (defn valid-phone-number?
   "Given a phone-number string, ensure that it only contains numbers, #,
-(,),.,/, #, e,x, or t. Extremely permissive regex, essentially just prevents
- garbage chars from being entered as a phone number.
-From http://stackoverflow.com/questions/123559/a-comprehensive-regex-for-phone-number-validation"
+  (,),.,/, #, e,x, or t. Extremely permissive regex, essentially just prevents
+  garbage chars from being entered as a phone number.
+  From http://stackoverflow.com/questions/123559/a-comprehensive-regex-for-phone-number-validation"
   [phone-number]
   (boolean (re-matches #"^[0-9+\(\)#\.\s\/ext-]+$"
                        phone-number)))
