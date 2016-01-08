@@ -493,7 +493,7 @@
                              :custom-where (str "type = 'standard' AND "
                                                 ;; remove groupon coupons
                                                 "code NOT LIKE 'GR%'"))
-        zones       (!select db-conn "zones" ["*"] {})
+        zones (!select db-conn "zones" ["*"] {})
         dist-map (into
                   {}
                   (PurpleOpt/computeDistance
@@ -523,6 +523,38 @@
                                      (map #(assoc % :assigned_orders []))
                                      (map (juxt :id stringify-keys))
                                      (into {}))})))
+        sugg-map (into
+                  {}
+                  (PurpleOpt/computeSuggestion
+                   (map->java-hash-map
+                    {"human_time_format" false
+                     "current_time" nil
+                     "orders" (->> all-orders
+                                   (filter #(in? ["unassigned"
+                                                  "assigned"
+                                                  "accepted"
+                                                  "enroute"]
+                                                 (:status %)))
+                                   (map #(assoc %
+                                                :status_times
+                                                (-> (:event_log %)
+                                                    (s/split #"\||\s")
+                                                    (->> (remove s/blank?)
+                                                         (apply hash-map)
+                                                         (fmap read-string)))))
+                                   (map (juxt :id stringify-keys))
+                                   (into {}))
+                     "couriers" (->> (!select (conn)
+                                              "couriers"
+                                              [:id :lat :lng :last_ping
+                                               :connected :zones]
+                                              {:active true
+                                               :on_duty true})
+                                     (map #(update-in % [:zones] split-on-comma))
+                                     (map #(assoc % :assigned_orders []))
+                                     (map (juxt :id stringify-keys))
+                                     (into {}))})))
+        ___ (clojure.pprint/pprint sugg-map)
         ]
     (apply str
            (dashboard-template
