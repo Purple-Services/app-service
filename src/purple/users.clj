@@ -272,12 +272,12 @@
   (boolean (re-matches #"^.{6,100}$" password)))
 
 (defn valid-phone-number?
-  "Given a phone-number string, check whether or not it is a valid phone number
-  with a 10 digit code. Returns true if it is valid, false otherwise.
-  See: http://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number/16699507#16699507
-  for more information about the regex used"
+  "Given a phone-number string, ensure that it only contains numbers, #,
+  (,),.,/, #, e,x, or t. Extremely permissive regex, essentially just prevents
+  garbage chars from being entered as a phone number.
+  From http://stackoverflow.com/questions/123559/a-comprehensive-regex-for-phone-number-validation"
   [phone-number]
-  (boolean (re-matches #"^\+?[01]?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$"
+  (boolean (re-matches #"^[0-9+\(\)#\.\s\/ext-]+$"
                        phone-number)))
 
 (defn valid-name?
