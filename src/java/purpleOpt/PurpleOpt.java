@@ -40,7 +40,8 @@ General INPUT (for major functions):
 			"last_ping" (Integer);
 			"zones" (List<String>);
 			"assigned_orders" (List<String>);
-			
+	"human_time_format": (optional) true / false;
+	"current_time": (optional) SimpleDateFormat (if human_time_format is true) or UnixTime (if human_time_format is false)
 */
 
 public class PurpleOpt {
@@ -58,8 +59,11 @@ public class PurpleOpt {
 	*/
 	@SuppressWarnings("unchecked")
 	public static LinkedHashMap<String, Object> computeSuggestion(HashMap<String,Object> input) {
+
+		Object value;	// used to temporarily hold an object and check if it is null
+
 		// print switch
-		boolean bPrint = true; // CAUTION
+//		boolean bPrint = false; // CAUTION
 
 		/* --- read data from input --- */
 		// read the orders hashmap
@@ -67,25 +71,30 @@ public class PurpleOpt {
 		// read the couriers hashmap
 		HashMap<String, Object> couriers = (HashMap<String, Object>) input.get("couriers");
 
-//		boolean json_input = (boolean) input.get("json_input");
-		boolean human_time_format = (boolean) input.get("human_time_format");
+//		boolean json_input = (boolean) input.get("json_input");	// this key-value pair is not used
+		boolean human_time_format;
+		value = input.get("human_time_format");
+		if (value == null)
+			human_time_format = false;
+		else
+			human_time_format = (boolean) value;
 
 		/* --- get current time in the Unix time format --- */
 		long currTime = 0;
-		Object current_time = (Object) input.get("current_time");
-		if (current_time == null) {
+		value = (Object) input.get("current_time");
+		if (value == null) {
+			// get the system time
 			currTime = System.currentTimeMillis() / 1000L;
 		} 
 		else {
-			if (human_time_format) {
-				currTime = SimpleDateFormatToUnixTime((String)current_time);
-			}
-			else {
-				currTime = (Long) current_time;
-			}
+			// get the specified "current time"
+			if (human_time_format)
+				currTime = SimpleDateFormatToUnixTime((String)value);
+			else
+				currTime = (Long) value;
 		}
 
-		/* --- go through all couriers and remove the invalid ones, who cannot take orders --- */
+		/* --- go through all couriers and remove the invalid ones, because they cannot take orders --- */
 		for(Iterator<String> it = couriers.keySet().iterator(); it.hasNext(); ) {
 			String courier_key = it.next();
 			if (!bCourierValid((HashMap<String, Object>)couriers.get(courier_key))) {
@@ -93,7 +102,7 @@ public class PurpleOpt {
 			}
 		}
 
-		/* --- for each courier, compute their finish time (the time by which they will finish all assigned orders),
+		/* --- for each courier, compute their finish time (the time by which they will finish all their assigned orders),
 		 *     which is set to the current time if they have no assigned order.
 		 --- */
 		for(String courier_key: couriers.keySet()) {
@@ -107,45 +116,50 @@ public class PurpleOpt {
             courier.put("finish_lng", finish.get("finish_lng"));
 		}
 
-		/* --- sort the unfinished "servicing", "en route", "unassigned" orders by status and then deadline 
-		 *     other types of orders, if any, are removed --- */
+		/* --- sort the unfinished orders ("servicing", "en route", "unassigned") by status and then deadline. 
+		 *     orders of any other types, if any, are removed --- */
 		List<HashMap<String,Object>> sorted_orders = sortUnfinishedOrders(orders);
 
         /* --- create output hashmap --- */
         // initialize the output hashmap
         LinkedHashMap<String,Object> outHashMap = new LinkedHashMap<>();
+        
         // add an entry for each unassigned order, with an empty hashmap as its value
-
         for(Iterator<HashMap<String,Object>> it = sorted_orders.listIterator(); it.hasNext(); ) {
             HashMap<String,Object> order = it.next();
             outHashMap.put((String)order.get("id"), new LinkedHashMap<String,Object>());
         }
 
 		/* --- cluster unassigned orders so that nearby orders are grouped in one list ---
-		 *     TODO: consider cluster size determined by deadlines */
+		 *     TODO: consider cluster size determined by deadlines
+		 *     TODO: consider cluster criterion by courier distance */
 		List<List<HashMap<String,Object>>> clusters_unassigned_orders = clusterOrders(sorted_orders);
 
 		/* --- assign couriers to unassigned orders 
-		 *     TODO: if any order or any order in a cluster has an assigned courier, then assign to the same courier, regardless of scores
+		 *     TODO: if any order in a cluster has an assigned courier already, then assign the cluster
+		 *     to the same courier, regardless of scores
 		 * --- */
 		for (int i = 0; i < clusters_unassigned_orders.size(); i++) {
 			// get the i-th order cluster (0 based index)
 			List<HashMap<String,Object>> cluster = clusters_unassigned_orders.get(i);
-            // if there is one order in the cluster
+            // if there is only one order in the cluster
 			if (cluster.size() == 1) {
                 // get the only order in the list, its key, and its assigned courier (if any)
                 HashMap<String, Object> order = cluster.get(0);
                 String order_key = (String) order.get("id");
-                String assigned_courier_key = (String) order.get("assigned_courier");
-                if (assigned_courier_key != null) {
+                String assigned_courier_key;
+                value = order.get("assigned_courier");
+                if (value != null) {
+                	// the order has been assigned to a courier
+                	assigned_courier_key = (String) value;
                 	LinkedHashMap<String,Object> out_order_entry = (LinkedHashMap<String,Object>)outHashMap.get(order_key);
-//                	HashMap<String,Object> assigned_courier = (HashMap<String,Object>) couriers.get(assigned_courier_key);
                 	out_order_entry.put("suggested_courier", assigned_courier_key);
                 	out_order_entry.put("new_assignment", false);
                 	out_order_entry.put("suggested_courier_pos", (Long)order.get("assigned_courier_pos"));
                 	out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat((Long)order.get("etf"),human_time_format));
                 }
                 else {
+                	// the order has NOT been assigned to a courier
                 	// initialize best score, finish time, and the corresponding courier's key
                 	long best_score = 0;
                 	Long best_finish_time = 0L;
@@ -194,12 +208,16 @@ public class PurpleOpt {
                 // initialize the order variable as the first order in the cluster, also for later use
                 HashMap<String,Object> order = cluster.get(0);
                 // get the assigned courier, possibly null, of the first order in the cluster
-                String assigned_courier_key = (String) order.get("assigned_courier");
+                String assigned_courier_key;
+                value = order.get("assigned_courier");
                 // check if the cluster already includes an order with an assigned courier
                 Set<String> keySet = null;
-                if (assigned_courier_key == null) {
+                if (value == null) {
+                	// no courier assigned yet, let's go through the available couriers
                 	keySet = couriers.keySet();
                 } else {
+                	// a courier has been assigned, use him/her by assign him/her to the keySet
+                	assigned_courier_key = (String) value;
                 	keySet = new HashSet<String>();
                 	keySet.add(assigned_courier_key);
                 }
@@ -363,6 +381,14 @@ public class PurpleOpt {
 			// get the first (working) order
 			HashMap<String, Object> order = (HashMap<String, Object>) orders.get(assigned_orders_keys.get(0));
 
+            
+            // System.out.println("order at 385");
+            // System.out.println(assigned_orders_keys);
+            // System.out.println(assigned_orders_keys.get(0));
+            // System.out.println(orders);
+            // System.out.println(orders.get(assigned_orders_keys.get(0)));
+            // System.out.println(order);
+            
 			// check if arrived at the order
 			if (bCourierAtOrderSite(order,courier)) {
                 // already servicing the order
@@ -471,7 +497,7 @@ public class PurpleOpt {
 
     /* decide whether two lat-lng coordinates are considered nearby */
 	static boolean bNearbyOrderLatLng(Double lat1, Double lng1, Double lat2, Double lng2) {
-		double radiusThreshold = 0.00075; // radius roughly equal to a small street block
+		double radiusThreshold = 0.001; // radius roughly equal to a small street block; NOTE: the actual distance depends on the location of a city
 		if ((lat1-lat2)*(lat1-lat2) + (lng1-lng2)*(lng1-lng2) <= radiusThreshold*radiusThreshold)
 			return true;
 		else
@@ -501,28 +527,21 @@ public class PurpleOpt {
     /*
     OUTPUT:
 	[order ID]: {
-	  "suggested_courier_id": [suggested courier id],
-	  "expected_deadline_diff": [number of seconds, + for late, - for early]
 	  "etas": {
 	     [courier id]: 450, // number of driving seconds away from the current location to the order
 	     [courier id 2]: 615,
 	     etc
 	  }
 	}
+    The following keys are removed from under each order
+	  "suggested_courier_id": [suggested courier id],
+	  "expected_deadline_diff": [number of seconds, + for late, - for early]
 	*/
 	@SuppressWarnings("unchecked")
 	public static HashMap<String, Object> computeDistance(HashMap<String,Object> input) {
-		@SuppressWarnings({ "serial" })
-		class InCourier extends HashMap<String, Object> { }
-		@SuppressWarnings({ "serial", "unused" })
-		class InCouriers extends HashMap<String, InCourier> { }
-		@SuppressWarnings({ "serial" })
-		class InOrder extends HashMap<String, Object> { }
-		@SuppressWarnings({ "serial", "unused" })
-		class InOrders extends HashMap<String, InOrder> { }
 		
 		// print switch
-		boolean bPrint = true; // CAUTION
+		boolean bPrint = false; // CAUTION
 		boolean bPrintInput = false; // CAUTION
 		
 		// print 
@@ -532,7 +551,7 @@ public class PurpleOpt {
 		}
 		
 		// get current time in the Unix time format
-		long currTime = System.currentTimeMillis() / 1000L;
+		// long currTime = System.currentTimeMillis() / 1000L; // not used any more
 		
 		// --- read data from input to structures that are easy to use ---
 		// read the orders hashmap
@@ -543,10 +562,10 @@ public class PurpleOpt {
 		// create the output hashmap
 		HashMap<String, Object> outHashmap = new HashMap<String, Object>();
 		// structure:
-		// outHashmap(key: order_key; val: outOrder)
-		//   outOrder(key: "suggested_courier_id"; null;  // not implemented
-		//            key: "etas"; val: outETAs)
-		//     outETAs(key: courier_key: val: eta_seconds)
+		//   outHashmap(key: order_key; val: outOrder)
+		//     outOrder(key: "suggested_courier_id"; null;
+		//              key: "etas"; val: outETAs)
+		//       outETAs(key: courier_key: val: eta_seconds)
 		
 		// create the inputs for calling GoogleDistanceMatrix
 		List<String> listOrigins = new ArrayList<String>();	// store origin lat-lng
@@ -554,80 +573,55 @@ public class PurpleOpt {
 		List<String> listDests = new ArrayList<String>();	// store destination lat-lng
 		List<String> listDestKeys = new ArrayList<String>(); // store destination key (order key)
 
-		// get all the connected couriers and add them to the list for GoogleDistanceMatrix
+		/*-- add all the valid couriers to the list for GoogleDistanceMatrix --*/
 		for(String courier_key: couriers.keySet()) {
 			// get the order by ID (key)
 			HashMap<String, Object> courier = (HashMap<String, Object>) couriers.get(courier_key);
-			// get the courier connection status
-			// Boolean connected = (Boolean) courier.get("connected"); 
-			Boolean connected = true;	// CAUTION
-			// get the courier lat and lng
-			Double courier_lat = (Double) courier.get("lat");
-			Double courier_lng = (Double) courier.get("lng");
-
-			if (bPrint)
-				System.out.println("courier: " + courier_key + "; connected: " + connected);
-
-			// check if the courier is connected and has a valid lat-lng
-			if (connected.booleanValue() && courier_lat != 0 && courier_lng != 0) {
-
-				if (bPrint)
-					System.out.println("  connected and have valid lat-lng");
-
+			// check if the courier is valid
+			if (bCourierValid(courier)) {
+				// get the courier lat and lng
+				Double courier_lat = (Double) courier.get("lat");
+				Double courier_lng = (Double) courier.get("lng");
 				// add this courier to listOrigins, if the courier is not already there
 				if (!listOriginKeys.contains(courier_key)) {
 					// add the lat-lng of this courier to listOrigins
 					listOrigins.add(courier_lat.toString()+","+courier_lng.toString());
 					// add the courier key to listOriginKeys
 					listOriginKeys.add(courier_key);
-
-					if (bPrint)
-						System.out.println("  add " + courier_lat.toString()+","+courier_lng.toString() + " to origin list");
 				}
-
-				// compute the ETAs in the old way: single origin-dest calls; disabled for performance consideration
-				// eta_seconds = getGoogleDistance(courier_lat, courier_lng, order_lat, order_lng);
-				// put the ETA to the ETAs hashmap
-				// outETAs.put(courier_key, eta_seconds);
 			}
 		}
 		
 		
-		// check all the orders, create an entry for each unassigned order in outHashmap and add it to listDests
+		/*-- create an entry for each unassigned order in outHashmap and add it to listDests --*/
 		for(String order_key: orders.keySet()) {
 			// get the order object
 			HashMap<String, Object> order = (HashMap<String, Object>) orders.get(order_key);
 			// get the order status
 			String order_status = (String) order.get("status");
 			
-			if (bPrint)
-				System.out.println("order: " + order_key + "; status: " + order_status);
-			
 			// check if the order is unassigned
-			// if (order_status.equals("unassigned")) {
-			if (true) { // CAUTION
-				
-				if (bPrint)
-					System.out.println("  this order is unassigned");
-				
+			if (order_status.equals("unassigned")) {
 				// create a Hashmap for this order
 				HashMap<String, Object> outOrder = new HashMap<String, Object>();
 				// put this order in the output hashmap
 				outHashmap.put(order_key, outOrder);
 				
 				// specify the suggested courier for this order, will implement later
-                List<HashMap<String,Object>> courierScores = computeCourierScores(orders, couriers, order_key);
-                String suggested_courier_key = (String) courierScores.get(0).get("courier_key");
- 				outOrder.put("suggested_courier_id", suggested_courier_key);
-
-                int time_to_finish = ((Integer)(courierScores.get(0)).get("time_to_finish")).intValue() + (int)currTime; // the absolute time for the suggested courier to finish the order
-                int order_deadline = ((Integer) order.get("target_time_end")).intValue();
-                Integer expected_deadline_diff = new Integer(time_to_finish - order_deadline);
-
-                if (bPrint) {// CAUTION
-					System.out.println("courier_eta: " + (Integer) ((courierScores.get(0)).get("time_to_finish")) + "current time: " + currTime + "order_end: " + ((Integer) order.get("target_time_end")).intValue());
-					outOrder.put("expected_deadline_diff", expected_deadline_diff);
-				}
+				/* --- I disable the computation for suggested courier from this function 
+	                List<HashMap<String,Object>> courierScores = computeCourierScores(orders, couriers, order_key);
+	                String suggested_courier_key = (String) courierScores.get(0).get("courier_key");
+	 				outOrder.put("suggested_courier_id", suggested_courier_key);
+	
+	                int time_to_finish = ((Integer)(courierScores.get(0)).get("time_to_finish")).intValue() + (int)currTime; // the absolute time for the suggested courier to finish the order
+	                int order_deadline = ((Integer) order.get("target_time_end")).intValue();
+	                Integer expected_deadline_diff = new Integer(time_to_finish - order_deadline);
+	
+	                if (bPrint) {// CAUTION
+						System.out.println("courier_eta: " + (Integer) ((courierScores.get(0)).get("time_to_finish")) + "current time: " + currTime + "order_end: " + ((Integer) order.get("target_time_end")).intValue());
+						outOrder.put("expected_deadline_diff", expected_deadline_diff);
+					}
+				---*/
 				
 				// create a hashmap for ETAs
 				HashMap<String, Integer> outETAs = new HashMap<String, Integer>();
@@ -644,9 +638,6 @@ public class PurpleOpt {
 					listDests.add(order_lat.toString()+","+order_lng.toString());
 					// add this order's key to listDestKeys
 					listDestKeys.add(order_key);
-					
-					if (bPrint)
-						System.out.println("  add " + order_lat.toString()+","+order_lng.toString() + " to dest list");
 				}
 			}
 		}
@@ -656,7 +647,7 @@ public class PurpleOpt {
 			System.out.println();
 		}
 		
-		// call getGoogleDistanceMatrix, if there are orgin(s) and destination(s)
+		// call getGoogleDistanceMatrix, if there are origin(s) and destination(s)
 		if (!listOrigins.isEmpty() && !listDests.isEmpty()) {
 			
 			if (bPrint) 
@@ -675,7 +666,7 @@ public class PurpleOpt {
 			// for each row (origin), and then for each column (destination)
 			for(int i = 0; i < listETAs.size(); i++) {
 				// get the corresponding courier key from listOriginKeys
-				String courier_key = listOriginKeys.get(i);
+				String courier_key1 = listOriginKeys.get(i);
 				// get the list of ETAs for this courier
 				listETAelements = listETAs.get(i);
 				
@@ -691,7 +682,7 @@ public class PurpleOpt {
 					// from outOrder, get the field "etas"
 					HashMap<String, Integer> outETAs = (HashMap<String, Integer>) outOrder.get("etas");
 					// write the order-courier ETA to outETAs
-					outETAs.put(courier_key, listETAelements.get(j));
+					outETAs.put(courier_key1, listETAelements.get(j));
 
 					if (bPrint) {
 						System.out.print(" order at " + listDests.get(j) + " ETA: " + listETAelements.get(j) + " seconds");
@@ -712,7 +703,7 @@ public class PurpleOpt {
 	public static List<List<Integer>> getGoogleDistanceMatrix(List<String> org_latlngs, List<String> dest_latlngs) {
 		int nOrgs = org_latlngs.size();
 		int nDests = dest_latlngs.size();
-		boolean bPrint = true;
+		boolean bPrint = false;
 
 		if (nOrgs < 1 || nDests < 1)
 			return null;
@@ -868,7 +859,7 @@ public class PurpleOpt {
 			Integer time_to_finish = 0;
 			Integer cross_zone_penalty = 0;
 
-			boolean bPrint = true; // CAUTION
+			boolean bPrint = false; // CAUTION
 
 			if (bPrint)
 				System.out.println("courier: " + courier_key + "; connected: " + connected);
@@ -992,7 +983,7 @@ public class PurpleOpt {
 			0: order cannot be served by courier
 		 */
 		
-		boolean bPrint = true; // CAUTION
+		boolean bPrint = false; // CAUTION
 		
 		List<Long> courierZones = getCourierZones(courier);
 		Integer orderZone = getOrderZone(order);
@@ -1025,7 +1016,7 @@ public class PurpleOpt {
 		else
 			return true;
 	}
-
+    
 	static boolean bCourierAtOrderSite(HashMap<String,Object> order, HashMap<String,Object> courier) {
 		// true if the courier at the order site; false otherwise.
 
@@ -1073,7 +1064,7 @@ public class PurpleOpt {
 
 	public static int getGoogleDistance(Double courier_lat, Double courier_lng, Double order_lat, Double order_lng) {
 		int seconds = 0;
-		boolean bPrint = true; // CAUTION
+		boolean bPrint = false; // CAUTION
 		
 		// Wotao's key
 		String server_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE";
@@ -1122,6 +1113,7 @@ public class PurpleOpt {
 				seconds = resp_seconds.intValue();
 			}
 			else {
+                
 				System.out.println("Google zero result");
 				return (int) Math.round((Math.abs(courier_lat - order_lat) + Math.abs(courier_lng - order_lng))*150.0);
 			}
