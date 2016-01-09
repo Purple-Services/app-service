@@ -523,54 +523,54 @@
                                      (map #(assoc % :assigned_orders []))
                                      (map (juxt :id stringify-keys))
                                      (into {}))})))
-        ;; sugg-map (filter (comp :new_assignment val)
-        ;;                  (fmap (comp keywordize-keys (partial into {}))
-        ;;                        (into
-        ;;                         {}
-        ;;                         (PurpleOpt/computeSuggestion
-        ;;                          (map->java-hash-map
-        ;;                           { ;; "human_time_format" false
-        ;;                            ;; "current_time" nil
-        ;;                            "orders" (->> all-orders
-        ;;                                          (filter #(in? ["unassigned"
-        ;;                                                         "assigned"
-        ;;                                                         "accepted"
-        ;;                                                         "enroute"
-        ;;                                                         "servicing"]
-        ;;                                                        (:status %)))
-        ;;                                          (map #(assoc %
-        ;;                                                       :status_times
-        ;;                                                       (-> (:event_log %)
-        ;;                                                           (s/split #"\||\s")
-        ;;                                                           (->> (remove s/blank?)
-        ;;                                                                (apply hash-map)
-        ;;                                                                (fmap read-string)))))
-        ;;                                          (map (juxt :id stringify-keys))
-        ;;                                          (into {}))
-        ;;                            "couriers" (->> (!select (conn)
-        ;;                                                     "couriers"
-        ;;                                                     [:id :lat :lng :last_ping
-        ;;                                                      :connected :zones]
-        ;;                                                     {:active true
-        ;;                                                      :on_duty true})
-        ;;                                            (map #(update-in % [:zones] split-on-comma))
-        ;;                                            (map
-        ;;                                             #(assoc
-        ;;                                               % :assigned_orders
-        ;;                                               (->> all-orders
-        ;;                                                    (filter
-        ;;                                                     (fn [o]
-        ;;                                                       (and (in? ["unassigned"
-        ;;                                                                  "assigned"
-        ;;                                                                  "accepted"
-        ;;                                                                  "enroute"
-        ;;                                                                  "servicing"]
-        ;;                                                                 (:status o))
-        ;;                                                            (= (:courier_id o)
-        ;;                                                               (:id %)))))
-        ;;                                                    (map :id))))
-        ;;                                            (map (juxt :id stringify-keys))
-        ;;                                            (into {}))})))))
+        sugg-map (filter (comp :new_assignment val)
+                         (fmap (comp keywordize-keys (partial into {}))
+                               (into
+                                {}
+                                (PurpleOpt/computeSuggestion
+                                 (map->java-hash-map
+                                  { ;; "human_time_format" false
+                                   ;; "current_time" nil
+                                   "orders" (->> all-orders
+                                                 (filter #(in? ["unassigned"
+                                                                "assigned"
+                                                                "accepted"
+                                                                "enroute"
+                                                                "servicing"]
+                                                               (:status %)))
+                                                 (map #(assoc %
+                                                              :status_times
+                                                              (-> (:event_log %)
+                                                                  (s/split #"\||\s")
+                                                                  (->> (remove s/blank?)
+                                                                       (apply hash-map)
+                                                                       (fmap read-string)))))
+                                                 (map (juxt :id stringify-keys))
+                                                 (into {}))
+                                   "couriers" (->> (!select (conn)
+                                                            "couriers"
+                                                            [:id :lat :lng :last_ping
+                                                             :connected :zones]
+                                                            {:active true
+                                                             :on_duty true})
+                                                   (map #(update-in % [:zones] split-on-comma))
+                                                   (map
+                                                    #(assoc
+                                                      % :assigned_orders
+                                                      (->> all-orders
+                                                           (filter
+                                                            (fn [o]
+                                                              (and (in? ["unassigned"
+                                                                         "assigned"
+                                                                         "accepted"
+                                                                         "enroute"
+                                                                         "servicing"]
+                                                                        (:status o))
+                                                                   (= (:courier_id o)
+                                                                      (:id %)))))
+                                                           (map :id))))
+                                                   (map (juxt :id stringify-keys))
+                                                   (into {}))})))))
         ]
     (apply str
            (dashboard-template
