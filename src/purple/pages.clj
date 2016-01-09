@@ -523,38 +523,54 @@
                                      (map #(assoc % :assigned_orders []))
                                      (map (juxt :id stringify-keys))
                                      (into {}))})))
-        sugg-map (into
-                  {}
-                  (PurpleOpt/computeSuggestion
-                   (map->java-hash-map
-                    {"human_time_format" false
-                     "current_time" nil
-                     "orders" (->> all-orders
-                                   (filter #(in? ["unassigned"
-                                                  "assigned"
-                                                  "accepted"
-                                                  "enroute"]
-                                                 (:status %)))
-                                   (map #(assoc %
-                                                :status_times
-                                                (-> (:event_log %)
-                                                    (s/split #"\||\s")
-                                                    (->> (remove s/blank?)
-                                                         (apply hash-map)
-                                                         (fmap read-string)))))
-                                   (map (juxt :id stringify-keys))
-                                   (into {}))
-                     "couriers" (->> (!select (conn)
-                                              "couriers"
-                                              [:id :lat :lng :last_ping
-                                               :connected :zones]
-                                              {:active true
-                                               :on_duty true})
-                                     (map #(update-in % [:zones] split-on-comma))
-                                     (map #(assoc % :assigned_orders []))
-                                     (map (juxt :id stringify-keys))
-                                     (into {}))})))
-        ___ (clojure.pprint/pprint sugg-map)
+        ;; sugg-map (filter (comp :new_assignment val)
+        ;;                  (fmap (comp keywordize-keys (partial into {}))
+        ;;                        (into
+        ;;                         {}
+        ;;                         (PurpleOpt/computeSuggestion
+        ;;                          (map->java-hash-map
+        ;;                           { ;; "human_time_format" false
+        ;;                            ;; "current_time" nil
+        ;;                            "orders" (->> all-orders
+        ;;                                          (filter #(in? ["unassigned"
+        ;;                                                         "assigned"
+        ;;                                                         "accepted"
+        ;;                                                         "enroute"
+        ;;                                                         "servicing"]
+        ;;                                                        (:status %)))
+        ;;                                          (map #(assoc %
+        ;;                                                       :status_times
+        ;;                                                       (-> (:event_log %)
+        ;;                                                           (s/split #"\||\s")
+        ;;                                                           (->> (remove s/blank?)
+        ;;                                                                (apply hash-map)
+        ;;                                                                (fmap read-string)))))
+        ;;                                          (map (juxt :id stringify-keys))
+        ;;                                          (into {}))
+        ;;                            "couriers" (->> (!select (conn)
+        ;;                                                     "couriers"
+        ;;                                                     [:id :lat :lng :last_ping
+        ;;                                                      :connected :zones]
+        ;;                                                     {:active true
+        ;;                                                      :on_duty true})
+        ;;                                            (map #(update-in % [:zones] split-on-comma))
+        ;;                                            (map
+        ;;                                             #(assoc
+        ;;                                               % :assigned_orders
+        ;;                                               (->> all-orders
+        ;;                                                    (filter
+        ;;                                                     (fn [o]
+        ;;                                                       (and (in? ["unassigned"
+        ;;                                                                  "assigned"
+        ;;                                                                  "accepted"
+        ;;                                                                  "enroute"
+        ;;                                                                  "servicing"]
+        ;;                                                                 (:status o))
+        ;;                                                            (= (:courier_id o)
+        ;;                                                               (:id %)))))
+        ;;                                                    (map :id))))
+        ;;                                            (map (juxt :id stringify-keys))
+        ;;                                            (into {}))})))))
         ]
     (apply str
            (dashboard-template
@@ -658,76 +674,76 @@
              :debug nil
              :read-only read-only
              :courier-manager courier-manager
-             :all all}))))
+             :all all})))
 
-(defn declined [db-conn]
-  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
-                          ;; remove chriscourier@test.com
-                          (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
-        courier-ids (distinct (map :id all-couriers))
-        all-orders (!select db-conn
-                            "orders"
-                            ["*"]
-                            {:paid 0
-                             :status "complete"}
-                            :append
-                            "AND total_price > 0 ORDER BY target_time_start DESC")
-        
-        users-by-id
-        (->> (!select db-conn "users"
-                      [:id :name :email :phone_number :os
-                       :app_version :stripe_default_card
-                       :arn_endpoint :timestamp_created]
-                      {}
-                      :custom-where
-                      (let [customer-ids (distinct (map :user_id all-orders))]
-                        (str "id IN (\""
-                             (s/join "\",\"" (distinct
-                                              (concat customer-ids
-                                                      courier-ids)))
-                             "\")")))
-             (group-by :id))
-        
-        id->name #(:name (first (get users-by-id %)))
+  (defn declined [db-conn]
+    (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+                            ;; remove chriscourier@test.com
+                            (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
+          courier-ids (distinct (map :id all-couriers))
+          all-orders (!select db-conn
+                              "orders"
+                              ["*"]
+                              {:paid 0
+                               :status "complete"}
+                              :append
+                              "AND total_price > 0 ORDER BY target_time_start DESC")
+          
+          users-by-id
+          (->> (!select db-conn "users"
+                        [:id :name :email :phone_number :os
+                         :app_version :stripe_default_card
+                         :arn_endpoint :timestamp_created]
+                        {}
+                        :custom-where
+                        (let [customer-ids (distinct (map :user_id all-orders))]
+                          (str "id IN (\""
+                               (s/join "\",\"" (distinct
+                                                (concat customer-ids
+                                                        courier-ids)))
+                               "\")")))
+               (group-by :id))
+          
+          id->name #(:name (first (get users-by-id %)))
 
-        vehicles-by-id
-        (->> (!select db-conn "vehicles"
-                      [:id :year :make :model :color :gas_type
-                       :license_plate]
-                      {}
-                      :custom-where
-                      (let [vehicle-ids (distinct (map :vehicle_id all-orders))]
-                        (str "id IN (\""
-                             (s/join "\",\"" vehicle-ids)
-                             "\")")))
-             (group-by :id))
-        
-        id->vehicle #(first (get vehicles-by-id %))
-        ]
-    (apply str
-           (dashboard-template
-            {:title "Purple - Declined Payments"
-             :orders (map #(assoc %
-                                  :courier_name (id->name (:courier_id %))
-                                  :customer_name (id->name (:user_id %))
-                                  
-                                  :customer_phone_number
-                                  (:phone_number
-                                   (first (get users-by-id (:user_id %))))
-                                  
-                                  :was-late
-                                  (let [completion-time
-                                        (-> (str "kludgeFix 1|" (:event_log %))
-                                            (s/split #"\||\s")
-                                            (->> (apply hash-map))
-                                            (get "complete"))]
-                                    (and completion-time
-                                         (> (Integer. completion-time)
-                                            (:target_time_end %))))
-                                  :vehicle (id->vehicle (:vehicle_id %)))
-                          all-orders)
-             :base-url config/base-url
-             :only-show-orders true}))))
+          vehicles-by-id
+          (->> (!select db-conn "vehicles"
+                        [:id :year :make :model :color :gas_type
+                         :license_plate]
+                        {}
+                        :custom-where
+                        (let [vehicle-ids (distinct (map :vehicle_id all-orders))]
+                          (str "id IN (\""
+                               (s/join "\",\"" vehicle-ids)
+                               "\")")))
+               (group-by :id))
+          
+          id->vehicle #(first (get vehicles-by-id %))
+          ]
+      (apply str
+             (dashboard-template
+              {:title "Purple - Declined Payments"
+               :orders (map #(assoc %
+                                    :courier_name (id->name (:courier_id %))
+                                    :customer_name (id->name (:user_id %))
+                                    
+                                    :customer_phone_number
+                                    (:phone_number
+                                     (first (get users-by-id (:user_id %))))
+                                    
+                                    :was-late
+                                    (let [completion-time
+                                          (-> (str "kludgeFix 1|" (:event_log %))
+                                              (s/split #"\||\s")
+                                              (->> (apply hash-map))
+                                              (get "complete"))]
+                                      (and completion-time
+                                           (> (Integer. completion-time)
+                                              (:target_time_end %))))
+                                    :vehicle (id->vehicle (:vehicle_id %)))
+                            all-orders)
+               :base-url config/base-url
+               :only-show-orders true})))))
 
 (defn twiml-simple
   [message]

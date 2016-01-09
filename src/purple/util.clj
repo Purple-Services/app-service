@@ -94,7 +94,11 @@
 (defn map->java-hash-map
   "Recursively convert Clojure PersistentArrayMap to Java HashMap."
   [m]
-  (postwalk #(unless-p map? % (java.util.HashMap. %)) m))
+  (postwalk #(cond
+               (map? %) (java.util.HashMap. %)
+               (seq? %) (java.util.ArrayList. %)
+               :else %)
+            m))
 
 (def time-zone (time/time-zone-for-id "America/Los_Angeles"))
 
