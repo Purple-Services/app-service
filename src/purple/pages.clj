@@ -763,8 +763,27 @@
 
   [:#pikaday-css] unwrap
 
-  [:#main-css] (set-attr :href (str config/base-url
-                                    "css/main.css"))
+  [:head] (do->
+           (append (html [:meta
+                         {:name "viewport"
+                          :content "width=device-width, initial-scale=1"}]))
+           (append (html [:link
+                          {:rel "stylesheet"
+                           :type "text/css"
+                           :href
+                           (str config/base-url "css/dashmap.css")}]))
+           (append (html [:link
+                          {:rel "stylesheet"
+                           :type "text/css"
+                           :href
+                           (str config/base-url "css/bootstrap.min.css")}]))
+           (append (html [:link
+                          {:rel "stylesheet"
+                           :type "text/css"
+                           :href
+                           (str config/base-url "css/sb-admin.css")}])))
+
+  [:#main-css] (fn [node] "")
 
   [:#base-url] (set-attr :value (str (:base-url x)))
 
@@ -780,20 +799,39 @@
 
 (deftemplate dash-app-template "templates/dashmap.html"
   [x]
-  [:title] (content "Purple - Dashboard Login")
+  [:title] (content "Purple - Dashboard App")
 
   [:#pikaday-css] unwrap
 
-  [:#main-css] (set-attr :href (str config/base-url "css/main.css"))
+  [:#main-css] ;;(set-attr :href (str config/base-url "css/main.css"))
+  (fn [node] "")
+
+  [:head] (do->
+           (append (html [:meta
+                         {:name "viewport"
+                          :content "width=device-width, initial-scale=1"}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href
+                            (str config/base-url "css/bootstrap.min.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url "css/sb-admin.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url "css/dashboard.css")}])))
 
   [:#base-url] (set-attr :value (str (:base-url x)))
 
   [:#map] (set-attr :id "app")
 
-  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.init_app();"]))
+  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.init_new_dash();"]))
 
-  [:body] (prepend (html [:div {:id "accessible-routes"
-                                :value (:accessible-routes x)}])))
+  [:body]  (prepend (html [:div {:id "accessible-routes"
+                                 :value (:accessible-routes x)}])))
 
 (defn dash-app
   [accessible-routes]

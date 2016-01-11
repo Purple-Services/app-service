@@ -1,0 +1,57 @@
+/* .custom-nav { */
+/*     margin-bottom: 0 !important; */
+/*     background-color: #261535; */
+/*     border-radius: 0; */
+/*     border: none; */
+/* } */
+
+/* .side-tabs { */
+/*     padding: none; */
+    
+/* } */
+
+/* .col-xs-3 { */
+/*     padding: 0 !important; */
+/* } */
+
+.nav-bar-color {
+    background-color: #261535;
+}
+
+.page-wrapper-color {
+    background-color: #E0E0E0;
+}
+
+.side-nav-color {
+    background-color: #8B8D8E;
+}
+
+.side-nav-color > li > a  {
+    /* need to override bootstrap.min.css */
+    color: #E0E0E0 !important;
+}
+
+.side-nav-color > li > a:hover,
+.side-nav-color > li > a:focus,
+.side-nav-color > li > a.active {
+    background-color: #e0e0e0 !important;
+    color: #8B8D8E !important;
+}
+
+tbody > tr.active > td {
+    background-color: #e0e0e0 !important;
+}
+
+.purple-logo {
+    width: 3.5em;
+}
+
+.fake-link {
+    font-size: 16px;
+    color: #3498db;
+    font-weight: normal;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+

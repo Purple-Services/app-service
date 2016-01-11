@@ -71,6 +71,8 @@
 (def dashboard-uri-permissions
   [{:url "/dashboard"
     :permissions ["view-dash"]}
+   {:url "/dashboard/dash-app"
+    :permissions ["view-dash"]}
    {:url "/dashboard/"
     :permissions ["view-dash"]}
    {:url "/dashboard/all"
@@ -398,7 +400,7 @@
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
-              ;; demo for the Reagent app, no perms associated with it
+              ;; demo for the Reagent app
               (GET "/dash-app" {cookies :cookies}
                    (let [user-perms (dashboard/get-permissions
                                      (conn)
