@@ -822,13 +822,19 @@
            (append (html
                     [:link {:rel "stylesheet"
                             :type "text/css"
-                            :href (str config/base-url "css/dashboard.css")}])))
+                            :href (str config/base-url "css/dashboard.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url
+                                       "css/font-awesome.min.css")}])))
 
   [:#base-url] (set-attr :value (str (:base-url x)))
 
   [:#map] (set-attr :id "app")
 
-  [:#map-init]  (fn [node] (html [:script "dashboard_cljs.core.init_new_dash();"]))
+  [:#map-init]  (fn [node]
+                  (html [:script "dashboard_cljs.core.init_new_dash();"]))
 
   [:body]  (prepend (html [:div {:id "accessible-routes"
                                  :value (:accessible-routes x)}])))
