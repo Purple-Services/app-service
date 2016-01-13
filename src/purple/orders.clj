@@ -733,7 +733,7 @@ and their id matches the order's courier_id"
 
 (defn orders-since-date
   "Get all orders since date. A blank date will return all orders."
-  [db-conn date]
+  [db-conn date & [unix-epoch?]]
   (!select db-conn "orders"
            [:id :lat :lng :status :gallons :gas_type
             :total_price :timestamp_created :address_street
@@ -743,8 +743,10 @@ and their id matches the order's courier_id"
             :paid :stripe_charge_id :special_instructions]
            {}
            :custom-where
-           (str "timestamp_created > '"
-                date "'")))
+           (str "timestamp_created > "
+                (if unix-epoch?
+                  (str "FROM_UNIXTIME(" date ")")
+                  (str "'" date "'")))))
 
 (defn include-user-name-phone-and-courier
   "Given a vector of orders, assoc the user name, phone number and courier
@@ -758,11 +760,13 @@ that is associated with the order"
                                  (concat (map :user_id orders)
                                          (map :courier_id orders))))))
         id->name #(:name (get users-by-id %))
-        id->phone_number #(:phone_number (get users-by-id %))]
+        id->phone_number #(:phone_number (get users-by-id %))
+        id->email #(:email (get users-by-id %))]
     (map #(assoc %
                     :courier_name (id->name (:courier_id %))
                     :customer_name (id->name (:user_id %))
-                    :customer_phone_number (id->phone_number (:user_id %)))
+                    :customer_phone_number (id->phone_number (:user_id %))
+                    :email (id->email (:user_id %)))
          orders)))
 
 (defn include-vehicle

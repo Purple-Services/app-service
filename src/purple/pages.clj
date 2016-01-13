@@ -826,6 +826,10 @@
            (append (html
                     [:link {:rel "stylesheet"
                             :type "text/css"
+                            :href (str config/base-url "css/dashmap.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
                             :href (str config/base-url
                                        "css/font-awesome.min.css")}])))
 

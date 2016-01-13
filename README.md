@@ -136,6 +136,14 @@ To test out how the courier works, first logout of the Customer Client applicati
 
 **password**: qwerty123
 
+Note: Safari does not report LatLngs on ping request to server. Firefox is a
+nightmare to work with. Best to run this with Chrome. If you would like to
+test multiple couriers being connected at once (ex: testing multiple ETAs
+in dashboard), run multiple instances of Chrome with unique
+--user-data-dir=/tmp/chrome*/ command line options. For example,
+two chrome browsers can simulate two connected couriers by using
+/tmp/chrome2 and /tmp/chrome3 as --user-data-dir options.
+
 
 ### Fulfilling an order
 

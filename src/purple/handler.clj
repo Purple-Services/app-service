@@ -510,7 +510,9 @@
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
                        (into [] (->>
-                                 (orders/orders-since-date db-conn (:date b))
+                                 (orders/orders-since-date db-conn
+                                                           (:date b)
+                                                           (:unix-epoch? b))
                                  (orders/include-user-name-phone-and-courier
                                   db-conn)
                                  (orders/include-vehicle db-conn)
