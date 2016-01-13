@@ -341,7 +341,6 @@
                                                     :service_fee :total_price
                                                     :license_plate :coupon_code
                                                     :referral_gallons_used]))
-          ((resolve 'purple.dispatch/add-order-to-zq) o)
           (when-not (zero? (:referral_gallons_used o))
             (coupons/mark-gallons-as-used db-conn
                                           (:user_id o)
@@ -429,8 +428,6 @@
 
 (def busy-statuses ["assigned" "accepted" "enroute" "servicing"])
 
-;; Not really a useful function anymore since we keep track of busy status in
-;; the couriers table now
 (defn courier-busy?
   "Is courier currently working on an order?"
   [db-conn courier-id]
@@ -455,21 +452,21 @@ and their id matches the order's courier_id"
     (set-courier-busy db-conn courier-id busy?)))
 
 (defn accept
-  "There should be exactly one or zero orders in 'accepted' state, per courier."
-  [db-conn order-id courier-id]
+  [db-conn order-id]
   (do (update-status db-conn order-id "accepted")
+      {:success true}))
+
+(defn assign
+  [db-conn order-id courier-id]
+  (do (update-status db-conn order-id "assigned")
       (!update db-conn
                "orders"
                {:courier_id courier-id}
                {:id order-id})
       (set-courier-busy db-conn courier-id true)
+      ((resolve 'purple.users/send-push) db-conn courier-id
+       "You have been assigned a new order.")
       {:success true}))
-
-(defn assign-to-courier
-  [db-conn order-id courier-id]
-  ;; we currently skip over the "assigned" status, since couriers must accept
-  ;; all assignments
-  (accept db-conn order-id courier-id))
 
 (defn stamp-with-refund
   "Give it a refund object from Stripe."
@@ -533,10 +530,13 @@ and their id matches the order's courier_id"
         (let [update-result
               (case status
                 "assigned" (if (couriers/on-duty? db-conn user-id) ;; security
-                             (do ((resolve 'purple.dispatch/remove-order-from-zq) order)
-                                 (assign-to-courier db-conn order-id user-id))
+                             (assign db-conn order-id user-id)
                              {:success false
-                              :message "Your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds. Or, if you just opened the app you will also have to wait 10 seconds."})
+                              :message "Your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds."})
+                "accepted" (if (= user-id (:courier_id order))
+                             (accept db-conn order)
+                             {:success false
+                              :message "Permission denied."})
                 "enroute" (if (= user-id (:courier_id order))
                             (begin-route db-conn order)
                             {:success false
@@ -634,11 +634,7 @@ and their id matches the order's courier_id"
       (do
         ;; because the accept fn sets the couriers busy status to true,
         ;; there is no need to further update the courier's status
-        (accept db-conn order-id new-courier-id)
-        ;; remove the order from the queue
-        ((resolve 'purple.dispatch/remove-order-from-zq) order)
-        ;; notify courier that they have been assigned an order
-        (notify-new-courier)
+        (assign db-conn order-id new-courier-id)
         ;; response
         {:success true
          :message (str order-id " has been assigned to " new-courier-id)})
@@ -662,10 +658,6 @@ and their id matches the order's courier_id"
       (do
         ;; update the order so that is assigned to new-courier
         (change-order-assignment)
-        ;; notify the new-courier that they have a new order
-        (notify-new-courier)
-        ;; notify the old-courier that they lost an order
-        (notify-old-courier)
         ;; response
         {:success true
          :message (str order-id " has been assigned from " new-courier-id " to "
@@ -698,7 +690,6 @@ and their id matches the order's courier_id"
                  config/cancellable-statuses)
              (:status o))
       (do (update-status db-conn order-id "cancelled")
-          ((resolve 'purple.dispatch/remove-order-from-zq) o)
           (future
             ;; return any free gallons that may have been used
             (when (not= 0 (:referral_gallons_used o))
