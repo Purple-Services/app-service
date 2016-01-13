@@ -1,7 +1,9 @@
 (ns purple.dispatch
   (:use purple.util
         clojure.data.priority-map
-        [purple.db :only [conn !select !insert !update mysql-escape-str]])
+        [purple.db :only [conn !select !insert !update mysql-escape-str]]
+        [clojure.algo.generic.functor :only [fmap]]
+        clojure.walk)
   (:require [purple.config :as config]
             [purple.orders :as orders]
             [purple.users :as users]
@@ -10,7 +12,8 @@
             [overtone.at-at :as at-at]
             [clojure.string :as s]
             [purple.couriers :as couriers])
-  (:import [org.joda.time DateTime DateTimeZone]))
+  (:import [org.joda.time DateTime DateTimeZone]
+           [purpleOpt PurpleOpt]))
 
 (def job-pool (at-at/mk-pool))
 
@@ -30,8 +33,7 @@
                      (get-all-zones-from-db db-conn))))
 
 (defn get-zones-by-ids
-  "Given a string of comma-seperated zones, return all zones in
-  string"
+  "Given a string of comma-seperated zones, return all zones in string."
   [zones-str]
   (let [zone-matches-id?
         (fn [zone]
@@ -41,16 +43,6 @@
                 (map read-string (split-on-comma zones-str)))))]
     (filter zone-matches-id? @zones)))
 
-;; When server is booted up, we have to construct 'zones' map; which is a map
-;; of priority-maps of orders in each zone.
-;; (def zq {ZONE-ID-1 (priority-map orders...) ;; as an atom
-;;          ZONE-ID-2 (priority-map orders...)})
-;; When a new order is created, we have to add it to the queue (priority map)
-;; of the zone that the destination resides in.
-
-;; a map of all zones, each with a priority-map to hold their orders
-(! (def zq (into {} (map #(identity [(:id %) (atom (priority-map))]) @zones))))
-
 (defn order->zone-id
   "Determine which zone the order is in; gives the zone id."
   [order]
@@ -58,12 +50,8 @@
     (:id (first (filter #(in? (:zip_codes %) zip-code)
                         @zones)))))
 
-(defn get-map-by-zone-id
-  [zone-id]
-  (get zq zone-id))
-
 (defn zip-in-zones?
-  "Determine whether or not zip-code can be found in zones"
+  "Determine whether or not zip-code can be found in zones."
   [zip-code]
   (->> @zones
        (filter #(in? (:zip_codes %) (five-digit-zip-code zip-code)))
@@ -71,13 +59,13 @@
        boolean))
 
 (defn get-zone-by-zip-code
-  "Given a zip code, return the corresponding zone"
+  "Given a zip code, return the corresponding zone."
   [zip-code]
   (-> (filter #(= (:id %) (order->zone-id {:address_zip zip-code})) @zones)
       first))
 
 (defn get-fuel-prices
-  "Given a zip code, return the fuel prices for that zone"
+  "Given a zip code, return the fuel prices for that zone."
   [zip-code]
   (-> zip-code
       (get-zone-by-zip-code)
@@ -85,7 +73,7 @@
       (read-string)))
 
 (defn get-service-fees
-  "Given a zip-code, return the service fees for that zone"
+  "Given a zip-code, return the service fees for that zone."
   [zip-code]
   (-> zip-code
       (get-zone-by-zip-code)
@@ -93,7 +81,7 @@
       (read-string)))
 
 (defn get-service-time-bracket
-  "Given a zip-code, return the service time bracket for that zone"
+  "Given a zip-code, return the service time bracket for that zone."
   [zip-code]
   (-> zip-code
       (get-zone-by-zip-code)
@@ -112,34 +100,13 @@
       (+ 90)))
 
 (defn get-gas-prices
-  "Given a zip-code, return the gas prices"
+  "Given a zip-code, return the gas prices."
   [zip-code]
   (if (zip-in-zones? zip-code)
     {:success true
      :gas_prices (get-fuel-prices zip-code)}
     {:success true
      :gas_prices (get-fuel-prices "90210")}))
-
-(defn priority-score
-  "Compute the priority score (an int) of the order."
-  [order]
-  (:target_time_end order))
-
-(defn add-order-to-zq
-  "Adds order to its zone's queue."
-  [order]
-  (swap! (get zq (order->zone-id order))
-         conj [(:id order) (priority-score order)]))
-
-(defn remove-order-from-zq
-  "Removes and order from its zone's queue. Usually for cancelled orders."
-  [order]
-  (swap! (get zq (order->zone-id order))
-         dissoc (:id order)))
-
-;; on server boot, put any existing unassigned orders into the zq
-(! (run! add-order-to-zq
-         (orders/get-all-unassigned (conn))))
 
 (defn delivery-times-map
   "Given a service fee, create the delivery-times map."
@@ -246,19 +213,8 @@
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
   [db-conn]
-  (let [expired-courier-ids ;; TODO move to this a function in couriers ns
-        (map :id
-             (!select db-conn
-                      "couriers"
-                      ["*"]
-                      {}
-                      :custom-where
-                      (str "active = 1 AND connected = 1 AND ("
-                           (quot (System/currentTimeMillis) 1000)
-                           " - last_ping) > "
-                           config/max-courier-abandon-time)))
-        ;; as user rows
-        expired-couriers (users/get-users-by-ids db-conn expired-courier-ids)]
+  (let [expired-couriers (->> (couriers/get-all-expired db-conn)
+                              (users/include-user-data db-conn))]
     (when-not (empty? expired-couriers)
       (only-prod (run!
                   #(send-sms
@@ -269,102 +225,88 @@
         (sql/update-values
          "couriers"
          [(str "id IN (\""
-               (s/join "\",\"" expired-courier-ids)
+               (s/join "\",\"" (map :id expired-couriers))
                "\")")]
          {:connected 0})))))
 
-(defn take-order-from-zone
-  "Tries to take one order from the chosen zone."
-  [zone]
-  (let [pm (get zq zone)]
-    (when-let [o (peek @pm)]
-      (swap! pm pop)
-      o)))
-
-(defn match-order
-  [pm-entry db-conn courier-id] ;; pm-entry = key order-id, value priority score
-  (when pm-entry
-    (let [order-id (first pm-entry)]
-      (orders/assign-to-courier db-conn order-id courier-id)
-      (users/send-push db-conn courier-id
-                       "You have been assigned a new order."))))
-
-(defn take-order-from-zones
-  "Does take-order-from-zone over multiple zones. Stops after first hit."
-  [db-conn courier-id zones]
-  (doseq [z zones
-          :let [o (take-order-from-zone z)]
-          :while (nil? (doto o (match-order db-conn courier-id)))]))
-
-(defn match-orders-with-couriers
-  [db-conn]
-  (run! #(take-order-from-zones db-conn (:id %) (:zones %))
-        (couriers/get-all-available db-conn)))
-
 (defn remind-couriers
-  "Notifies couriers if they have not responded to new orders assigned to them."
-  ;; well, actually it currently notifies couriers that have 'accepted' an order
-  ;; and haven't started the route yet
+  "Notifies couriers if they have not Accepted an order that's assign to them."
   [db-conn]
-  (let [accepted-orders (!select db-conn
-                                 "orders"
-                                 ["*"]
-                                 {:status "accepted"})]
-    (doall
-     (map #(let [time-accepted (-> (:event_log %)
-                                   (s/split #"\||\s")
-                                   (->> (apply hash-map))
-                                   (get "accepted")
-                                   (Integer.))
-                 ;; this bracket should ensure that the reminder call is only
-                 ;; made once.
-                 reminder-time-bracket [(+ time-accepted
-                                           config/courier-reminder-time)
-                                        (+ time-accepted
-                                           config/courier-reminder-time
-                                           (- (quot config/process-interval 1000)
-                                              1))]
-                 current-time (quot (System/currentTimeMillis) 1000)]
-             (when (<= (first reminder-time-bracket)
-                       current-time
-                       (last reminder-time-bracket))
-               (users/call-user db-conn (:courier_id %)
-                                (str config/base-url "twiml/courier-new-order"))))
-          accepted-orders))))
+  (let [assigned-orders (!select db-conn "orders" ["*"] {:status "assigned"})
+        tardy? (fn [time-assigned]
+                 (<= (+ time-assigned config/courier-reminder-time)
+                     (quot (System/currentTimeMillis) 1000)
+                     (+ time-assigned config/courier-reminder-time
+                        (- (quot config/process-interval 1000) 1))))
+        twilio-url (str config/base-url "twiml/courier-new-order")
+        f #(when (tardy? (get-event-time (:event_log %) "assigned"))
+             (users/call-user db-conn (:courier_id %) twilio-url))]
+    (run! f assigned-orders)))
 
+(defn new-assignments
+  [os cs]
+  (let [new-and-first #(and (:new_assignment %)
+                            (= 1 (:suggested_courier_pos %)))]
+    (filter
+     (comp new-and-first val)
+     (fmap (comp keywordize-keys (partial into {}))
+           (into {}
+                 (PurpleOpt/computeSuggestion
+                  (map->java-hash-map
+                   {"orders" (->> os
+                                  (map #(assoc % :status_times
+                                               (-> (:event_log %)
+                                                   (s/split #"\||\s")
+                                                   (->> (remove s/blank?)
+                                                        (apply hash-map)
+                                                        (fmap read-string)))))
+                                  (map (juxt :id stringify-keys))
+                                  (into {}))
+                    "couriers" (->> cs
+                                    (map #(assoc % :assigned_orders
+                                                 (->> os
+                                                      (filter
+                                                       (fn [o]
+                                                         (= (:courier_id o)
+                                                            (:id %))))
+                                                      (map :id))))
+                                    (map (juxt :id stringify-keys))
+                                    (into {}))})))))))
 
-(def last-orphan-warning (atom 0))
+;; We start with a prev-state of blank; so that auto-assign is called when
+;; server is booted.
+(def prev-state (atom {:current-orders []
+                       :on-duty-couriers []}))
 
-(defn warn-orphaned-order
-  "If there are no couriers connected, but there are orders, then warn us."
+;; If you added to the select-keys for 'cs' and include :last_ping
+;; or :lat and :lng, then auto-assign would run every time courier changes
+;; position; which may or may not be desirable.
+(defn get-state
+  [os cs]
+  {:current-orders (map #(select-keys % [:id :status :courier_id]) os)
+   :on-duty-couriers (map #(select-keys % [:id :active :on_duty :connected
+                                           :busy :zones]) cs)})
+
+(defn diff-state?
+  "Has state changed significantly to trigger an auto-assign call?"
+  [os cs]
+  {:post [(reset! prev-state (get-state os cs))]}
+  (not= @prev-state (get-state os cs)))
+
+(defn auto-assign
   [db-conn]
-  (when (and false ;; turning this off for now
-             (seq (filter #(seq @(val %)) zq))
-             (empty? (couriers/get-all-available db-conn))
-             (< (* 60 20) ;; only warn every 20 minutes
-                (- (quot (System/currentTimeMillis) 1000)
-                   @last-orphan-warning)))
-    (only-prod (run!
-                #(send-sms % "There are orders, but no available couriers.")
-                (concat [] ;; put your number in here when dev'ing
-                        (only-prod ["3103109961"     ;; Joe
-                                    "7143154380"     ;; Gustavo
-                                    ]))))
-    (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
+  (let [os (orders/get-all-current db-conn)
+        cs (couriers/get-all-on-duty db-conn)]
+    (when (diff-state? os cs)
+      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %)))
+            (new-assignments os cs)))))
 
 (defn process
   "Does a few periodic tasks."
   []
-  (do (update-courier-state process-db-conn)
-      ;; Temporarily turning off auto-assign of orders to couriers
-      ;; Currently, couriers can Accept any order in the queue.
-      ;; (match-orders-with-couriers process-db-conn)
-      (remind-couriers process-db-conn)
-      (warn-orphaned-order process-db-conn)))
+  ((juxt update-courier-state remind-couriers auto-assign) process-db-conn))
 
-(! (def process-job (at-at/every config/process-interval
-                                 process
-                                 job-pool)))
+(! (def process-job (at-at/every config/process-interval process job-pool)))
 
 (defn courier-ping
   "The courier app periodically pings us with courier status details."

@@ -206,6 +206,17 @@
 (defn new-auth-token []
   (rand-str-alpha-num 128))
 
+(defn get-event-time
+  "Get time of event from event log as unix timestamp Integer.
+  If event hasn't occurred yet, then nil."
+  [event-log event]
+  (some-> event-log
+          (#(unless-p s/blank? % nil))
+          (s/split #"\||\s")
+          (->> (apply hash-map))
+          (get event)
+          (Integer.)))
+
 (defn send-email [message-map]
   (try (postal/send-message config/email
                             (assoc message-map
