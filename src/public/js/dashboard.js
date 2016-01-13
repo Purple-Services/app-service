@@ -12,6 +12,7 @@ var status_to_next_status = {
 
 // object that defines the input.value of the input.advance-status
 var status_to_input_value = {
+    assigned: "Force Accept",
     accepted: "Start Route",
     enroute: "Begin Servicing",
     servicing: "Complete Order"

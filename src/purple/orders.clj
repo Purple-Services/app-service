@@ -451,11 +451,13 @@ and their id matches the order's courier_id"
   (let [busy? (courier-busy? db-conn courier-id)]
     (set-courier-busy db-conn courier-id busy?)))
 
+;; note that it takes order-id, not order
 (defn accept
   [db-conn order-id]
   (do (update-status db-conn order-id "accepted")
       {:success true}))
 
+;; note that it takes order-id, not order
 (defn assign
   [db-conn order-id courier-id]
   (do (update-status db-conn order-id "assigned")
@@ -570,15 +572,23 @@ and their id matches the order's courier_id"
       (cond
         (contains? #{"complete" "cancelled" "unassigned"} (:status order))
         {:success false
-         :message (str "An order's status can not be advanced if it is already"
-                       " complete, cancelled, or unassigned.")}
+         :message (str "An order's status can not be advanced if it is already "
+                       "complete, cancelled, or unassigned.")}
         ;; Likewise, the dashboard user should not be allowed to advanced
-        ;; to "assigned" or "accepted", but we check it on the server anyway.
-        (contains? #{"assigned" "accepted"} advanced-status)
+        ;; to "assigned", but we check it on the server anyway.
+        (contains? #{"assigned"} advanced-status)
         {:success false
-         :message (str "An order's status can not be advanced to assigned or"
-                       " acccepted. Please assign a courier to this order in"
-                       " order to advance this order.")}
+         :message (str "An order's status can not be advanced to assigned. "
+                       "Please assign a courier to this order in "
+                       "order to advance this order.")}
+        ;; update the status to "accepted"
+        (= advanced-status "accepted")
+        (do (accept db-conn order-id)
+            ;; let the courier know
+            ((resolve 'purple.users/send-push) db-conn (:courier_id order)
+             "An order that was assigned to you is now marked as Accepted.")
+            {:success true
+             :message advanced-status})
         ;; update the status to "enroute"
         (= advanced-status "enroute")
         (do (begin-route db-conn order)

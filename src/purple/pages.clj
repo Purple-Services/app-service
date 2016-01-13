@@ -146,7 +146,8 @@
                               (html [:input
                                      {:type "submit"
                                       :class "advance-status"
-                                      :value ({"accepted" "Start Route"
+                                      :value ({"assigned" "Force Accept"
+                                               "accepted" "Start Route"
                                                "enroute" "Begin Servicing"
                                                "servicing" "Complete Order"}
                                               (:status t))
