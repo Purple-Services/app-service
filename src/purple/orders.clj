@@ -740,7 +740,8 @@ and their id matches the order's courier_id"
             :address_city :address_state :address_zip :user_id
             :courier_id :vehicle_id :license_plate
             :target_time_start :target_time_end :coupon_code :event_log
-            :paid :stripe_charge_id :special_instructions]
+            :paid :stripe_charge_id :special_instructions
+            :number_rating :text_rating]
            {}
            :custom-where
            (str "timestamp_created > "

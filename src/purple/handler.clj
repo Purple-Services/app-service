@@ -503,6 +503,24 @@
                                        "dashboard_cljs.core.init_map_couriers")
                        response
                        wrap-page))
+              ;; given an order id, get the detailed information for that
+              ;; order
+              (POST "/order"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (if (:id b)
+                         (into []
+                               (->>
+                                [(orders/get-by-id db-conn
+                                                   (:id b))]
+                                (orders/include-user-name-phone-and-courier
+                                 db-conn)
+                                (orders/include-vehicle db-conn)
+                                (orders/include-zone-info)
+                                (orders/include-eta db-conn)
+                                (orders/include-was-late)))
+                         []))))
               ;; given a date in the format YYYY-MM-DD, return all orders
               ;; that have occurred since then
               (POST "/orders-since-date"  {body :body}
@@ -517,7 +535,7 @@
                                   db-conn)
                                  (orders/include-vehicle db-conn)
                                  (orders/include-zone-info)
-                                 (orders/include-eta db-conn)
+                                 ;;(orders/include-eta db-conn)
                                  (orders/include-was-late)
                                  )))))
               ;; return all couriers
