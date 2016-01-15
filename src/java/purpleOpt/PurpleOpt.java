@@ -21,6 +21,7 @@ General INPUT (for major functions):
 			"lat" (Double);
 			"lng" (Double);
 			"id" (String);
+			"zone" (Integer);
 			"gas_type" (String);
 			"gallons" (Integer);
 			"target_time_start" (Integer);
@@ -34,13 +35,33 @@ General INPUT (for major functions):
 			"lng" (Double);
 			"connected" (Boolean);
 			"last_ping" (Integer);
-			"zones" (List<String>);
+			"zones" (List<Integers>);
 			"assigned_orders" (List<String>);
 	"human_time_format": (optional) true / false;
 	"current_time": (optional) SimpleDateFormat (if human_time_format is true) or UnixTime (if human_time_format is false)
 */
 
 public class PurpleOpt {
+	
+	/*--- global parameters --*/
+
+	/* global printing switch */
+	static boolean bPrint = false; // CAUTION, use false for release
+	/* Google API key */
+	// static  google_api_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE"; // Wotao's key CAUTION, disable for release
+	static String google_api_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao"; // Purple's key
+	/* the radius used to test nearby orders */
+	static double nearbyOrderRadius = 0.001; // this value roughly equals a street block; NOTE: the actual distance depends on the latitude of the city
+	/* average servicing minutes */
+	static int mins10GallonOrder = 20; // 20 minutes for 10 gallons
+	static int mins15GallonOrder = 20; // 25 minutes for 15 gallons
+	static int minsGenericOrder = 20;  // 25 minutes for other orders
+	/* serving-time discount factor for a nearby order (a courier can directly walk to) */
+	static double servicingTimeFactorForNearbyOrder = 2.0/3.0; // ".0" is important
+	/* travel time's factor in score computation, minimal is 1 (no penalty) */
+	static double travel_time_factor = 2.5;
+	/* the factor that converts l1 distance of lat-lng to driving seconds during artificial time computation */
+	static double l1ToDistanceTimeFactor = 150.0;
 	
     /*
     INPUT:
@@ -78,11 +99,6 @@ public class PurpleOpt {
 		List<HashMap<String, Object>> sorted_orders = sortUnfinishedOrders(orders);
 		// initialize output HashMap
 		LinkedHashMap<String,Object> outHashMap = new LinkedHashMap<>();
-        // add a key-value entry for each unassigned order, the value is an empty hashmap
-        for(Iterator<HashMap<String,Object>> it = sorted_orders.listIterator(); it.hasNext(); ) {
-            HashMap<String,Object> order = it.next();
-            outHashMap.put((String)order.get("id"), new LinkedHashMap<String,Object>());
-        }
        
 		// Stage Two: Cluster nearby orders by deadlines. Go to the function for clustering criteria
 		List<List<HashMap<String, Object>>> clusters = clusterOrders(sorted_orders, currTime);
@@ -104,11 +120,13 @@ public class PurpleOpt {
                 if (value != null) {
                 	// the order has been assigned to a courier
                 	assigned_courier_key = (String) value;
-                	LinkedHashMap<String,Object> out_order_entry = (LinkedHashMap<String,Object>)outHashMap.get(order_key);
+                	LinkedHashMap<String,Object> out_order_entry = new LinkedHashMap<String,Object>();
                 	out_order_entry.put("suggested_courier", assigned_courier_key);
                 	out_order_entry.put("new_assignment", false);
                 	out_order_entry.put("suggested_courier_pos", (Long)order.get("assigned_courier_pos"));
                 	out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat((Long)order.get("etf"),human_time_format));
+                	// put the order in the output
+                	outHashMap.put(order_key, out_order_entry);
                 }
                 else {
                 	// the order has NOT been assigned to a courier
@@ -121,37 +139,45 @@ public class PurpleOpt {
                 	for(String courier_key: couriers.keySet()) {
                 		// get the courier
                 		HashMap<String,Object> courier = (HashMap<String,Object>) couriers.get(courier_key);
-                		// compute score
-                		long start_time = ((Long)courier.get("finish_time")); // the time when the courier will finish all the assigned orders;
-                		long travel_time = timeDistantOrder(order, (Double)courier.get("finish_lat"), (Double)courier.get("finish_lng"));
-                		long finish_time = start_time + travel_time; // the total time for the new order
-                		long score = start_time + travel_time*5/2
-                				+ computeCrossZonePenalty(order,courier,orders,couriers); // score also include cross-zone penalty
-                		boolean ontime = bOnTimeFinish(order, finish_time);
-                		// the approach below will obtain the best ontime courier and, if not found, then the best delay courier
-                		if (   best_score == 0 							// first score
-                		    || (!ontime_achieved && score<best_score) 	// no courier can be ontime so far and this courier is better (whether it is ontime or not)  
-                		    || (ontime && score<best_score))			// this courier is both ontime and better than the best
-                		{
-                			best_score = score;
-                			best_finish_time = finish_time;
-                			best_courier_key = courier_key;
-                			ontime_achieved = (ontime_achieved || ontime); // set to true once a courier is ontime
-                		}
+                		// consider a courier only if s/he cannot serve the order
+                        if (bOrderCanBeServedByCourier(order,courier)) { 
+	                		// compute score
+	                		long start_time = ((Long)courier.get("finish_time")); // the time when the courier will finish all the assigned orders;
+	                		long travel_time = timeDistantOrder(order, (Double)courier.get("finish_lat"), (Double)courier.get("finish_lng"));
+	                		long finish_time = start_time + travel_time; // the total time for the new order
+	                		long score = start_time + Math.round(travel_time_factor * (double)travel_time)
+	                				+ computeCrossZonePenalty(order,courier,orders,couriers); // score also include cross-zone penalty
+	                		boolean ontime = bOnTimeFinish(order, finish_time);
+	                		// the approach below will obtain the best ontime courier and, if not found, then the best delay courier
+	                		if (best_score == 0 							// first score
+	            		        || (!ontime_achieved && score<best_score) 	// no courier can be ontime so far and this courier is better (whether it is ontime or not)  
+	            		        || (ontime && score<best_score)				// this courier is both ontime and better than the best
+	                		   )
+	                		{
+	                			best_score = score;
+	                			best_finish_time = finish_time;
+	                			best_courier_key = courier_key;
+	                			ontime_achieved = (ontime_achieved || ontime); // set to true once a courier is ontime
+	                		}
+                        }
                 	}
-                	// get the best courier by the recorded best courier's key
-                	HashMap<String,Object> best_courier = (HashMap<String,Object>)couriers.get(best_courier_key);
-                	// add the order to the best courier's queue, and update the finish time/lat/lng for the courier
-                	((List<String>)best_courier.get("assigned_orders")).add(order_key);
-                	best_courier.put("finish_time", best_finish_time);
-                	best_courier.put("finish_lat", (Double)order.get("lat"));
-                	best_courier.put("finish_lng", (Double)order.get("lng"));
-                	// add the assignment information to the output hashmap
-                	LinkedHashMap<String,Object> out_order_entry = (LinkedHashMap<String,Object>)outHashMap.get(order_key);
-                	out_order_entry.put("suggested_courier", best_courier_key);
-                	out_order_entry.put("new_assignment", true);
-                	out_order_entry.put("suggested_courier_pos", ((List<String>)best_courier.get("assigned_orders")).size());
-                	out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat(best_finish_time,human_time_format));
+                	if (!best_courier_key.equals("")) {
+	                	// get the best courier by the recorded best courier's key
+	                	HashMap<String,Object> best_courier = (HashMap<String,Object>)couriers.get(best_courier_key);
+	                	// add the order to the best courier's queue, and update the finish time/lat/lng for the courier
+	                	((List<String>)best_courier.get("assigned_orders")).add(order_key);
+	                	best_courier.put("finish_time", best_finish_time);
+	                	best_courier.put("finish_lat", (Double)order.get("lat"));
+	                	best_courier.put("finish_lng", (Double)order.get("lng"));
+	                	// add the assignment information to the output hashmap
+	                	LinkedHashMap<String,Object> out_order_entry = new LinkedHashMap<String,Object>();
+	                	out_order_entry.put("suggested_courier", best_courier_key);
+	                	out_order_entry.put("new_assignment", true);
+	                	out_order_entry.put("suggested_courier_pos", ((List<String>)best_courier.get("assigned_orders")).size());
+	                	out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat(best_finish_time,human_time_format));
+	                	// put the order in the output
+	                	outHashMap.put(order_key, out_order_entry);
+                	}
                 }
 			}
             // there are multiple orders in the cluster
@@ -190,60 +216,67 @@ public class PurpleOpt {
                     Iterator<HashMap<String,Object>> hit = cluster.iterator();
                     // set finish_time for the first order in the cluster
                     order = hit.next(); // get the first order
-                    long start_time = ((Long)courier.get("finish_time")); // the time when the courier will finish all the assigned orders
-                    long travel_time = timeDistantOrder(order, (Double)courier.get("finish_lat"), (Double)courier.get("finish_lng"));
-                    long finish_time = start_time + travel_time;
-                    etfs.add(finish_time); // save the finish time for this order
-                    // update finish_time for the remaining orders in the cluster
-                    while (hit.hasNext()) {
-                        order = hit.next(); // get the next order
-                        finish_time += timeNearbyOrder(order); // the time to finish each subsequent nearby order
-                        etfs.add(finish_time);
+                    // consider a courier only if s/he can serve the cluster
+                    if (bOrderCanBeServedByCourier(order,courier)) {
+	                    long start_time = ((Long)courier.get("finish_time")); // the time when the courier will finish all the assigned orders
+	                    long travel_time = timeDistantOrder(order, (Double)courier.get("finish_lat"), (Double)courier.get("finish_lng"));
+	                    long finish_time = start_time + travel_time;
+	                    etfs.add(finish_time); // save the finish time for this order
+	                    // update finish_time for the remaining orders in the cluster
+	                    while (hit.hasNext()) {
+	                        order = hit.next(); // get the next order
+	                        finish_time += timeNearbyOrder(order); // the time to finish each subsequent nearby order
+	                        etfs.add(finish_time);
+	                    }
+	                    // compute the score
+	                    long score = finish_time + Math.round(travel_time_factor * (double)travel_time)
+	                            + computeCrossZonePenalty(order,courier,orders,couriers); // add cross-zone penalty
+	                    boolean ontime = bOnTimeFinish(order, finish_time);	// check ontime for the last order in the cluster
+	            		// the approach below will obtain the best ontime courier and, if not found, then the best delay courier
+	            		if ( best_score == 0 							// first score
+	                		 || (!ontime_achieved && score<best_score) 	// no courier can be ontime so far and this courier is better (whether it is ontime or not)  
+	                		 || (ontime && score<best_score))			// this courier is both ontime and better than the best
+	                	{
+	                        best_score = score;
+	                        best_finish_time = finish_time;
+	                        best_courier_key = courier_key;
+	                        best_etfs = new ArrayList<Long>(etfs);
+	            			ontime_achieved = (ontime_achieved || ontime); // set to true once a courier is ontime
+	                    }
+	                    etfs.clear();
                     }
-                    // compute the score
-                    long score = finish_time + travel_time*5/2
-                            + computeCrossZonePenalty(order,courier,orders,couriers); // add cross-zone penalty
-                    boolean ontime = bOnTimeFinish(order, finish_time);	// check ontime for the last order in the cluster
-            		// the approach below will obtain the best ontime courier and, if not found, then the best delay courier
-            		if ( best_score == 0 							// first score
-                		 || (!ontime_achieved && score<best_score) 	// no courier can be ontime so far and this courier is better (whether it is ontime or not)  
-                		 || (ontime && score<best_score))			// this courier is both ontime and better than the best
-                	{
-                        best_score = score;
-                        best_finish_time = finish_time;
-                        best_courier_key = courier_key;
-                        best_etfs = new ArrayList<Long>(etfs);
-            			ontime_achieved = (ontime_achieved || ontime); // set to true once a courier is ontime
-                    }
-                    etfs.clear();
                 }
-                // get the best courier by the recorded best courier's key
-                HashMap<String,Object> best_courier = (HashMap<String,Object>)couriers.get(best_courier_key);
-                // use the HashMap iterator for going through all the orders in the cluster
-                Iterator<Long> lit = best_etfs.iterator();
-                // get the list of assigned_orders from the best courier
-                List<String> best_courier_assigned_orders = (List<String>) best_courier.get("assigned_orders");
-                for (Iterator<HashMap<String,Object>> hit = cluster.iterator(); hit.hasNext(); ) {
-                    // get an order in the cluster and its key
-                    order = hit.next();
-                    String order_key = (String) order.get("id");
-                    // add the assignment of courier to the order
-                    LinkedHashMap<String, Object> out_order_entry = (LinkedHashMap<String, Object>) outHashMap.get(order_key);
-                    // add the order to the best courier's queue
-                    out_order_entry.put("suggested_courier", best_courier_key);
-                    if (best_courier_assigned_orders.contains(order_key)) {
-                    	out_order_entry.put("new_assignment", false);
-                    } else {
-                    	best_courier_assigned_orders.add(order_key);
-                    	out_order_entry.put("new_assignment", true);
-                    }
-                    out_order_entry.put("suggested_courier_pos", best_courier_assigned_orders.size());
-                    out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat(lit.next(), human_time_format));
+                if (!best_courier_key.equals("")) {
+                	// get the best courier by the recorded best courier's key
+                	HashMap<String,Object> best_courier = (HashMap<String,Object>)couriers.get(best_courier_key);
+                	// use the HashMap iterator for going through all the orders in the cluster
+                	Iterator<Long> lit = best_etfs.iterator();
+                	// get the list of assigned_orders from the best courier
+                	List<String> best_courier_assigned_orders = (List<String>) best_courier.get("assigned_orders");
+                	for (Iterator<HashMap<String,Object>> hit = cluster.iterator(); hit.hasNext(); ) {
+                		// get an order in the cluster and its key
+                		order = hit.next();
+                		String order_key = (String) order.get("id");
+                		// add the assignment of courier to the order
+                		LinkedHashMap<String, Object> out_order_entry = new LinkedHashMap<String, Object>();
+                		// add the order to the best courier's queue
+                		out_order_entry.put("suggested_courier", best_courier_key);
+                		if (best_courier_assigned_orders.contains(order_key)) {
+                			out_order_entry.put("new_assignment", false);
+                		} else {
+                			best_courier_assigned_orders.add(order_key);
+                			out_order_entry.put("new_assignment", true);
+                		}
+                		out_order_entry.put("suggested_courier_pos", best_courier_assigned_orders.size());
+                		out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat(lit.next(), human_time_format));
+                		// put the order in the output
+                		outHashMap.put(order_key, out_order_entry);
+                	}
+                	// update the best courier's finish_time/lat/lng
+                	best_courier.put("finish_time", best_finish_time);
+                	best_courier.put("finish_lat", (Double)order.get("lat"));
+                	best_courier.put("finish_lng", (Double)order.get("lng"));
                 }
-                // update the best courier's finish_time/lat/lng
-                best_courier.put("finish_time", best_finish_time);
-                best_courier.put("finish_lat", (Double)order.get("lat"));
-                best_courier.put("finish_lng", (Double)order.get("lng"));
 			}
 		}
         // output return
@@ -265,17 +298,7 @@ public class PurpleOpt {
 	*/
 	@SuppressWarnings("unchecked")
 	public static HashMap<String, Object> computeDistance(HashMap<String,Object> input) {
-		
-		// print switch
-		boolean bPrint = false; // CAUTION
-		boolean bPrintInput = false; // CAUTION
-		
-		// print 
-		if (bPrintInput) {
-			printInput(input);
-			return(null);
-		}
-		
+
 		// get current time in the Unix time format
 		// long currTime = System.currentTimeMillis() / 1000L; // not used any more
 		
@@ -332,22 +355,6 @@ public class PurpleOpt {
 				HashMap<String, Object> outOrder = new HashMap<String, Object>();
 				// put this order in the output hashmap
 				outHashmap.put(order_key, outOrder);
-				
-				// specify the suggested courier for this order, will implement later
-				/* --- I disable the computation for suggested courier from this function 
-	                List<HashMap<String,Object>> courierScores = computeCourierScores(orders, couriers, order_key);
-	                String suggested_courier_key = (String) courierScores.get(0).get("courier_key");
-	 				outOrder.put("suggested_courier_id", suggested_courier_key);
-	
-	                int time_to_finish = ((Integer)(courierScores.get(0)).get("time_to_finish")).intValue() + (int)currTime; // the absolute time for the suggested courier to finish the order
-	                int order_deadline = ((Integer) order.get("target_time_end")).intValue();
-	                Integer expected_deadline_diff = new Integer(time_to_finish - order_deadline);
-	
-	                if (bPrint) {// CAUTION
-						System.out.println("courier_eta: " + (Integer) ((courierScores.get(0)).get("time_to_finish")) + "current time: " + currTime + "order_end: " + ((Integer) order.get("target_time_end")).intValue());
-						outOrder.put("expected_deadline_diff", expected_deadline_diff);
-					}
-				---*/
 				
 				// create a hashmap for ETAs
 				HashMap<String, Integer> outETAs = new HashMap<String, Integer>();
@@ -426,10 +433,12 @@ public class PurpleOpt {
 			return (outHashmap);
 	}
 	
+	/* return the all-pair google distance for a list of origins and destinations 
+	 * TODO: add an option to feed user specified time of travel
+	 */
 	public static List<List<Integer>> getGoogleDistanceMatrix(List<String> org_latlngs, List<String> dest_latlngs) {
 		int nOrgs = org_latlngs.size();
 		int nDests = dest_latlngs.size();
-		boolean bPrint = false;
 
 		if (nOrgs < 1 || nDests < 1)
 			return null;
@@ -450,15 +459,10 @@ public class PurpleOpt {
 			strDests += dest_latlngs.get(j);
 		}
 
-		// Wotao's key
-		// String server_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE"; // CAUTION
-		// Purple's key
-		String server_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao";
-
 		// generate request URL 
 		String reqURL = "https://maps.googleapis.com/maps/api/distancematrix/json?" + strOrgs + "&" + strDests;
 		reqURL += "&departure_time=now";	// this is not really useful
-		reqURL += "&key=" + server_key;
+		reqURL += "&key=" + google_api_key;
 
 		if (bPrint)
 			System.out.println(reqURL);
@@ -527,7 +531,7 @@ public class PurpleOpt {
 		}
 	}
 	
-	public static long getCurrUnixTime(HashMap<String, Object>input, boolean human_time_format){
+	static long getCurrUnixTime(HashMap<String, Object>input, boolean human_time_format){
 
 	/* --- get current time in the Unix time format --- */
 		long currTime = 0;
@@ -550,7 +554,7 @@ public class PurpleOpt {
 	 * If they have no assigned order, use their current status.
 	 */
 	@SuppressWarnings("unchecked")
-	public static void setFinishStatus(HashMap<String, Object> couriers, HashMap<String, Object> orders, long currTime){
+	static void setFinishStatus(HashMap<String, Object> couriers, HashMap<String, Object> orders, long currTime){
 		for(String courier_key: couriers.keySet()) {
 			// get the courier by their key
 			HashMap<String, Object> courier = (HashMap<String, Object>) couriers.get(courier_key);
@@ -566,7 +570,7 @@ public class PurpleOpt {
 	
 	/* --- go through the couriers and remove the invalid ones, because they cannot take orders --- */
 	@SuppressWarnings("unchecked")
-	public static void courierValidation(HashMap<String, Object> couriers){
+	static void courierValidation(HashMap<String, Object> couriers){
 		for(Iterator<String> it = couriers.keySet().iterator(); it.hasNext(); ) {
 			String courier_key = it.next();
 			if (!bCourierValid((HashMap<String, Object>)couriers.get(courier_key)))
@@ -575,7 +579,7 @@ public class PurpleOpt {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static HashMap<String,Object> computeFinishTimeLatLng(HashMap<String, Object> courier, HashMap<String, Object> orders, long startTime) {
+	static HashMap<String,Object> computeFinishTimeLatLng(HashMap<String, Object> courier, HashMap<String, Object> orders, long startTime) {
 
 		// get the courier's current assigned orders
 		List<String> assigned_orders_keys = (List<String>)courier.get("assigned_orders");
@@ -602,8 +606,8 @@ public class PurpleOpt {
 			if (bCourierAtOrderSite(order,courier)) {
                 // already servicing the order
                 finish_time += iOrderServingTime(order) / 2;
-
-                order_lat = (Double) order.get("lat");
+				// get the assigned order lat and lng
+				order_lat = (Double) order.get("lat");
 				order_lng = (Double) order.get("lng");
             }
 			else {
@@ -662,8 +666,7 @@ public class PurpleOpt {
 	}
 	
 	static boolean bNearbyOrderLatLng(Double lat1, Double lng1, Double lat2, Double lng2) {
-		double radiusThreshold = 0.001; // radius roughly equal to a small street block; NOTE: the actual distance depends on the location of a city
-		if ((lat1-lat2)*(lat1-lat2) + (lng1-lng2)*(lng1-lng2) <= radiusThreshold*radiusThreshold)
+		if ((lat1-lat2)*(lat1-lat2) + (lng1-lng2)*(lng1-lng2) <= nearbyOrderRadius*nearbyOrderRadius)
 			return true;
 		else
 			return false;
@@ -690,7 +693,7 @@ public class PurpleOpt {
 			return false;
 	}
 	
-	public static String UnixTimeToSimpleDateFormat(Long unixTime) {
+	static String UnixTimeToSimpleDateFormat(Long unixTime) {
 		Date dateTime = new Date(unixTime * 1000L);
 		SimpleDateFormat sdfFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 		sdfFormat.setTimeZone(TimeZone.getTimeZone("PST"));
@@ -698,7 +701,7 @@ public class PurpleOpt {
 	}
 
 	/* convert a UnixTime to a SimpleDateFormat at PDT */
-	public static String UnixTimeToSimpleDateFormatNoDate(Long unixTime) {
+	static String UnixTimeToSimpleDateFormatNoDate(Long unixTime) {
 		Date dateTime = new Date(unixTime * 1000L);
 		SimpleDateFormat sdfFormat = new SimpleDateFormat("HH:mm:ss z");
 		sdfFormat.setTimeZone(TimeZone.getTimeZone("PST"));
@@ -765,36 +768,36 @@ public class PurpleOpt {
 			*/
 	}
 
+	// average servicing time in second by gallons
 	static int iOrderServingTime(HashMap<String,Object> order) {
 		Integer gallons = (Integer) order.get("gallons");
 		switch (gallons.intValue()) {
 			case 10:
-				return 20*60;	// 20 minutes for 10 gallons;
+				return 60 * mins10GallonOrder;
 			case 15:
-				return 25*60;	// 25 minutes for 15 gallons;
+				return 60 * mins15GallonOrder;
 			default:
-				return 25*60;	// by default, it takes 25 minutes;
+				return 60 * minsGenericOrder;
 		}
 
 	}
 
-	public static int getGoogleDistance(Double courier_lat, Double courier_lng, Double order_lat, Double order_lng) {
+	/* return the google distance for a courier to an order 
+	 * TODO: add an option for a user specified time
+	 */
+	public static int getGoogleDistance(Double origin_lat, Double origin_lng, Double dest_lat, Double dest_lng) {
 		int seconds = 0;
-		boolean bPrint = false; // CAUTION
 		
-		// Wotao's key
-		String server_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao";
-        
 		// set courier as the origin
-		String org = courier_lat.toString() + "," + courier_lng.toString();
+		String org = origin_lat.toString() + "," + origin_lng.toString();
 		
 		// set order as the destination
-		String dest = order_lat.toString() + "," + order_lng.toString();
+		String dest = dest_lat.toString() + "," + dest_lng.toString();
 		
 		// generate request URL 
 		String reqURL = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + org + "&destinations=" + dest;
 		reqURL += "&departure_time=now";
-		reqURL += "&key=" + server_key;
+		reqURL += "&key=" + google_api_key;
 		
 		// debug display
 		if (bPrint)
@@ -829,22 +832,29 @@ public class PurpleOpt {
 				seconds = resp_seconds.intValue();
 			}
 			else {
-				System.out.println("Google zero result");
-				return (int) Math.round((Math.abs(courier_lat - order_lat) + Math.abs(courier_lng - order_lng))*150.0);
+				if (bPrint)
+					System.out.println("Google zero result");
+				return getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng); 
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			// e.printStackTrace();
-			System.out.println("Google connection error");
-			return (int) Math.round((Math.abs(courier_lat - order_lat) + Math.abs(courier_lng - order_lng))*150.0);
+			if (bPrint)
+				System.out.println("Google connection error");
+			return getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng);
 		}
 
 		return seconds;
 	}
 	
-	static long timeNearbyOrder(HashMap<String,Object> order) {
-		return iOrderServingTime(order)*2/3;
+	/* used for offline and non-google distance computation */
+	public static int getArtificialDistance(Double origin_lat, Double origin_lng, Double dest_lat, Double dest_lng) {
+		return (int) Math.round(l1ToDistanceTimeFactor * (double)((Math.abs(origin_lat - dest_lat) + Math.abs(origin_lng - dest_lng))));
 	}
+	
+	static long timeNearbyOrder(HashMap<String,Object> order) {
+		return Math.round(servicingTimeFactorForNearbyOrder * (double)iOrderServingTime(order));
+	}
+	
 
     /* return the total time spent on an order that is away from the previous lat-lng location */
 	static long timeDistantOrder(HashMap<String,Object> order, Double prev_lat, Double prev_lng) {
@@ -852,37 +862,40 @@ public class PurpleOpt {
                 + iOrderServingTime(order); // servicing time
 	}
 
-	static long avgMinutesByType(HashMap<String,Object> order) {
+	static long avgSecondsInClusterByType(HashMap<String,Object> order) {
 		long type_seconds = GetLongTimeFrom(order,"target_time_end")-GetLongTimeFrom(order,"target_time_start");
 		if (type_seconds <= 3600)
-			return 25;
-		else if (type_seconds >= 10800)
-			return 21;
+			return iOrderServingTime(order);
+		else if (type_seconds <= 7200) 
+			return iOrderServingTime(order) - 3*60;
 		else
-			return 27 - type_seconds/1800;	// the linear formula that returns 25 for 3600 and 21 for 10800 
+			return iOrderServingTime(order) - 6*60;
 	}
 	
 	static boolean bClusterSizeFit(List<HashMap<String,Object>> cluster, HashMap<String,Object> candicate_order, Long currTime) {
-		long total_minutes = 0;
+		long total_seconds = 0;
 		long last_deadline = currTime;	// in second
 		
 		// compute total minutes and last deadline for the orders in the cluster
 		Iterator<HashMap<String, Object>> it = cluster.iterator();
 		while (it.hasNext()) {
 			HashMap<String, Object> order = it.next();
-			total_minutes += avgMinutesByType(order);
+			total_seconds += avgSecondsInClusterByType(order);
 			long deadline = GetLongTimeFrom(order,"target_time_end");
 			last_deadline = (deadline > last_deadline)?deadline:last_deadline;	// this is unnecessary because orders are sorted by deadline, but keep for future proof
 				
 		}
 		// update total miniutes and last deadline for the candidate order
-		total_minutes += avgMinutesByType(candicate_order);
+		total_seconds += avgSecondsInClusterByType(candicate_order);
 		long deadline = GetLongTimeFrom(candicate_order,("target_time_end"));
 		last_deadline = (deadline > last_deadline)?deadline:last_deadline;	// this is unnecessary because orders are sorted by deadline, but keep for future proof
 		
+		// compute remaining seconds from the updated deadline
+		long remaining = last_deadline-currTime;
+		
 		// check if the candidate order can be added while still meeting the deadline
 		// 5 gives a five-minute grace period for the courier to arrive (hypothetical)
-		if ((total_minutes+5)*60 <= last_deadline-currTime)
+		if (total_seconds+5*60 <= remaining)
 			return true;
 		else
 			return false;
@@ -966,7 +979,7 @@ public class PurpleOpt {
 		}
 	}
 
-	public static List<List<HashMap<String,Object>>> clusterOrders(List<HashMap<String,Object>> listOrders, Long currTime) {
+	static List<List<HashMap<String,Object>>> clusterOrders(List<HashMap<String,Object>> listOrders, Long currTime) {
 		// initialize the output clusters (nested list)
 		List<List<HashMap<String,Object>>> clusters = new ArrayList<>();
 
@@ -1118,122 +1131,6 @@ public class PurpleOpt {
 	static int computeCrossZonePenalty(HashMap<String,Object> order, HashMap<String,Object> courier, HashMap<String,Object> orders, HashMap<String,Object> couriers) {
 		return 0; // this function is not implemented yet
 	}
-	
-	@SuppressWarnings("unchecked")
-	public static LinkedHashMap<String, Object> Assign(List<List<HashMap<String, Object>>> clusters, boolean human_time_format, HashMap<String, Object> couriers){
-		
-        // initialize the output
-        LinkedHashMap<String,Object> outHashMap = new LinkedHashMap<>();
-        
-		for (int i = 0; i < clusters.size(); i++) {
-			List<HashMap<String,Object>> cluster = clusters.get(i);
-
-			// if there is only one order in the cluster
-			if (cluster.size() == 1) {
-                // get the only order in the list, its key, and its assigned courier (if any)
-                HashMap<String, Object> order = cluster.get(0);
-                String order_key = (String) order.get("id");
-                // try to get the assigned courier
-                String assigned_courier_key = "";
-                Object value = order.get("assigned_courier");
-                if (value != null) {
-                	// the order has been assigned to a courier
-                	assigned_courier_key = (String) value;
-                	LinkedHashMap<String,Object> out_order_entry = (LinkedHashMap<String,Object>)outHashMap.get(order_key);
-                	out_order_entry.put("suggested_courier", assigned_courier_key);
-                	out_order_entry.put("new_assignment", false);
-                	out_order_entry.put("suggested_courier_pos", (Long)order.get("assigned_courier_pos"));
-                	out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat((Long)order.get("etf"),human_time_format));
-                }
-                else {
-                	// the order is not assigned to a courier
-                	value = order.get("best_courier_key");
-                	if (value != null) {
-                		// this order has found its best courier
-                		String best_courier_key = (String)value;
-                		HashMap<String,Object> best_courier = (HashMap<String,Object>)couriers.get(best_courier_key);
-                		// add the order to the best courier's queue, and update the finish time/lat/lng for the courier
-                		((List<String>)best_courier.get("assigned_orders")).add(order_key);
-                		best_courier.put("finish_time", (Long)order.get("best_finish_time"));
-                		best_courier.put("finish_lat", (Double)order.get("lat"));
-                		best_courier.put("finish_lng", (Double)order.get("lng"));
-                		// add the assignment information to the output hashmap
-                		LinkedHashMap<String,Object> out_order_entry = (LinkedHashMap<String,Object>)outHashMap.get(order_key);
-                		out_order_entry.put("suggested_courier", best_courier_key);
-                		out_order_entry.put("new_assignment", true);
-                		out_order_entry.put("suggested_courier_pos", ((List<String>)best_courier.get("assigned_orders")).size());
-                		out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat((Long)order.get("best_finish_time"),human_time_format));
-                	}
-                	else {
-                		// this order has not found its best courier
-                		// add the assignment information to the output hashmap
-                		LinkedHashMap<String,Object> out_order_entry = (LinkedHashMap<String,Object>)outHashMap.get(order_key);
-                		out_order_entry.put("suggested_courier", null);
-                		out_order_entry.put("new_assignment", false);
-                		out_order_entry.put("suggested_courier_pos", null);
-                		out_order_entry.put("suggested_courier_etf", null);
-                	}
-                }
-			}
-            // there are multiple orders in the cluster
-			else {
-				Iterator<HashMap<String, Object>> it = cluster.iterator();
-                HashMap<String,Object> order = it.next();
-                Object value = order.get("assigned_courier");
-                List<Long> best_etfs = new ArrayList<Long>();
-                if (value == null) {
-                	value = order.get("best_courier_key");
-                }
-
-                HashMap<String,Object> best_courier = (HashMap<String,Object>)couriers.get((String)value);
-                
-                // get the list of assigned_orders from the best courier
-                List<String> best_courier_assigned_orders = (List<String>) best_courier.get("assigned_orders");
-                Long finish_time = 0L;
-                Long travel_time = (Long)order.get("best_travel_time");
-                finish_time = travel_time;
-                best_etfs.add(finish_time);
-                
-                while(it.hasNext())
-                {
-                	order = it.next();
-                	finish_time += timeNearbyOrder(order);
-                	best_etfs.add(finish_time);
-                }
-                order.put("best_finish_time", finish_time);
-                Iterator<Long> lit = best_etfs.iterator();
-                
-                for (Iterator<HashMap<String,Object>> hit = cluster.iterator(); hit.hasNext(); ) {
-                    // get an order in the cluster and its key
-                    order = hit.next();
-                    finish_time = lit.next();
-                    String order_key = (String) order.get("id");
-                    // add the assignment of courier to the order
-                    LinkedHashMap<String, Object> out_order_entry = (LinkedHashMap<String, Object>) outHashMap.get(order_key);
-                    // add the order to the best courier's queue
-                    out_order_entry.put("suggested_courier", value);
-                    if (best_courier_assigned_orders.contains(order_key)) 
-                    {
-                    	out_order_entry.put("new_assignment", false);
-                    } 
-                    else 
-                    {
-                    	best_courier_assigned_orders.add(order_key);
-                    	out_order_entry.put("new_assignment", true);
-                    }
-                    out_order_entry.put("suggested_courier_pos", best_courier_assigned_orders.size());
-                    out_order_entry.put("suggested_courier_etf", ReturnTimeInRightFormat(lit.next(), human_time_format));
-                }
-                // update the best courier's finish_time/lat/lng
-                best_courier.put("finish_time", finish_time);
-                best_courier.put("finish_lat", (Double)order.get("lat"));
-                best_courier.put("finish_lng", (Double)order.get("lng"));
-               
-			}
-		}
-        // output return
-		return outHashMap;
-	}
          
 	@SuppressWarnings("unchecked")
 	static public String printInput(HashMap<String,Object> input) {
@@ -1372,6 +1269,17 @@ public class PurpleOpt {
 		}
 
 	return("OK");
+	}
+	
+	// check whether an order is found in the list of zones of a courier
+	@SuppressWarnings("unchecked")
+	static boolean bOrderCanBeServedByCourier(HashMap<String,Object> order, HashMap<String,Object> courier) {
+		Integer order_zone = (Integer) order.get("zone");
+		List<Integer> courier_zones = (List<Integer>) courier.get("zones");
+		if (courier_zones.contains(order_zone))
+			return true;
+		else
+			return false;		
 	}
 	
 	// check whether a given finish_time no later than the order deadline 
