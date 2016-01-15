@@ -602,6 +602,9 @@ public class PurpleOpt {
 			if (bCourierAtOrderSite(order,courier)) {
                 // already servicing the order
                 finish_time += iOrderServingTime(order) / 2;
+
+                order_lat = (Double) order.get("lat");
+				order_lng = (Double) order.get("lng");
             }
 			else {
 				// still traveling to the order
@@ -781,7 +784,7 @@ public class PurpleOpt {
 		
 		// Wotao's key
 		String server_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao";
-		
+        
 		// set courier as the origin
 		String org = courier_lat.toString() + "," + courier_lng.toString();
 		
