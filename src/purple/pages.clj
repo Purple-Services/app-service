@@ -840,6 +840,12 @@
   [:#map-init]  (fn [node]
                   (html [:script "dashboard_cljs.core.init_new_dash();"]))
 
+  [:#dashboard-cljs] (after (html
+                             [:script {:src
+                                       (str "https://maps.googleapis.com/maps/api/js?"
+                                            "key="
+                                            config/dashboard-google-browser-api-key)}]))
+
   [:body]  (prepend (html [:div {:id "accessible-routes"
                                  :value (:accessible-routes x)}])))
 
