@@ -536,7 +536,7 @@ and their id matches the order's courier_id"
                              {:success false
                               :message "Your app may have gotten disconnected. Try closing the app completely and restarting it. Then wait 10 seconds."})
                 "accepted" (if (= user-id (:courier_id order))
-                             (accept db-conn order)
+                             (accept db-conn order-id)
                              {:success false
                               :message "Permission denied."})
                 "enroute" (if (= user-id (:courier_id order))
