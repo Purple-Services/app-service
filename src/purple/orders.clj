@@ -12,7 +12,8 @@
             [ardoq.analytics-clj :as segment]
             [clojure.string :as s]
             [clojure.walk :refer [stringify-keys]]
-            [clojure.algo.generic.functor :refer [fmap]])
+            [clojure.algo.generic.functor :refer [fmap]]
+            [cheshire.core :refer [generate-string]])
   (:import [purpleOpt PurpleOpt]))
 
 ;; Order status definitions
@@ -143,7 +144,12 @@
             :stripe_charge_id (:id charge)
             :stripe_customer_id_charged (:customer charge)
             :stripe_balance_transaction_id (:balance_transaction charge)
-            :time_paid (:created charge)}
+            :time_paid (:created charge)
+            :payment_info (-> charge
+                              :source
+                              (select-keys
+                               [:id :brand :exp_month :exp_year :last4])
+                              generate-string)}
            {:id order-id}))
 
 (defn calculate-cost

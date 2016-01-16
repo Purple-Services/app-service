@@ -70,6 +70,9 @@
                           :receipt_email receipt-email
                           :metadata {:order_id order-id}}
                          {:Idempotency-Key idempotency-key})]
+    ;; from https://stripe.com/docs/api#charge_object
+    ;; paid true if the charge succeeded, or was successfully authorized for
+    ;; later capture.
     {:success (boolean (:paid resp))
      :charge resp}))
 
