@@ -738,7 +738,8 @@ and their id matches the order's courier_id"
      :message "An order with that ID could not be found."}))
 
 (defn orders-since-date
-  "Get all orders since date. A blank date will return all orders."
+  "Get all orders since date. A blank date will return all orders. When
+  unix-epoch? is true, assume date is in unix epoch seconds"
   [db-conn date & [unix-epoch?]]
   (!select db-conn "orders"
            [:id :lat :lng :status :gallons :gas_type
@@ -747,7 +748,8 @@ and their id matches the order's courier_id"
             :courier_id :vehicle_id :license_plate
             :target_time_start :target_time_end :coupon_code :event_log
             :paid :stripe_charge_id :special_instructions
-            :number_rating :text_rating]
+            :number_rating :text_rating
+            :payment_info]
            {}
            :custom-where
            (str "timestamp_created > "

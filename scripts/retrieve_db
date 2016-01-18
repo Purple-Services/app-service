@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sql_file=$1
+mysqldump -u purplemaster -pHHjdnb873HHjsnhhd -h purple-dev-db.cqxql2suz5ru.us-west-2.rds.amazonaws.com -c ebdb | sed 's/utf8mb4/utf8/' > $sql_file

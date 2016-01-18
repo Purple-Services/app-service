@@ -9,6 +9,8 @@
             [purple.util :refer [time-zone]]
             [purple.couriers :as couriers]))
 
+;; quick add order
+;; (add-order (test-order db-config) db-config)
 (use-fixtures :once database-fixture)
 
 (defn test-order
