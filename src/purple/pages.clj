@@ -813,8 +813,12 @@
            (append (html
                     [:link {:rel "stylesheet"
                             :type "text/css"
+                            :href (str config/base-url "css/dashmap.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
                             :href
-                            (str config/base-url "css/bootstrap.min.css")}]))
+                            (str config/base-url "css/bootstrap.css")}]))
            (append (html
                     [:link {:rel "stylesheet"
                             :type "text/css"
@@ -823,10 +827,6 @@
                     [:link {:rel "stylesheet"
                             :type "text/css"
                             :href (str config/base-url "css/dashboard.css")}]))
-           (append (html
-                    [:link {:rel "stylesheet"
-                            :type "text/css"
-                            :href (str config/base-url "css/dashmap.css")}]))
            (append (html
                     [:link {:rel "stylesheet"
                             :type "text/css"
