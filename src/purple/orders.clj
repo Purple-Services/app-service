@@ -398,6 +398,7 @@
                      (concat (map :phone_number available-couriers)
                              (only-prod ["3103109961" ;; Joe
                                          "7143154380" ;; Gustavo
+                                         "3234592100" ;; Rana
                                          ])))
                (send-email {:to "chris@purpledelivery.com"
                             :subject "Purple - New Order"
