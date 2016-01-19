@@ -254,22 +254,26 @@
                  (PurpleOpt/computeSuggestion
                   (map->java-hash-map
                    {"orders" (->> os
-                                  (map #(assoc % :status_times
+                                  (map #(assoc %
+                                               :status_times
                                                (-> (:event_log %)
                                                    (s/split #"\||\s")
                                                    (->> (remove s/blank?)
                                                         (apply hash-map)
-                                                        (fmap read-string)))))
+                                                        (fmap read-string)))
+                                               :zone (order->zone-id %)))
                                   (map (juxt :id stringify-keys))
                                   (into {}))
                     "couriers" (->> cs
-                                    (map #(assoc % :assigned_orders
+                                    (map #(assoc %
+                                                 :assigned_orders
                                                  (->> os
                                                       (filter
                                                        (fn [o]
                                                          (= (:courier_id o)
                                                             (:id %))))
-                                                      (map :id))))
+                                                      (map :id))
+                                                 :zones (apply list (:zones %))))
                                     (map (juxt :id stringify-keys))
                                     (into {}))})))))))
 
