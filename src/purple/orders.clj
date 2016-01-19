@@ -75,20 +75,16 @@
   [db-conn courier-id]
   (let [courier-zip-codes  ((resolve 'purple.dispatch/get-courier-zips)
                             db-conn courier-id)
-        all-orders (!select db-conn "orders" ["*"] {}
-                            :custom-where
-                            (str "(courier_id = \""
-                                 (mysql-escape-str courier-id)
-                                 "\" AND target_time_start > "
-                                 (- (quot (System/currentTimeMillis) 1000)
-                                    (* 60 60 24 16)) ;; 16 days
-                                 ") OR status = \"unassigned\" "
-                                 "ORDER BY target_time_end DESC"))
-        orders (remove #(and (= (:status %) "unassigned")
-                             (not (contains? courier-zip-codes
-                                             (:address_zip %))))
-                       all-orders)
-        customer-ids (distinct (map :user_id orders))
+        os (!select db-conn "orders" ["*"] {}
+                    :custom-where
+                    (str "(courier_id = \""
+                         (mysql-escape-str courier-id)
+                         "\" AND target_time_start > "
+                         (- (quot (System/currentTimeMillis) 1000)
+                            (* 60 60 24 16)) ;; 16 days
+                         ") "
+                         "ORDER BY target_time_end DESC"))
+        customer-ids (distinct (map :user_id os))
         customers (group-by :id
                             (!select db-conn
                                      "users"
@@ -98,7 +94,11 @@
                                      (str "id IN (\""
                                           (s/join "\",\"" customer-ids)
                                           "\")")))
-        vehicle-ids (distinct (map :vehicle_id orders))
+        vehicle-ids (->> os
+                         ;; TODO filter this to only include orders from past 24 hours maybe?
+                         
+                         (map :vehicle_id)
+                         distinct)
         vehicles (group-by :id
                            (!select db-conn
                                     "vehicles"
@@ -113,7 +113,7 @@
                  (first (get customers (:user_id %)))
                  :vehicle
                  (first (get vehicles (:vehicle_id %))))
-         orders)))
+         os)))
 
 (defn orders-in-same-market
   [o os]

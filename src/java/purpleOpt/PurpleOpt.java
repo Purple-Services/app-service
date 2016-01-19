@@ -46,7 +46,7 @@ public class PurpleOpt {
 	/*--- global parameters --*/
 
 	/* global printing switch */
-	static boolean bPrint = false; // CAUTION, use false for release
+	static boolean bPrint = true; // CAUTION, use false for release
 	/* Google API key */
 	// static  google_api_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE"; // Wotao's key CAUTION, disable for release
 	static String google_api_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao"; // Purple's key
