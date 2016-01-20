@@ -109,9 +109,7 @@
   (-> zip-code
       (get-service-time-bracket)
       first
-      ;; (+ 90)
-      (+ 150) ;; temp -- 2.5 hours after start of day
-      ))
+      (+ 90)))
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices"
