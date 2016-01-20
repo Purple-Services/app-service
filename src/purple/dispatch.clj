@@ -109,7 +109,9 @@
   (-> zip-code
       (get-service-time-bracket)
       first
-      (+ 90)))
+      ;; (+ 90)
+      (+ 150) ;; temp -- 2.5 hours after start of day
+      ))
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices"
@@ -347,8 +349,9 @@
     (only-prod (run!
                 #(send-sms % "There are orders, but no available couriers.")
                 (concat [] ;; put your number in here when dev'ing
-                        (only-prod ["3103109961"     ;; Joe
-                                    "7143154380"     ;; Gustavo
+                        (only-prod ["3103109961" ;; Joe
+                                    "7143154380" ;; Gustavo
+                                    "3234592100" ;; Rana
                                     ]))))
     (reset! last-orphan-warning (quot (System/currentTimeMillis) 1000))))
 
