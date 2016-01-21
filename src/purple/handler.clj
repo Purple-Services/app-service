@@ -546,6 +546,15 @@
                        {:couriers (->> (couriers/all-couriers db-conn)
                                        (users/include-user-data db-conn)
                                        (couriers/include-lateness db-conn))})))
+              ;; get a courier by id
+              (GET "/courier/:id" [id]
+                   (let [db-conn (conn)]
+                     (response
+                      (into []
+                            (->> (couriers/get-by-id db-conn id)
+                                 list
+                                 (users/include-user-data db-conn)
+                                 (couriers/include-lateness db-conn))))))
               ;; update a courier
               ;; currently, only the zones can be updated
               (POST "/courier" {body :body}

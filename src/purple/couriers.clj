@@ -4,12 +4,37 @@
   (:require [purple.config :as config]
             [clojure.string :as s]))
 
+(defn process-courier
+  "Process a courier"
+  [courier]
+  (assoc courier
+         :zones (if (s/blank? (:zones courier))
+                  ;; courier is not assigned to any zones, blank field
+                  #{}
+                  (set (map (fn [x] (Integer. x))
+                            (split-on-comma (:zones courier)))))
+         :timestamp_created
+         (/ (.getTime
+             (:timestamp_created courier))
+            1000)))
+
+(defn get-by-id
+  "Get a courier from db by courier's id"
+  [db-conn id]
+  (let [courier (first (!select db-conn
+                                "couriers"
+                                ["*"]
+                                {:id id}))]
+    (if (empty? courier)
+      {:success false
+       :error (str "There is no courier with id: " id)}
+      (process-courier courier))))
+
 ;; Note that this converts couriers' "zones" from string to a set of Integer's
 (defn get-couriers
   "Gets couriers from db. Optionally add WHERE constraints."
   [db-conn & {:keys [where]}]
-  (map #(assoc % :zones (set (map (fn [x] (Integer. x))
-                                  (split-on-comma (:zones %)))))
+  (map process-courier
        (!select db-conn "couriers" ["*"] (merge {} where))))
 
 (defn all-couriers
