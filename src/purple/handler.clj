@@ -69,7 +69,7 @@
          (let [b (keywordize-keys body)
                db-conn (conn)]
            (orders/orders-since-date-with-supplementary-data
-            db-conn (:date b)))))
+            db-conn (:date b) (:unix-epoch? b)))))
   ;; return all couriers
   (POST "/couriers" {body :body}
         (response
