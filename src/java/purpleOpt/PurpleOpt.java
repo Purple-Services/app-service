@@ -46,7 +46,7 @@ public class PurpleOpt {
 	/*--- global parameters --*/
 
 	/* global printing switch */
-	static boolean bPrint = true; // CAUTION, use false for release
+	static boolean bPrint = false; // CAUTION, use false for release
 	/* Google API key */
 	// static  google_api_key = "AIzaSyAFGyFvaKvXQUKzRh9jQaUwQnHnkiHDUCE"; // Wotao's key CAUTION, disable for release
 	static String google_api_key = "AIzaSyCd_XdJsSsStXf1z8qCWITuAsppr5FoHao"; // Purple's key
@@ -84,8 +84,18 @@ public class PurpleOpt {
 		else
 			human_time_format = (boolean) value;
 		Long currTime = getCurrUnixTime(input, human_time_format);	// get current time from either the input or, if missing from the input, the system
-
+		
+		// initialize output HashMap
+		LinkedHashMap<String,Object> outHashMap = new LinkedHashMap<>();
+		
+        // obtain orders from the input
 		HashMap<String, Object> orders = (HashMap<String, Object>) input.get("orders");
+		
+        // return an empty hashmap if there is no unassigned orders
+		if (!bExistUnassignedOrder(orders))
+			return outHashMap;
+		
+        // obtain orders from the input
 		HashMap<String, Object> couriers = (HashMap<String, Object>) input.get("couriers");
 
 		// remove invalid couriers
@@ -97,8 +107,6 @@ public class PurpleOpt {
 
 		// Stage One: Get all unfinished orders ("unassigned", "enroute", "servicing") sorted and select all valid couriers.
 		List<HashMap<String, Object>> sorted_orders = sortUnfinishedOrders(orders);
-		// initialize output HashMap
-		LinkedHashMap<String,Object> outHashMap = new LinkedHashMap<>();
        
 		// Stage Two: Cluster nearby orders by deadlines. Go to the function for clustering criteria
 		List<List<HashMap<String, Object>>> clusters = clusterOrders(sorted_orders, currTime);
@@ -281,6 +289,20 @@ public class PurpleOpt {
 		}
         // output return
 		return outHashMap;		
+	}
+
+    /* check whether there exists unassigned orders in orders */	
+	@SuppressWarnings("unchecked")
+	static boolean bExistUnassignedOrder(HashMap<String, Object> orders){
+
+		for(String order_key: orders.keySet()) {
+			// get the order by ID (key)
+			HashMap<String, Object> order = (HashMap<String, Object>) orders.get(order_key);
+			String order_status = (String) order.get("status");
+			if(order_status.equals("unassigned"))
+				return true;
+		}
+		return false;
 	}
 	
     /*
