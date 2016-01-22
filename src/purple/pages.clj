@@ -444,7 +444,7 @@
 ;; and the user accounts that are references by the couriers
 
 (defn dashboard [db-conn & {:keys [all read-only courier-manager]}]
-  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {:active true})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
 
