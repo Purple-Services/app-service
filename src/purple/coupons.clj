@@ -109,19 +109,21 @@
         license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)
         used-by-license-plates (-> (:used_by_license_plates coupon)
                                    split-on-comma
-                                   set)
+                                   set
+                                   (disj (mysql-escape-str license-plate)))
         used-by-user-ids (-> (:used_by_user_ids coupon)
                              split-on-comma
-                             set)]
+                             set
+                             (disj (mysql-escape-str user-id)))]
     (sql/with-connection db-conn
       (sql/do-prepared
        (str "UPDATE coupons SET "
             "used_by_license_plates = \""
-            (s/join "," (disj used-by-license-plates
-                              (mysql-escape-str license-plate)))
+            (s/join "," used-by-license-plates)
+            (when (seq used-by-license-plates) ",")
             "\", used_by_user_ids = \""
-            (s/join "," (disj used-by-user-ids
-                              (mysql-escape-str user-id)))
+            (s/join "," used-by-user-ids)
+            (when (seq used-by-user-ids) ",")
             "\" WHERE code = \"" (mysql-escape-str code) "\"")))))
 
 (defn mark-gallons-as-used
