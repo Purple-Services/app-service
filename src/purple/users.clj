@@ -489,7 +489,7 @@
                     locations-map))}
            {:id user-id}))
 
-(def cc-fields-to-keep [:id :last4 :brand])
+(def cc-fields-to-keep [:id :last4 :brand :exp_month :exp_year])
 
 (defn update-user-stripe-fields
   [db-conn user-id customer-resp]
@@ -777,6 +777,7 @@
         users (!select db-conn "users"
                        [:id :name :email :phone_number :os
                         :app_version :stripe_default_card
+                        :stripe_cards
                         :sift_score
                         :arn_endpoint :timestamp_created]
                        {}

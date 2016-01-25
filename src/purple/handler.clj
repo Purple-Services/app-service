@@ -87,7 +87,7 @@
     :permissions ["download-stats"]}
    {:url "/dashboard/send-push-to-all-active-users"
     :permissions ["view-users"]}
-   {:url "/dashboard/send-push-users-lists"
+   {:url "/dashboard/send-push-to-users-list"
     :permissions ["view-users"]}
    {:url "/dashboard/cancel-order"
     :permissions ["view-orders" "view-users"]}
