@@ -21,6 +21,13 @@
   (apply str (index-template {:heading "Page Not Found"
                               :intro "Sorry, that page could not be found."})))
 
+(deftemplate terms-template "templates/terms.html"
+  [x]
+  [:title] (content (:title x)))
+
+(defn terms []
+  (apply str (terms-template {:title "Terms of Service"})))
+
 (deftemplate home-template "templates/home.html"
   [x]
   [:title] (content (:title x)))
@@ -438,7 +445,7 @@
 ;; and the user accounts that are references by the couriers
 
 (defn dashboard [db-conn & {:keys [all read-only courier-manager]}]
-  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {:active true})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
 
@@ -629,7 +636,7 @@
              :all all}))))
 
 (defn declined [db-conn]
-  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {:active true})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
         courier-ids (distinct (map :id all-couriers))

@@ -69,7 +69,7 @@
          (let [b (keywordize-keys body)
                db-conn (conn)]
            (orders/orders-since-date-with-supplementary-data
-            db-conn (:date b)))))
+            db-conn (:date b) (:unix-epoch? b)))))
   ;; return all couriers
   (POST "/couriers" {body :body}
         (response
@@ -536,7 +536,7 @@
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
-  (GET "/terms" [] (redirect (str config/base-url "pdfs/terms.pdf")))
+  (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))
   (route/resources "/")
