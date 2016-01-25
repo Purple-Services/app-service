@@ -4,12 +4,19 @@
   (:require [purple.config :as config]
             [clojure.string :as s]))
 
-;; Note that this converts couriers' "zones" from string to a set of Integer's
+(defn parse-courier-zones
+  "Converts couriers' 'zones' from string to a set of Integer's."
+  [c]
+  (->> (:zones c)
+       split-on-comma
+       (map #(Integer. %))
+       set
+       (assoc c :zones)))
+
 (defn get-couriers
   "Gets couriers from db. Optionally add WHERE constraints."
   [db-conn & {:keys [where]}]
-  (map #(assoc % :zones (set (map (fn [x] (Integer. x))
-                                  (split-on-comma (:zones %)))))
+  (map parse-courier-zones
        (!select db-conn "couriers" ["*"] (merge {} where))))
 
 (defn all-couriers
@@ -37,6 +44,17 @@
                                 :on_duty true
                                 :connected true
                                 :busy false}))
+
+(defn get-all-expired
+  "All the 'connected' couriers that haven't pinged recently."
+  [db-conn]
+  (map parse-courier-zones
+       (!select db-conn "couriers" ["*"] {}
+                :custom-where
+                (str "active = 1 AND connected = 1 AND ("
+                     (quot (System/currentTimeMillis) 1000)
+                     " - last_ping) > "
+                     config/max-courier-abandon-time))))
 
 (defn filter-by-zone
   "Only couriers that work in this zone."
