@@ -636,7 +636,7 @@
              :all all}))))
 
 (defn declined [db-conn]
-  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {})
+  (let [all-couriers (->> (!select db-conn "couriers" ["*"] {:active true})
                           ;; remove chriscourier@test.com
                           (remove #(in? ["9eadx6i2wCCjUI1leBBr"] (:id %))))
         courier-ids (distinct (map :id all-couriers))
