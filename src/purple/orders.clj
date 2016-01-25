@@ -397,6 +397,7 @@
                      (concat (map :phone_number available-couriers)
                              (only-prod ["3103109961" ;; Joe
                                          "7143154380" ;; Gustavo
+                                         "3234592100" ;; Rana
                                          ])))
                (send-email {:to "chris@purpledelivery.com"
                             :subject "Purple - New Order"
@@ -749,8 +750,9 @@ and their id matches the order's courier_id"
      :message "An order with that ID could not be found."}))
 
 (defn orders-since-date
-  "Get all orders since date. A blank date will return all orders."
-  [db-conn date]
+  "Get all orders since date. A blank date will return all orders. When
+  unix-epoch? is true, assume date is in unix epoch seconds"
+  [db-conn date & [unix-epoch?]]
   (!select db-conn "orders"
            [:id :lat :lng :status :gallons :gas_type
             :total_price :timestamp_created :address_street
@@ -759,14 +761,17 @@ and their id matches the order's courier_id"
             :target_time_start :target_time_end]
            {}
            :custom-where
-           (str "timestamp_created > '"
-                date "'")))
+           (str "timestamp_created > "
+                (if unix-epoch?
+                  (str "FROM_UNIXTIME(" date ")")
+                  (str "'" date "'")))))
 
 (defn orders-since-date-with-supplementary-data
   "Get all orders since date. A blank date will return all orders. Additional
-  supplementary data is assoc'd onto the orders."
-  [db-conn date]
-  (let [os (orders-since-date db-conn date)
+  supplementary data is assoc'd onto the orders. When unix-epoch? is true,
+  assume date is in unix epoch seconds"
+  [db-conn date & [unix-epoch?]]
+  (let [os (orders-since-date db-conn date unix-epoch?)
         users-by-id (into {}
                           (map (juxt :id identity)
                                ((resolve 'purple.users/get-users-by-ids)
