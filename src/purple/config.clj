@@ -84,14 +84,14 @@
 (def sift-science-api-key (System/getProperty "SIFT_SCIENCE_API_KEY"))
 
 ;;;; Dispatch 
-;; How often to process the zone order queues (i.e., dispatch/zq) (millis)
+;; How often to process the auto-assign and related tasks (millis)
 ;; MUST BE multiple of 1000 (because of dispatch/remind-courier)
 (def process-interval (* 1000 5))
 ;; How long of courier app not responding that we consider them to be
 ;; disconnected. (seconds)
 (def max-courier-abandon-time (* 60 2))
-;; How many long after a new order has been accepted to a courier but they
-;; have not begun the route; to then send them a reminder (seconds)
+;; How many long after a new order has been assigned to a courier but they
+;; have not accepted the job; to then send them a reminder (seconds)
 (def courier-reminder-time (* 60 5))
 
 ;;;; Email
