@@ -302,7 +302,8 @@
   (let [os (orders/get-all-current db-conn)
         cs (couriers/get-all-on-duty db-conn)]
     (when (diff-state? os cs)
-      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %)))
+      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %))
+                            :no-reassigns true)
             (new-assignments os cs)))))
 
 (defn process
