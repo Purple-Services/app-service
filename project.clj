@@ -25,10 +25,8 @@
                  [org.clojure/data.csv "0.1.3"]
                  [environ "1.0.0"] ;; for defining environments used by src/purple/config.clj
                  [analytics-clj "0.3.0"]
-                 [org.clojure/algo.generic "0.1.2"]
-                 ;; [ring-serve "0.1.2"]
-                 ]
-  ;:pedantic? :warn
+                 [org.clojure/algo.generic "0.1.2"]]
+  ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
   :java-source-paths ["src/java"]
