@@ -153,7 +153,8 @@
                               (html [:input
                                      {:type "submit"
                                       :class "advance-status"
-                                      :value ({"accepted" "Start Route"
+                                      :value ({"assigned" "Force Accept"
+                                               "accepted" "Start Route"
                                                "enroute" "Begin Servicing"
                                                "servicing" "Complete Order"}
                                               (:status t))
@@ -500,7 +501,7 @@
                              :custom-where (str "type = 'standard' AND "
                                                 ;; remove groupon coupons
                                                 "code NOT LIKE 'GR%'"))
-        zones       (!select db-conn "zones" ["*"] {})
+        zones (!select db-conn "zones" ["*"] {})
         dist-map (into
                   {}
                   (PurpleOpt/computeDistance
@@ -529,8 +530,7 @@
                                      (map #(update-in % [:zones] split-on-comma))
                                      (map #(assoc % :assigned_orders []))
                                      (map (juxt :id stringify-keys))
-                                     (into {}))})))
-        ]
+                                     (into {}))})))]
     (apply str
            (dashboard-template
             {:title "Purple - Dashboard"

@@ -94,7 +94,11 @@
 (defn map->java-hash-map
   "Recursively convert Clojure PersistentArrayMap to Java HashMap."
   [m]
-  (postwalk #(unless-p map? % (java.util.HashMap. %)) m))
+  (postwalk #(cond
+               (map? %) (java.util.HashMap. %)
+               (seq? %) (java.util.ArrayList. %)
+               :else %)
+            m))
 
 (def time-zone (time/time-zone-for-id "America/Los_Angeles"))
 
@@ -201,6 +205,17 @@
 
 (defn new-auth-token []
   (rand-str-alpha-num 128))
+
+(defn get-event-time
+  "Get time of event from event log as unix timestamp Integer.
+  If event hasn't occurred yet, then nil."
+  [event-log event]
+  (some-> event-log
+          (#(unless-p s/blank? % nil))
+          (s/split #"\||\s")
+          (->> (apply hash-map))
+          (get event)
+          (Integer.)))
 
 (defn send-email [message-map]
   (try (postal/send-message config/email
