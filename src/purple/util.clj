@@ -308,3 +308,19 @@
             (ArrayList. [(BasicNameValuePair. "Url" call-url)
                          (BasicNameValuePair. "To" to-number)
                          (BasicNameValuePair. "From" config/twilio-from-number)]))))
+
+(defn timestamp->unix-epoch
+  "Convert a java.sql.Timestamp timestamp to unix epoch seconds"
+  [timestamp]
+  (/ (.getTime timestamp) 1000))
+
+(defn convert-timestamp
+  "Replace :timestamp_created value in m with unix epoch seconds"
+  [m]
+  (assoc m :timestamp_created (timestamp->unix-epoch (:timestamp_created m))))
+
+(defn convert-timestamps
+  "Replace the :timestamp_created value with unix epoch seconds in each map of
+  vector"
+  [v]
+  (map convert-timestamp v))

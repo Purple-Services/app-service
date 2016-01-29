@@ -578,7 +578,26 @@
               (GET "/coupons" []
                    (response
                     (into []
-                          (!select (conn) "coupons" ["*"] {:type "standard"}))))
+                          (-> (coupons/coupons (conn))
+                              (convert-timestamps)))))
+              ;; get a coupon by code
+              (GET "/coupon/:code" [code]
+                   (response
+                    (into []
+                          (->> (coupons/get-coupon-by-code (conn) code)
+                               convert-timestamp
+                               list))))
+              ;; create a new coupon
+              (POST "/coupon" {body :body}
+                    (let [b (keywordize-keys body)]
+                      (response
+                       (coupons/create-standard-coupon (conn) b)
+                       )))
+              ;; edit an existing coupon
+              (PUT "/coupon" {body :body}
+                   (let [b (keywordize-keys body)]
+                     (response
+                      (coupons/update-standard-coupon (conn) b))))
               ;; return ZCTA defintions for zips
               (POST "/zctas" {body :body}
                     (response
@@ -587,7 +606,7 @@
                        {:zctas
                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
-              (GET "/zones" {body :body}
+              (POST "/zones" {body :body}
                    (response
                     ;; needed because cljs.reader/read-string can't handle
                     ;; keywords that begin with numbers

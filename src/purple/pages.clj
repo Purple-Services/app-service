@@ -826,6 +826,10 @@
            (append (html
                     [:link {:rel "stylesheet"
                             :type "text/css"
+                            :href (str config/base-url "css/pikaday.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
                             :href (str config/base-url "css/dashboard.css")}]))
            (append (html
                     [:link {:rel "stylesheet"
