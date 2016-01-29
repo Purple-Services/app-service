@@ -187,7 +187,8 @@
                         (coupons/code->value db-conn
                                              (format-coupon-code (:code b))
                                              (:vehicle_id b)
-                                             (:user_id b))))))
+                                             (:user_id b)
+                                             (:address_zip b))))))
               ;; Get info about currently auth'd user
               (POST "/details" {body :body}
                     (response

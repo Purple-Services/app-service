@@ -186,7 +186,11 @@
           ((keyword (str time))
            ((resolve 'purple.dispatch/get-service-fees) zip-code))
           (if-not (s/blank? coupon-code)
-            (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))
+            (:value (coupons/code->value db-conn
+                                         coupon-code
+                                         vehicle-id
+                                         user-id
+                                         zip-code))
             0))))
 
 (defn valid-price?
