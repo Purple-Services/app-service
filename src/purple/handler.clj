@@ -184,11 +184,13 @@
                         db-conn
                         (:user_id b)
                         (:token b)
-                        (coupons/code->value db-conn
-                                             (format-coupon-code (:code b))
-                                             (:vehicle_id b)
-                                             (:user_id b)
-                                             (:address_zip b))))))
+                        (coupons/code->value
+                         db-conn
+                         (format-coupon-code (:code b))
+                         (:vehicle_id b)
+                         (:user_id b)
+                         (:address_zip b)
+                         :bypass-zip-code-check (ver< (:version b) "1.2.2"))))))
               ;; Get info about currently auth'd user
               (POST "/details" {body :body}
                     (response
@@ -215,7 +217,9 @@
                         (:token b)
                         (orders/add db-conn
                                     (:user_id b)
-                                    (:order b))))))
+                                    (:order b)
+                                    :bypass-zip-code-check
+                                    (ver< (:version b) "1.2.2"))))))
               (POST "/rate" {body :body}
                     (response
                      (let [b (keywordize-keys body)
