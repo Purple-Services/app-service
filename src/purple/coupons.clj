@@ -64,7 +64,7 @@
 
 (defn code->value
   "Get the value for a coupon code contextualized by user and vehicle choice."
-  [db-conn code vehicle-id user-id zip-code]
+  [db-conn code vehicle-id user-id zip-code & {:keys [bypass-zip-code-check]}]
   (let [coupon (get-coupon-by-code db-conn code)
         license-plate (get-license-plate-by-vehicle-id db-conn vehicle-id)]
     (cond
@@ -73,7 +73,8 @@
        :message "Sorry, that code is invalid."
        :value 0}
 
-      (not (valid-zip-code? coupon zip-code))
+      (and (not bypass-zip-code-check)
+           (not (valid-zip-code? coupon zip-code)))
       {:success false
        :message "Sorry, that coupon code cannot be used in this zip code."
        :value 0}
