@@ -13,6 +13,7 @@
             [purple.pages :as pages]
             [purple.analytics :as analytics]
             [purple.dashboard :as dashboard]
+            [purple.zones :as zones]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -591,13 +592,13 @@
               (POST "/coupon" {body :body}
                     (let [b (keywordize-keys body)]
                       (response
-                       (coupons/create-standard-coupon (conn) b)
+                       (coupons/create-standard-coupon! (conn) b)
                        )))
               ;; edit an existing coupon
               (PUT "/coupon" {body :body}
                    (let [b (keywordize-keys body)]
                      (response
-                      (coupons/update-standard-coupon (conn) b))))
+                      (coupons/update-standard-coupon! (conn) b))))
               ;; return ZCTA defintions for zips
               (POST "/zctas" {body :body}
                     (response
@@ -606,7 +607,7 @@
                        {:zctas
                         (dispatch/get-zctas-for-zips db-conn (:zips b))})))
               ;; return all zones
-              (POST "/zones" {body :body}
+              (GET "/zones" []
                    (response
                     ;; needed because cljs.reader/read-string can't handle
                     ;; keywords that begin with numbers
@@ -615,34 +616,24 @@
                              :fuel_prices (stringify-keys
                                            (read-string (:fuel_prices %)))
                              :service_fees (stringify-keys
-                                            (read-string (:service_fees %))))
+                                            (read-string (:service_fees %)))
+                             :service_time_bracket (read-string
+                                                    (:service_time_bracket %)))
                      (into [] (dispatch/get-all-zones-from-db (conn))))))
+              ;; get a zone by its id
+              (GET "/zone/:id" [id]
+                   (response
+                    (into []
+                          (->> (zones/get-zone-by-id (conn) id)
+                               (zones/read-zone-strings)
+                               list))))
               ;; update a zone's description. Currently only supports
               ;; updating fuel_prices, service_fees and service_time_bracket
-              (POST "/update-zone" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       (dispatch/update-zone! db-conn
-                                              (:id b)
-                                              (:fuel_prices b)
-                                              (:service_fees b)
-                                              (:service_time_bracket b)))))
-              ;; update a zone's description. Currently only supports
-              ;; updating fuel_prices, service_fees and service_time_bracket
-              (POST "/zone" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       (dispatch/update-zone! db-conn
-                                              (:id b)
-                                              (str (:fuel_prices b))
-                                              (str (:service_fees b))
-                                              (str (:service_time_bracket b)))
-                       ;; error responses are forthcoming, for now, assume all
-                       ;; data is valid
-                       {:success true})))
-              )))
+              (PUT "/zone" {body :body}
+                   (let [b (keywordize-keys body)
+                         db-conn (conn)]
+                     (response
+                      (zones/validate-and-update-zone! db-conn b)))))))
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []

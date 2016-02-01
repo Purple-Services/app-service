@@ -198,16 +198,20 @@
   {:code [[code-available? :message "Code is already in use"]
           [v/required :message "Code must not be blank"]
           ]
-   :value [[v/required :message "Value must be present!"]
+   :value [[v/required :message "Amount must be present!"]
+           [v/number :message "Amount must in a dollar amount!"]
            [v/in-range [1 5000]
-            :message "Coupon value must be within $0.01 and $50.00"]]
+            :message "Amount must be within $0.01 and $50.00"]]
    :expiration_time [v/required
+                     [v/integer :message
+                      "Expiration time is not in an integer."]
                      [in-future?
                       :message "Expiration date must be in the future!"]]
-   :only_for_first_orders [v/required]})
+   :only_for_first_orders [v/required
+                           v/boolean
+                           ]})
 
-
-(defn create-standard-coupon
+(defn create-standard-coupon!
   "Given a new-coupon map, validate it. If valid, create coupon else return the
   bouncer error map."
   [db-conn new-coupon]
@@ -231,7 +235,7 @@
          :code [[#(not (code-available? %)) :message "Code does not exist!"]
                 [v/required :message "Code must not be blank"]]))
 
-(defn update-standard-coupon
+(defn update-standard-coupon!
   "Given a coupon map, validate it. If valid, create coupon else return the
   bouncer error map"
   [db-conn coupon]
