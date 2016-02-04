@@ -92,17 +92,20 @@
          :message "An unknown error occurred"}))
 
 (defn accessible-routes
-  "Given the vector uri-permissions containing uri-perm maps, generate a set of
-  urls that are accessible with the set user-permissions.
+  "Given a vector uri-permissions containing uri-perm maps, generate a set of
+  uri / method maps that are accessible with the set user-permissions.
 
   A uri-perm map is of the form:
-  {:url route
-   :permissions perms}
+  {:uri route
+   :permissions perms
+   :method method}
 
   e.g.
-  {:url \"/dashboard/dash-map-couriers\"
+  {:uri \"/dashboard/dash-map-couriers\"
    :permissions [\"view-orders\" \"view-couriers\" \"view-zones\"]
-  }"
+   :method \"GET\"
+  }
+  "
   [uri-permissions user-permissions]
   (let [user-has-permission? (fn [user-perms uri-perm]
                                (let [route-perm (:permissions uri-perm)
@@ -113,4 +116,5 @@
                                                (seq perms-contained-list)))))]
     (set (filter (comp not nil?)
                  (map #(if (user-has-permission? user-permissions %)
-                         (:url %)) uri-permissions)))))
+                         (select-keys % [:uri :method]))
+                      uri-permissions)))))

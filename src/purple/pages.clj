@@ -844,19 +844,16 @@
   [:#map-init]  (fn [node]
                   (html [:script "dashboard_cljs.core.init_new_dash();"]))
 
-  [:#dashboard-cljs] (after (html
-                             [:script {:src
-                                       (str "https://maps.googleapis.com/maps/api/js?"
-                                            "key="
-                                            config/dashboard-google-browser-api-key)}]))
+  [:#dashboard-cljs]
 
-  [:body]  (prepend (html [:div {:id "accessible-routes"
-                                 :value (:accessible-routes x)}])))
+  (after
+   (html
+    [:script {:src
+              (str "https://maps.googleapis.com/maps/api/js?"
+                   "key="
+                   config/dashboard-google-browser-api-key)}])))
 
 (defn dash-app
-  [accessible-routes]
+  []
   (apply str (dash-app-template {:base-url
-                                 (str config/base-url "dashboard/")
-                                 :accessible-routes
-                                 accessible-routes
-                                 })))
+                                 (str config/base-url "dashboard/")})))

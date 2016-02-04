@@ -14,6 +14,7 @@
             [purple.analytics :as analytics]
             [purple.dashboard :as dashboard]
             [purple.zones :as zones]
+            [clout.core :as clout]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -69,53 +70,115 @@
     :redirect "/dashboard/login"}])
 
 ;; if the route is omitted, it is accessible by all dashboard users
+;; url AND method must be given, if one is missing, the route will be allowed!
+;; login/logout should be unprotected!
+;;
+;; These routes are organized to match those under /dashboard
+;; and follow the same conventions.
+;;
+;; A user who can access everything would have the following permissions:
+;; #{"view-dash","view-couriers","edit-couriers","view-users","send-push",
+;;  "view-coupons","edit-coupons","create-coupons","view-zones","edit-zones",
+;;  "view-orders","edit-orders","download-stats"}
+;;
 (def dashboard-uri-permissions
-  [{:url "/dashboard"
+  [
+   ;;!! main dash
+   {:uri "/dashboard/"
+    :method "GET"
     :permissions ["view-dash"]}
-   {:url "/dashboard/dash-app"
+   {:uri "/dashboard"
+    :method "GET"
     :permissions ["view-dash"]}
-   {:url "/dashboard/"
+   {:uri "/dashboard/dash-app"
+    :method "GET"
     :permissions ["view-dash"]}
-   {:url "/dashboard/all"
+   {:uri "/dashboard/permissions"
+    :method "GET"
     :permissions ["view-dash"]}
-   {:url "/dashboard/declined"
-    :permissions ["view-dash"]}
-   {:url "/dashboard/generate-stats-csv"
-    :permissions ["download-stats"]}
-   {:url "/dashboard/download-stats-csv"
-    :permissions ["download-stats"]}
-   {:url "/dashboard/status-stats-csv"
-    :permissions ["download-stats"]}
-   {:url "/dashboard/send-push-to-all-active-users"
-    :permissions ["view-users"]}
-   {:url "/dashboard/send-push-to-users-list"
-    :permissions ["view-users"]}
-   {:url "/dashboard/cancel-order"
-    :permissions ["view-orders" "view-users"]}
-   {:url "/dashboard/update-status"
-    :permissions ["view-orders" "view-users"]}
-   {:url "/dashboard/assign-order"
-    :permissions ["view-orders" "view-users"]}
-   {:url "/dashboard/update-zone"
-    :permissions ["view-zones"]}
-   {:url "/dashboard/update-courier-zones"
-    :permissions ["view-users"]}
-   {:url "/dashboard/dash-map-orders"
+   ;;!! dash maps
+   {:uri "/dashboard/dash-map-orders"
+    :method "GET"
     :permissions ["view-orders" "view-zones"]}
-   {:url "/dashboard/dash-map-couriers"
+   {:uri "/dashboard/dash-map-couriers"
+    :method "GET"
     :permissions ["view-orders" "view-couriers" "view-zones"]}
-   {:url "/dashboard/orders-since-date"
+   ;;!! couriers
+   {:uri "/dashboard/courier/:id"
+    :method "GET"
+    :permissions ["view-couriers"]}
+   {:uri "/dashboard/courier"
+    :method "POST"
+    :permissions ["edit-couriers"]}
+   {:uri "/dashboard/couriers"
+    :method "POST"
+    :permissions ["view-couriers"]}
+   ;;!! users
+   {:uri "/dashboard/users"
+    :method "GET"
+    :permissions ["view-users" "view-orders"]}
+   {:uri "/dashboard/users-count"
+    :method "GET"
+    :permissions ["view-users" "view-orders"]}
+   {:uri "/dashboard/send-push-to-all-active-users"
+    :method "POST"
+    :permissions ["view-users" "send-push"]}
+   {:uri "/dashboard/send-push-to-users-list"
+    :method "POST"
+    :permissions ["view-users" "send-push"]}
+   ;;!! coupons
+   {:uri "/dashboard/coupon/:code"
+    :method "GET"
+    :permissions ["view-coupons"]}
+   {:uri "/dashboard/coupon"
+    :method "PUT"
+    :permissions ["edit-coupons"]}
+   {:uri "/dashboard/coupon"
+    :method "POST"
+    :permissions ["create-coupons"]}
+   {:uri "/dashboard/coupons"
+    :method "GET"
+    :permissions ["view-coupons"]}
+   ;;!! zones
+   {:uri "/dashboard/zone/:id"
+    :method "GET"
+    :permissions ["view-zones"]}
+   {:uri "/dashboard/zone"
+    :method "PUT"
+    :permissions ["edit-zones"]}
+   {:uri "/dashboard/zones"
+    :method "GET"
+    :permissions ["view-zones"]}
+   {:uri "/dashboard/zctas"
+    :method "POST"
+    :permissions ["view-zones"]}
+   ;;!! orders
+   {:uri "/dashboard/order"
+    :method "POST"
     :permissions ["view-orders"]}
-   {:url "/dashboard/couriers"
-    :permissions ["view-users"]}
-   {:url "/dashboard/zctas"
-    :permissions ["view-zones"]}
-   {:url "/dashboard/zones"
-    :permissions ["view-zones"]}
-   {:url "/dashboard/users"
-    :permissions ["view-users"]}
-   {:url "/dashboard/coupons"
-    :permissions ["view-coupons"]}])
+   {:uri "/dashboard/cancel-order"
+    :method "POST"
+    :permissions ["edit-orders"]}
+   {:uri "/dashboard/update-status"
+    :method "POST"
+    :permissions ["edit-orders"]}
+   {:uri "/dashboard/assign-order"
+    :method "POST"
+    :permissions ["edit-orders"]}
+   {:uri "/dashboard/orders-since-date"
+    :method "POST"
+    :permissions ["view-orders"]}
+   ;;!! analytics
+   {:uri "/dashboard/status-stats-csv"
+    :method "GET"
+    :permissions ["download-stats"]}
+   {:uri "/dashboard/generate-stats-csv"
+    :method "GET"
+    :permissions ["download-stats"]}
+   {:uri "/dashboard/download-stats-csv"
+    :method "GET"
+    :permissions ["download-stats"]}
+   ])
 
 (defn allowed?
   "Given a vector of uri-permission maps and a request map, determine if the
@@ -126,7 +189,14 @@
         user-id   (get-in cookies [:user-id :value])
         user-permission (dashboard/get-permissions (conn) user-id)
         uri       (:uri request)
-        uri-permission  (:permissions (first (filter #(= uri (:url %))
+        method    (-> request
+                      :request-method
+                      name
+                      s/upper-case)
+        uri-permission  (:permissions (first (filter #(and
+                                                       (clout/route-matches
+                                                        (:uri %) request)
+                                                       (= method (:method %)))
                                                      uri-permissions)))
         user-uri-permission-compare (map #(contains? user-permission %)
                                          uri-permission )
@@ -395,23 +465,38 @@
                          (users/send-invite db-conn
                                             (:email b)))))))))
   (context "/dashboard" []
+           ;; the following convention is used for ordering dashboard
+           ;; routes
+           ;; 1. Routes are organized under groups (e.g. ;;!! group)
+           ;;    and mirror the order of the dashboard navigation tabs.
+           ;; 2. Requests that result in a single object come before
+           ;;    those that potentially result in multiple objects.
+           ;; 3. If there are multiple methods for the same route,
+           ;;    list them in the order GET, PUT, POST
+           ;; 4. Routes that don't fit a particular pattern are listed
+           ;;    last
+           ;; 5. Try to be logical and use your best judgement when these
+           ;;    rules fail
            (wrap-force-ssl
             (defroutes dashboard-routes
+              ;;!! main dash
               (GET "/" []
                    (-> (pages/dashboard (conn))
                        response
                        wrap-page))
-              ;; demo for the Reagent app
-              (GET "/dash-app" {cookies :cookies}
+              (GET "/permissions" {cookies :cookies}
                    (let [user-perms (dashboard/get-permissions
                                      (conn)
                                      (get-in cookies ["user-id" :value]))
                          accessible-routes (dashboard/accessible-routes
                                             dashboard-uri-permissions
                                             user-perms)]
-                     (-> (pages/dash-app accessible-routes)
-                         response
-                         wrap-page)))
+                     (response (into [] accessible-routes))))
+              (GET "/dash-app" []
+                   (-> (pages/dash-app)
+                       response
+                       wrap-page))
+              ;;!! login / logout
               (GET "/login" []
                    (-> (pages/dash-login)
                        response
@@ -428,31 +513,53 @@
                    (-> (redirect "/dashboard/login")
                        (set-cookie "token" "null" {:max-age -1})
                        (set-cookie "user-id" "null" {:max-age -1})))
-              (GET "/all" []
-                   (-> (pages/dashboard (conn) :all true)
+              ;;!! dash maps
+              (GET "/dash-map-orders" []
+                   (-> (pages/dash-map :callback-s
+                                       "dashboard_cljs.core.init_map_orders")
                        response
                        wrap-page))
-              (GET "/declined" []
-                   (-> (pages/declined (conn))
+              (GET "/dash-map-couriers" []
+                   (-> (pages/dash-map :callback-s
+                                       "dashboard_cljs.core.init_map_couriers")
                        response
                        wrap-page))
-              (GET "/generate-stats-csv" []
-                   (do (future (analytics/gen-stats-csv))
-                       (response {:success true})))
-              (GET "/download-stats-csv" []
-                   (-> (response (java.io.File. "stats.csv"))
-                       (header "Content-Type:"
-                               "text/csv; name=\"stats.csv\"")
-                       (header "Content-Disposition"
-                               "attachment; filename=\"stats.csv\"")))
-              (GET "/status-stats-csv" []
+              ;;!! couriers
+              ;; return all couriers
+              ;; get a courier by id
+              (GET "/courier/:id" [id]
+                   (let [db-conn (conn)]
+                     (response
+                      (into []
+                            (->> (couriers/get-by-id db-conn id)
+                                 list
+                                 (users/include-user-data db-conn)
+                                 (couriers/include-lateness db-conn))))))
+              ;; update a courier
+              ;; currently, only the zones can be updated
+              (POST "/courier" {body :body}
+                    (let [b (keywordize-keys body)
+                          db-conn (conn)]
+                      (response (users/update-courier-zones!
+                                 db-conn
+                                 (:id b)
+                                 (:zones b)))))
+              (POST "/couriers" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:couriers (->> (couriers/all-couriers db-conn)
+                                       (users/include-user-data db-conn)
+                                       (couriers/include-lateness db-conn))})))
+              ;;!! users
+              (GET "/users" []
                    (response
-                    (let [stats-file (java.io.File. "stats.csv")]
-                      (if (> (.length stats-file) 0)
-                        {:processing? false
-                         :timestamp (quot (.lastModified stats-file)
-                                          1000)}
-                        {:processing? true}))))
+                    (into []
+                          (users/dash-users (conn)))))
+              (GET "/users-count" []
+                   (response
+                    (into []
+                          (!select (conn) "users" ["COUNT(*) as total"] {}))))
               (POST "/send-push-to-all-active-users" {body :body}
                     (response
                      (let [b (keywordize-keys body)]
@@ -464,9 +571,88 @@
                        (pages/send-push-to-users-list (conn)
                                                       (:message b)
                                                       (:user-ids b)))))
-              ;; Dashboard admin cancels order
+              ;;!! coupons
+              ;; get a coupon by code
+              (GET "/coupon/:code" [code]
+                   (response
+                    (into []
+                          (->> (coupons/get-coupon-by-code (conn) code)
+                               convert-timestamp
+                               list))))
+              ;; edit an existing coupon
+              (PUT "/coupon" {body :body}
+                   (let [b (keywordize-keys body)]
+                     (response
+                      (coupons/update-standard-coupon! (conn) b))))
+              ;; create a new coupon
+              (POST "/coupon" {body :body}
+                    (let [b (keywordize-keys body)]
+                      (response
+                       (coupons/create-standard-coupon! (conn) b)
+                       )))
+              ;; get the current coupon codes
+              (GET "/coupons" []
+                   (response
+                    (into []
+                          (-> (coupons/coupons (conn))
+                              (convert-timestamps)))))
+              ;;!! zones
+              ;; get a zone by its id
+              (GET "/zone/:id" [id]
+                   (response
+                    (into []
+                          (->> (zones/get-zone-by-id (conn) id)
+                               (zones/read-zone-strings)
+                               list))))
+              ;; update a zone's description. Currently only supports
+              ;; updating fuel_prices, service_fees and service_time_bracket
+              (PUT "/zone" {body :body}
+                   (let [b (keywordize-keys body)
+                         db-conn (conn)]
+                     (response
+                      (zones/validate-and-update-zone! db-conn b))))
+              ;; return all zones
+              (GET "/zones" []
+                   (response
+                    ;; needed because cljs.reader/read-string can't handle
+                    ;; keywords that begin with numbers
+                    (mapv
+                     #(assoc %
+                             :fuel_prices (stringify-keys
+                                           (read-string (:fuel_prices %)))
+                             :service_fees (stringify-keys
+                                            (read-string (:service_fees %)))
+                             :service_time_bracket (read-string
+                                                    (:service_time_bracket %)))
+                     (into [] (dispatch/get-all-zones-from-db (conn))))))
+              ;; return ZCTA defintions for zips
+              (POST "/zctas" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       {:zctas
+                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
+              ;;!! orders
+              ;; given an order id, get the detailed information for that
+              ;; order
+              (POST "/order"  {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (if (:id b)
+                         (into []
+                               (->>
+                                [(orders/get-by-id db-conn
+                                                   (:id b))]
+                                (orders/include-user-name-phone-and-courier
+                                 db-conn)
+                                (orders/include-vehicle db-conn)
+                                (orders/include-zone-info)
+                                (orders/include-eta db-conn)
+                                (orders/include-was-late)))
+                         []))))
+              ;; cancel the order
               (POST "/cancel-order" {body :body}
-                    ;; cancel the order
                     (response
                      (let [b (keywordize-keys body)
                            db-conn (conn)]
@@ -494,34 +680,6 @@
                        (orders/assign-to-courier-by-admin db-conn
                                                           (:order_id b)
                                                           (:courier_id b)))))
-              (GET "/dash-map-orders" []
-                   (-> (pages/dash-map :callback-s
-                                       "dashboard_cljs.core.init_map_orders")
-                       response
-                       wrap-page))
-              (GET "/dash-map-couriers" []
-                   (-> (pages/dash-map :callback-s
-                                       "dashboard_cljs.core.init_map_couriers")
-                       response
-                       wrap-page))
-              ;; given an order id, get the detailed information for that
-              ;; order
-              (POST "/order"  {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       (if (:id b)
-                         (into []
-                               (->>
-                                [(orders/get-by-id db-conn
-                                                   (:id b))]
-                                (orders/include-user-name-phone-and-courier
-                                 db-conn)
-                                (orders/include-vehicle db-conn)
-                                (orders/include-zone-info)
-                                (orders/include-eta db-conn)
-                                (orders/include-was-late)))
-                         []))))
               ;; given a date in the format YYYY-MM-DD, return all orders
               ;; that have occurred since then
               (POST "/orders-since-date"  {body :body}
@@ -539,101 +697,25 @@
                                  ;;(orders/include-eta db-conn)
                                  (orders/include-was-late)
                                  )))))
-              ;; return all couriers
-              (POST "/couriers" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       {:couriers (->> (couriers/all-couriers db-conn)
-                                       (users/include-user-data db-conn)
-                                       (couriers/include-lateness db-conn))})))
-              ;; get a courier by id
-              (GET "/courier/:id" [id]
-                   (let [db-conn (conn)]
-                     (response
-                      (into []
-                            (->> (couriers/get-by-id db-conn id)
-                                 list
-                                 (users/include-user-data db-conn)
-                                 (couriers/include-lateness db-conn))))))
-              ;; update a courier
-              ;; currently, only the zones can be updated
-              (POST "/courier" {body :body}
-                    (let [b (keywordize-keys body)
-                          db-conn (conn)]
-                      (response (users/update-courier-zones!
-                                 db-conn
-                                 (:id b)
-                                 (:zones b)))))
-              ;; return all users
-              (GET "/users" []
+              ;;!! analytics
+              (GET "/status-stats-csv" []
                    (response
-                    (into []
-                          (users/dash-users (conn)))))
-              ;; return all users
-              (GET "/users-count" []
-                   (response
-                    (into []
-                          (!select (conn) "users" ["COUNT(*) as total"] {}))))
-              ;; get the current coupon codes
-              (GET "/coupons" []
-                   (response
-                    (into []
-                          (-> (coupons/coupons (conn))
-                              (convert-timestamps)))))
-              ;; get a coupon by code
-              (GET "/coupon/:code" [code]
-                   (response
-                    (into []
-                          (->> (coupons/get-coupon-by-code (conn) code)
-                               convert-timestamp
-                               list))))
-              ;; create a new coupon
-              (POST "/coupon" {body :body}
-                    (let [b (keywordize-keys body)]
-                      (response
-                       (coupons/create-standard-coupon! (conn) b)
-                       )))
-              ;; edit an existing coupon
-              (PUT "/coupon" {body :body}
-                   (let [b (keywordize-keys body)]
-                     (response
-                      (coupons/update-standard-coupon! (conn) b))))
-              ;; return ZCTA defintions for zips
-              (POST "/zctas" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       {:zctas
-                        (dispatch/get-zctas-for-zips db-conn (:zips b))})))
-              ;; return all zones
-              (GET "/zones" []
-                   (response
-                    ;; needed because cljs.reader/read-string can't handle
-                    ;; keywords that begin with numbers
-                    (mapv
-                     #(assoc %
-                             :fuel_prices (stringify-keys
-                                           (read-string (:fuel_prices %)))
-                             :service_fees (stringify-keys
-                                            (read-string (:service_fees %)))
-                             :service_time_bracket (read-string
-                                                    (:service_time_bracket %)))
-                     (into [] (dispatch/get-all-zones-from-db (conn))))))
-              ;; get a zone by its id
-              (GET "/zone/:id" [id]
-                   (response
-                    (into []
-                          (->> (zones/get-zone-by-id (conn) id)
-                               (zones/read-zone-strings)
-                               list))))
-              ;; update a zone's description. Currently only supports
-              ;; updating fuel_prices, service_fees and service_time_bracket
-              (PUT "/zone" {body :body}
-                   (let [b (keywordize-keys body)
-                         db-conn (conn)]
-                     (response
-                      (zones/validate-and-update-zone! db-conn b)))))))
+                    (let [stats-file (java.io.File. "stats.csv")]
+                      (if (> (.length stats-file) 0)
+                        {:processing? false
+                         :timestamp (quot (.lastModified stats-file)
+                                          1000)}
+                        {:processing? true}))))
+              ;; generate analytics file
+              (GET "/generate-stats-csv" []
+                   (do (future (analytics/gen-stats-csv))
+                       (response {:success true})))
+              (GET "/download-stats-csv" []
+                   (-> (response (java.io.File. "stats.csv"))
+                       (header "Content-Type:"
+                               "text/csv; name=\"stats.csv\"")
+                       (header "Content-Disposition"
+                               "attachment; filename=\"stats.csv\""))))))
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []
