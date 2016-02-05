@@ -460,16 +460,18 @@ and their id matches the order's courier_id"
 
 ;; note that it takes order-id, not order
 (defn assign
-  [db-conn order-id courier-id]
+  [db-conn order-id courier-id & {:keys [no-reassigns]}]
   (let [o (get-by-id db-conn order-id)
         send-push (resolve 'purple.users/send-push)
         text-user (resolve 'purple.users/text-user)]
-    (update-status db-conn order-id "assigned")
-    (!update db-conn "orders" {:courier_id courier-id} {:id order-id})
-    (set-courier-busy db-conn courier-id true)
-    (send-push db-conn courier-id "You have been assigned a new order.")
-    (text-user db-conn courier-id (new-order-text db-conn o true))
-    {:success true}))
+    (when (or (not no-reassigns)
+              (= "unassigned" (:status o)))
+      (update-status db-conn order-id "assigned")
+      (!update db-conn "orders" {:courier_id courier-id} {:id order-id})
+      (set-courier-busy db-conn courier-id true)
+      (send-push db-conn courier-id "You have been assigned a new order.")
+      (text-user db-conn courier-id (new-order-text db-conn o true))
+      {:success true})))
 
 (defn stamp-with-refund
   "Give it a refund object from Stripe."

@@ -301,8 +301,18 @@
   [db-conn]
   (let [os (orders/get-all-current db-conn)
         cs (couriers/get-all-on-duty db-conn)]
+    (!insert
+     db-conn
+     "state_log"
+     {:data
+      (str {:current-orders (map #(select-keys % [:id :status :courier_id]) os)
+            :on-duty-couriers (map #(select-keys % [:id :active :on_duty
+                                                    :connected :busy :zones
+                                                    :gallons_87 :gallons_91
+                                                    :lat :lng :last_ping]) cs)})})
     (when (diff-state? os cs)
-      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %)))
+      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %))
+                            :no-reassigns true)
             (new-assignments os cs)))))
 
 (defn process

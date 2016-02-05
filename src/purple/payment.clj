@@ -28,11 +28,15 @@
 
 (defn create-stripe-customer
   [user-id stripe-token]
-  (try (stripe-req "post"
-                   "customers"
-                   {:description (str "Purple ID: " user-id)
-                    :card stripe-token})
-       (catch Exception e false)))
+  (try (let [resp (stripe-req "post"
+                              "customers"
+                              {:description (str "Purple ID: " user-id)
+                               :card stripe-token})]
+         {:success (not (:error resp))
+          :resp resp})
+       (catch Exception e
+         {:success false
+          :resp {:error {:message "Unknown error #39."}}})))
 
 (defn get-stripe-customer
   [customer-id]
@@ -40,10 +44,14 @@
 
 (defn add-stripe-card
   [customer-id stripe-token]
-  (try (stripe-req "post"
-                   (str "customers/" customer-id "/cards")
-                   {:card stripe-token})
-       (catch Exception e false)))
+  (try (let [resp (stripe-req "post"
+                              (str "customers/" customer-id "/cards")
+                              {:card stripe-token})]
+         {:success (not (:error resp))
+          :resp resp})
+       (catch Exception e
+         {:success false
+          :resp {:error {:message "Unknown error #50."}}})))
 
 (defn delete-stripe-card
   [customer-id card-id]
