@@ -1,5 +1,12 @@
 package purpleOpt;
 
+/*
+ * Version: FEB-03-2016
+ * Change log: 
+ *	 1. added getArtificialDistance
+ *   2. detects errors in Google API results and fall back to getArtificialDistance
+ */
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -61,7 +68,7 @@ public class PurpleOpt {
 	/* travel time's factor in score computation, minimal is 1 (no penalty) */
 	static double travel_time_factor = 2.5;
 	/* the factor that converts l1 distance of lat-lng to driving seconds during artificial time computation */
-	static double l1ToDistanceTimeFactor = 150.0;
+	static double l1ToDistanceTimeFactor = 150*100;
 	
     /*
     INPUT:
@@ -510,36 +517,68 @@ public class PurpleOpt {
 			while ((line = reader.readLine()) != null) {
 				outputString += line;
 			}
-
+			
 			// initialize the JSON parser
 			JSONParser parser=new JSONParser();
+
+			// check outer status;
 			JSONArray json_array = (JSONArray)parser.parse("[" + outputString + "]");
-			JSONArray rows = (JSONArray)((JSONObject) json_array.get(0)).get("rows");
-			
+			if(!((String)((JSONObject)json_array.get(0)).get("status")).equals("OK")){
+				if (bPrint)
+					System.out.println("Google result error");
+				mtxSeconds = getArtificialDistance(org_latlngs, dest_latlngs);
+				return mtxSeconds;
+			}
+
+			JSONArray rows = (JSONArray)((JSONObject) json_array.get(0)).get("rows"); 
 			JSONObject row;	// each row corresponds to an origin (courier)
 			JSONArray elements;	// each element corresponds to a destination (order)
 			JSONObject element;
 			String resp_status;
 			Long resp_seconds;
-
+            
+			// check number of origins returned
+			if(rows.size() != nOrgs){
+				if (bPrint)
+					System.out.println("Google result error for all origins");
+				mtxSeconds = getArtificialDistance(org_latlngs, dest_latlngs);
+				return mtxSeconds;
+			}
+			
 			// loop through the results
 			for (int i = 0; i < rows.size(); i++) {
 				// get the row and its elements
 				row = (JSONObject) rows.get(i);
 				elements = (JSONArray) row.get("elements");
+
 				// create element array for seconds
-				rowSeconds = new ArrayList<Integer> (elements.size());
-				// loop through the elements
-				for (int j = 0; j < elements.size(); j++) {
-					element = (JSONObject) elements.get(j);
-					resp_status = (String)element.get("status");
-					if (resp_status.equals("OK")) {
-						resp_seconds = (Long)((JSONObject)element.get("duration")).get("value");
-						rowSeconds.add(resp_seconds.intValue());
+				rowSeconds = new ArrayList<Integer> (nDests);
+				
+				// check the number of destinations returned for this origin
+				if(elements.size() != nDests){
+					if (bPrint)
+						System.out.println("Google result error for the " + i + "-th origin");
+					String origin = org_latlngs.get(i);
+					for(int j = 0; j< nDests; j++) {
+						String dest = dest_latlngs.get(j);
+						rowSeconds.add(getArtificialDistance(origin, dest));
 					}
-					else {
-						// set 0 second if the response status is not "OK"
-						rowSeconds.add(0);
+				}
+				else {
+					// loop through the elements
+					for (int j = 0; j < nDests; j++) {
+						element = (JSONObject) elements.get(j);
+						resp_status = (String)element.get("status");
+						if (resp_status.equals("OK")) {
+							resp_seconds = (Long)((JSONObject)element.get("duration_in_traffic")).get("value");
+							rowSeconds.add(resp_seconds.intValue());
+						}
+						else {
+							// go to artificial if the response status is not "OK"
+							String origin = org_latlngs.get(i);
+							String dest = dest_latlngs.get(j);
+							rowSeconds.add(getArtificialDistance(origin, dest));
+						}
 					}
 				}
 				// add the row to the output nested list mtxSeconds
@@ -548,9 +587,61 @@ public class PurpleOpt {
 			return mtxSeconds;
 
 		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
+				if (bPrint)
+					System.out.println("Google connection error");
+				mtxSeconds = getArtificialDistance(org_latlngs,dest_latlngs);
+				return mtxSeconds;
 		}
+	}
+	
+	// single-origin single-dest artificial distance computing
+	static Integer getArtificialDistance(String org_latlngs, String dest_latlngs){
+		//get origin position
+		String[] strOrg = null;
+		strOrg = org_latlngs.split(",");
+		Double origin_lat = Double.parseDouble(strOrg[0]);
+		Double origin_lng = Double.parseDouble(strOrg[1]);
+		//get dest position
+		String[] strDest = null;   
+	    strDest = dest_latlngs.split(",");
+	    Double dest_lat = Double.parseDouble(strDest[0]);
+	    Double dest_lng = Double.parseDouble(strDest[1]);
+	    //calculate distance
+	    Integer dist = getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng);
+	    return dist;
+		
+	}
+	
+	// multi-origins multi-dests artificial distance computing
+	static List<List<Integer>> getArtificialDistance(List<String> org_latlngs, List<String> dest_latlngs){
+		int nOrgs = org_latlngs.size();
+		int nDests = dest_latlngs.size();
+		List<Integer> rowSeconds;
+		List<List<Integer>> mtxSeconds = new ArrayList<List<Integer>>(nOrgs);
+		
+		for(int i = 0; i < nOrgs; i++)
+		{
+			rowSeconds = new ArrayList<Integer> (nDests);
+			// abstract origin lat and lng from input string
+			 String[] strOrg = null;   
+		     strOrg = (org_latlngs.get(i)).split(",");
+		     // transform string to double;
+		     Double origin_lat = Double.parseDouble(strOrg[0]);
+		     Double origin_lng = Double.parseDouble(strOrg[1]);
+		     for(int j = 0; j<nDests; j++)
+			 {
+		    	// abstract origin lat and lng from input string
+				 String[] strDest = null;   
+			     strDest = (dest_latlngs.get(j)).split(",");
+			     // transform string to double;
+			     Double dest_lat = Double.parseDouble(strDest[0]);
+			     Double dest_lng = Double.parseDouble(strDest[1]);
+			     
+			     rowSeconds.add(getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng));
+			 }
+		     mtxSeconds.add(rowSeconds);
+		}
+		return mtxSeconds;
 	}
 	
 	static long getCurrUnixTime(HashMap<String, Object>input, boolean human_time_format){
@@ -844,20 +935,34 @@ public class PurpleOpt {
 			// initial JSON parser
 			JSONParser parser=new JSONParser();
 			JSONArray json_array = (JSONArray)parser.parse("[" + outputString + "]");
-			JSONObject row_0_element_0 = (JSONObject)((JSONArray)((JSONObject)((JSONArray)((JSONObject) json_array.get(0)).get("rows")).get(0)).get("elements")).get(0);
-
-			// check if "status" is "OK" in the JSON
-			String resp_status = (String)row_0_element_0.get("status");
+			
+			// check outer status
+			String resp_status = (String)((JSONObject) json_array.get(0)).get("status");
 			if (resp_status.equals("OK")) {
-				// parse JSON for the seconds
-				Long resp_seconds = (Long)((JSONObject)row_0_element_0.get("duration")).get("value");
-				seconds = resp_seconds.intValue();
-			}
+				// get result element
+				JSONObject row_0_element_0 = (JSONObject)((JSONArray)((JSONObject)((JSONArray)((JSONObject) json_array.get(0)).get("rows")).get(0)).get("elements")).get(0);
+
+				// check if "status" is "OK" in the JSON
+				resp_status = (String)row_0_element_0.get("status");
+				if (resp_status.equals("OK")) {
+					// parse JSON for the seconds
+					Long resp_seconds = (Long)((JSONObject)row_0_element_0.get("duration_in_traffic")).get("value");
+					seconds = resp_seconds.intValue();
+				}
+				else {
+					if (bPrint)
+						System.out.println("Google result inner error");
+					seconds = getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng); 
+				}
+			} 
 			else {
 				if (bPrint)
-					System.out.println("Google zero result");
-				return getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng); 
+					System.out.println("Google result outer error");
+				seconds = getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng); 
 			}
+
+			return seconds;
+
 		} catch (Exception e) {
 			// e.printStackTrace();
 			if (bPrint)
@@ -865,7 +970,6 @@ public class PurpleOpt {
 			return getArtificialDistance(origin_lat, origin_lng, dest_lat, dest_lng);
 		}
 
-		return seconds;
 	}
 	
 	/* used for offline and non-google distance computation */
