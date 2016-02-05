@@ -584,7 +584,8 @@
                 
                 (:card body)
                 (merge-unless-failed
-                 (let [card (:card body)]
+                 (let [card (:card body)
+                       _ (println "test!")]
                    (case (:action card)
                      "delete" (delete-card db-conn user-id (:id card))
                      "makeDefault" (set-default-card db-conn user-id (:id card))
