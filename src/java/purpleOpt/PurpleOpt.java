@@ -371,8 +371,8 @@ public class PurpleOpt {
 			// get the order status
 			String order_status = (String) order.get("status");
 			
-			// check if the order is unassigned
-			if (order_status.equals("unassigned")) {
+			// check if the order is neither complete or cancelled
+			if (!(order_status.equals("complete")||order_status.equals("cancelled"))) {
 				// create a Hashmap for this order
 				HashMap<String, Object> outOrder = new HashMap<String, Object>();
 				// put this order in the output hashmap
