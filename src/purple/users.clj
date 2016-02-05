@@ -492,16 +492,16 @@
 (def cc-fields-to-keep [:id :last4 :brand])
 
 (defn update-user-stripe-fields
-  [db-conn user-id customer-resp]
+  [db-conn user-id customer]
   (!update db-conn
            "users"
-           {:stripe_customer_id (:id customer-resp)
-            :stripe_cards (->> customer-resp
+           {:stripe_customer_id (:id customer)
+            :stripe_cards (->> customer
                                :cards
                                :data
                                (map #(select-keys % cc-fields-to-keep))
                                generate-string)
-            :stripe_default_card (:default_card customer-resp)}
+            :stripe_default_card (:default_card customer)}
            {:id user-id}))
 
 (defn set-default-card
@@ -509,7 +509,7 @@
   (let [user (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id user)
         customer-resp (payment/set-default-stripe-card customer-id card-id)]
-    (update-user-stripe-fields db-conn user-id customer-resp)))
+    (update-user-stripe-fields db-conn user-id (:resp customer-resp))))
 
 (defn add-card
   "Add card. If user's first card, create Stripe customer object (+ card) instead."
@@ -536,62 +536,62 @@
         customer-id (:stripe_customer_id user)
         customer-resp (do (payment/delete-stripe-card customer-id card-id)
                           (payment/get-stripe-customer customer-id))]
-    (update-user-stripe-fields db-conn user-id customer-resp)))
+    (update-user-stripe-fields db-conn user-id (:resp customer-resp))))
 
 (defn edit
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id body]
-  (let [merge-unless-failed (fn [x y] (merge x (when (:success x) y)))]
-    (unless-p :success
-              (cond-> {:success true}
-                (:user body)
-                (merge-unless-failed
-                 (let [user (update (:user body) :name s/trim)
-                       phone-number (:phone_number user)
-                       name (:name user)
-                       email (:email user)]
-                   (cond
-                     (and name (not (valid-name? name)))
-                     {:success false
-                      :message "Please enter your full name."}
-                     
-                     (and phone-number (not (valid-phone-number? phone-number)))
-                     {:success false
-                      :message "Please enter a valid phone number."}
+  (let [merge-unless-failed (fn [x y] (merge x (when (:success x) y)))
+        result (cond-> {:success true}
+                 (:user body)
+                 (merge-unless-failed
+                  (let [user (update (:user body) :name s/trim)
+                        phone-number (:phone_number user)
+                        name (:name user)
+                        email (:email user)]
+                    (cond
+                      (and name (not (valid-name? name)))
+                      {:success false
+                       :message "Please enter your full name."}
+                      
+                      (and phone-number (not (valid-phone-number? phone-number)))
+                      {:success false
+                       :message "Please enter a valid phone number."}
 
-                     (and email
-                          (or (not (valid-email? email))
-                              (and (= (id->type user-id) "native")
-                                   (not (email-available? db-conn
-                                                          email
-                                                          :ignore-user-id
-                                                          user-id)))))
-                     {:success false
-                      :message "Email Address is incorrectly formatted or is already associated with an account."}
+                      (and email
+                           (or (not (valid-email? email))
+                               (and (= (id->type user-id) "native")
+                                    (not (email-available? db-conn
+                                                           email
+                                                           :ignore-user-id
+                                                           user-id)))))
+                      {:success false
+                       :message "Email Address is incorrectly formatted or is already associated with an account."}
 
-                     :else (update-user db-conn user-id user))))
-                
-                (:vehicle body)
-                (merge-unless-failed
-                 (let [vehicle (:vehicle body)]
-                   (if (= "new" (:id vehicle))
-                     (add-vehicle db-conn user-id vehicle)
-                     (update-vehicle db-conn user-id vehicle))))
+                      :else (update-user db-conn user-id user))))
+                 
+                 (:vehicle body)
+                 (merge-unless-failed
+                  (let [vehicle (:vehicle body)]
+                    (if (= "new" (:id vehicle))
+                      (add-vehicle db-conn user-id vehicle)
+                      (update-vehicle db-conn user-id vehicle))))
 
-                (:saved_locations body)
-                (merge-unless-failed
-                 (update-saved-locations db-conn user-id (:saved_locations body)))
-                
-                (:card body)
-                (merge-unless-failed
-                 (let [card (:card body)
-                       _ (println "test!")]
-                   (case (:action card)
-                     "delete" (delete-card db-conn user-id (:id card))
-                     "makeDefault" (set-default-card db-conn user-id (:id card))
-                     ;; adding a card will also make it default
-                     nil (add-card db-conn user-id (:stripe_token card))))))
-              (details db-conn user-id))))
+                 (:saved_locations body)
+                 (merge-unless-failed
+                  (update-saved-locations db-conn user-id (:saved_locations body)))
+                 
+                 (:card body)
+                 (merge-unless-failed
+                  (let [card (:card body)]
+                    (case (:action card)
+                      "delete" (delete-card db-conn user-id (:id card))
+                      "makeDefault" (set-default-card db-conn user-id (:id card))
+                      ;; adding a card will also make it default
+                      nil (add-card db-conn user-id (:stripe_token card))))))]
+    (if (:success result)
+      (details db-conn user-id)
+      result)))
 
 ;; This can be simplified to remove the user lookup, once we are using the Live
 ;; APNS App ARN for both customer and courier accounts. However, currently the
