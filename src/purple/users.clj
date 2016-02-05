@@ -519,13 +519,16 @@
         customer-resp
         (if (s/blank? customer-id)
           (payment/create-stripe-customer user-id stripe-token)
-          (when-let [card-resp (payment/add-stripe-card customer-id stripe-token)]
-            (payment/set-default-stripe-card customer-id (:id card-resp))))]
-    (if customer-resp
+          (let [card-resp (payment/add-stripe-card customer-id stripe-token)]
+            (if (:success card-resp)
+              (payment/set-default-stripe-card customer-id (-> card-resp :resp :id))
+              card-resp)))]
+    (if (:success customer-resp)
       (do (segment/track segment-client user-id "Add Credit Card")
-          (update-user-stripe-fields db-conn user-id customer-resp))
-      {:success false
-       :message "Sorry, we weren't able to get that card to work."})))
+          (update-user-stripe-fields db-conn user-id (:resp customer-resp)))
+      (do (segment/track segment-client user-id "Failed to Add Credit Card")
+          {:success false
+           :message (-> customer-resp :resp :error :message)}))))
 
 (defn delete-card
   [db-conn user-id card-id]
