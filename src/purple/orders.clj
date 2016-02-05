@@ -176,7 +176,7 @@
    user-id
    referral-gallons-used
    zip-code     ;; String
-   ]
+   & {:keys [bypass-zip-code-check]}]
   (max 0
        (+ (* ((keyword octane)
               ((resolve 'purple.dispatch/get-fuel-prices) zip-code))
@@ -186,12 +186,18 @@
           ((keyword (str time))
            ((resolve 'purple.dispatch/get-service-fees) zip-code))
           (if-not (s/blank? coupon-code)
-            (:value (coupons/code->value db-conn coupon-code vehicle-id user-id))
+            (:value (coupons/code->value
+                     db-conn
+                     coupon-code
+                     vehicle-id
+                     user-id
+                     zip-code
+                     :bypass-zip-code-check bypass-zip-code-check))
             0))))
 
 (defn valid-price?
   "Is the stated 'total_price' accurate?"
-  [db-conn o]
+  [db-conn o & {:keys [bypass-zip-code-check]}]
   (= (:total_price o)
      (calculate-cost db-conn
                      (:gas_type o)
@@ -201,7 +207,8 @@
                      (:vehicle_id o)
                      (:user_id o)
                      (:referral_gallons_used o)
-                     (:address_zip o))))
+                     (:address_zip o)
+                     :bypass-zip-code-check bypass-zip-code-check)))
 
 (defn valid-time-limit?
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
@@ -269,7 +276,7 @@
 
 (defn add
   "The user-id given is assumed to have been auth'd already."
-  [db-conn user-id order]
+  [db-conn user-id order & {:keys [bypass-zip-code-check]}]
   (let [time-limit (case (:time order)
                      ;; these are under the old system
                      "< 1 hr" 60
@@ -306,7 +313,7 @@
                  :coupon_code (format-coupon-code (or (:coupon_code order) "")))]
 
     (cond
-      (not (valid-price? db-conn o))
+      (not (valid-price? db-conn o :bypass-zip-code-check bypass-zip-code-check))
       {:success false
        :message (str "Sorry, the price changed while you were creating your "
                      "order. Please press the back button TWICE to go back to the "

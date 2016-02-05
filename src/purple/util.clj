@@ -10,7 +10,8 @@
             [clj-aws.core :as aws]
             [clj-aws.sns :as sns]
             [environ.core :refer [env]]
-            [ardoq.analytics-clj :as segment])
+            [ardoq.analytics-clj :as segment]
+            [version-clj.core :as version])
   (:import [com.amazonaws.services.sns AmazonSNSClient]
            [com.amazonaws.services.sns.model Topic CreateTopicRequest
             DeleteTopicRequest DeleteEndpointRequest GetTopicAttributesRequest
@@ -62,6 +63,11 @@
   (when-not (nil? v) [k v]))
 
 (defn split-on-comma [x] (s/split x #","))
+
+(defn ver<
+  "Same as <, but works on version number strings (e.g., 2.13.0)."
+  [x y]
+  (= -1 (version/version-compare x y)))
 
 (defn zones-str->set
   [zones]
