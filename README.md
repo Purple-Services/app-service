@@ -236,6 +236,10 @@ Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your
 
     lein beanstalk deploy development
 
+## Conventions & Style
+
+Generally, try to follow: https://github.com/bbatsov/clojure-style-guide
+
 ## License
 
 Copyright © 2015 Purple Services Inc

@@ -17,22 +17,25 @@
 
 (defn stripe-req
   [method endpoint & [params headers]]
-  (let [opts (merge-with merge 
-                         common-opts
-                         {:form-params params}
-                         {:headers headers})
-        resp ((resolve (symbol "clj-http.client" method))
-              (str config/stripe-api-url endpoint)
-              opts)]
-    (:body resp)))
+  (try (let [opts (merge-with merge 
+                              common-opts
+                              {:form-params params}
+                              {:headers headers})
+             resp (:body ((resolve (symbol "clj-http.client" method))
+                          (str config/stripe-api-url endpoint)
+                          opts))]
+         {:success (not (:error resp))
+          :resp resp})
+       (catch Exception e
+         {:success false
+          :resp {:error {:message "Unknown error."}}})))
 
 (defn create-stripe-customer
   [user-id stripe-token]
-  (try (stripe-req "post"
-                   "customers"
-                   {:description (str "Purple ID: " user-id)
-                    :card stripe-token})
-       (catch Exception e false)))
+  (stripe-req "post"
+              "customers"
+              {:description (str "Purple ID: " user-id)
+               :card stripe-token}))
 
 (defn get-stripe-customer
   [customer-id]
@@ -40,10 +43,9 @@
 
 (defn add-stripe-card
   [customer-id stripe-token]
-  (try (stripe-req "post"
-                   (str "customers/" customer-id "/cards")
-                   {:card stripe-token})
-       (catch Exception e false)))
+  (stripe-req "post"
+              (str "customers/" customer-id "/cards")
+              {:card stripe-token}))
 
 (defn delete-stripe-card
   [customer-id card-id]
@@ -56,27 +58,28 @@
               (str "customers/" customer-id)
               {:default_card card-id}))
 
+;; this should be refactored since it confuses by changing the meaning of :success
 (defn auth-charge-stripe-customer
   "Authorize a charge on a Stripe customer object. Amount in cents."
   [customer-id order-id amount description receipt-email]
   (let [idempotency-key order-id
-        resp (stripe-req "post"
-                         "charges"
-                         {:customer customer-id
-                          :amount amount
-                          :capture false
-                          :currency config/default-currency
-                          :description description
-                          :receipt_email receipt-email
-                          :metadata {:order_id order-id}}
-                         {:Idempotency-Key idempotency-key})]
+        resp (:resp (stripe-req "post"
+                                "charges"
+                                {:customer customer-id
+                                 :amount amount
+                                 :capture false
+                                 :currency config/default-currency
+                                 :description description
+                                 :receipt_email receipt-email
+                                 :metadata {:order_id order-id}}
+                                {:Idempotency-Key idempotency-key}))]
     {:success (boolean (:paid resp))
      :charge resp}))
 
 (defn capture-stripe-charge
   "Captures an authorized charge."
   [charge-id]
-  (let [resp (stripe-req "post" (str "charges/" charge-id "/capture"))]
+  (let [resp (:resp (stripe-req "post" (str "charges/" charge-id "/capture")))]
     (if (:captured resp)
       {:success true
        :charge resp}
@@ -91,7 +94,7 @@
 (defn refund-stripe-charge
   "Refunds a Stripe charge. Use on auth'd charges whether or not captured."
   [charge-id]
-  (let [resp (stripe-req "post" (str "charges/" charge-id "/refunds"))]
+  (let [resp (:resp (stripe-req "post" (str "charges/" charge-id "/refunds")))]
     (if (:id resp)
       {:success true
        :refund resp}
