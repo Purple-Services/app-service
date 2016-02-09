@@ -311,27 +311,36 @@
 
     (cond
       (not (valid-price? db-conn o :bypass-zip-code-check bypass-zip-code-check))
-      {:success false
-       :message (str "Sorry, the price changed while you were creating your "
-                     "order. Please press the back button TWICE to go back to the "
-                     "map and start over.")}
+      (do (segment/track segment-client (:user_id o) "Request Order Failed"
+                         (assoc (segment-props o)
+                                :reason "price-changed-during-review"))
+          {:success false
+           :message (str "Sorry, the price changed while you were creating your "
+                         "order. Please press the back button TWICE to go back "
+                         "to the map and start over.")})
 
       (not (valid-time-limit? db-conn o))
-      {:success false
-       :message (str "Sorry, we currently are experiencing high demand and "
-                     "can't promise a delivery within that time limit. Please "
-                     "go back and choose the \"within 3 hours\" option.")}
+      (do (segment/track segment-client (:user_id o) "Request Order Failed"
+                         (assoc (segment-props o)
+                                :reason "high-demand"))
+          {:success false
+           :message (str "Sorry, we currently are experiencing high demand and "
+                         "can't promise a delivery within that time limit. Please "
+                         "go back and choose the \"within 3 hours\" option.")})
 
       (not (within-time-bracket? o))
-      {:success false
-       :message (let [service-time-bracket
-                      ((resolve 'purple.dispatch/get-service-time-bracket)
-                       (:address_zip o))]
-                  (str "Sorry, the service hours for this ZIP code are "
-                       (minute-of-day->hmma (first service-time-bracket))
-                       " to "
-                       (minute-of-day->hmma (last service-time-bracket))
-                       " today."))}
+      (do (segment/track segment-client (:user_id o) "Request Order Failed"
+                         (assoc (segment-props o)
+                                :reason "outside-service-hours"))
+          {:success false
+           :message (let [service-time-bracket
+                          ((resolve 'purple.dispatch/get-service-time-bracket)
+                           (:address_zip o))]
+                      (str "Sorry, the service hours for this ZIP code are "
+                           (minute-of-day->hmma (first service-time-bracket))
+                           " to "
+                           (minute-of-day->hmma (last service-time-bracket))
+                           " today."))})
       
       :else
       (let [auth-charge-result (if (zero? (:total_price o))
@@ -345,8 +354,11 @@
             charge-authorized? (:success auth-charge-result)]
         (if (not charge-authorized?)
           (do ;; payment failed, do not allow order to be placed
-            ;; TODO segment tracking
-            ;; send notification to us? (async?)
+            (segment/track segment-client (:user_id o) "Request Order Failed"
+                           (assoc (segment-props o)
+                                  :charge-authorized charge-authorized? ;; false
+                                  :reason "failed-charge"))
+            ;; TODO send notification to us? (async?)
             {:success false
              :message (str "Sorry, we were unable to charge your credit card. "
                            "Please go to the \"Account\" page and tap on "
