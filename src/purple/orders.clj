@@ -334,7 +334,7 @@
                        (minute-of-day->hmma (first service-time-bracket))
                        " to "
                        (minute-of-day->hmma (last service-time-bracket))
-                       " every day."))}
+                       " today."))}
       
       :else
       (do (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
