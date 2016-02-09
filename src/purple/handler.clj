@@ -544,6 +544,8 @@
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
+  (GET "/courierapp" []
+       (redirect "https://build.phonegap.com/apps/1205677/install/kP_AVprocspwUdewxfht"))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (wrap-page (response (pages/home))))
