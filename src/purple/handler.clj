@@ -12,7 +12,6 @@
             [purple.dispatch :as dispatch]
             [purple.coupons :as coupons]
             [purple.pages :as pages]
-            [purple.analytics :as analytics]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
