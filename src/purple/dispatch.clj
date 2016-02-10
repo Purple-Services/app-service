@@ -335,34 +335,6 @@
             :last_ping (quot (System/currentTimeMillis) 1000)}
            {:id user-id}))
 
-(defn update-zone!
-  "Update fuel_prices, service_fees and service_time_bracket for the zone with
-  id.
-
-  fuel-prices is an edn string map of the format
-  '{:87 <integer cents> :91 <integer cents>}'.
-
-  service-fees is an edn string map of the format
-  '{:60 <integer cents> :180 <integer cents>}'.
-
-  service-time-bracket is an edn string vector of the format
-  '[<service-start> <service-end>]' where <service-start> and <service-end>
-  are integer values of the total minutes elapsed in a day at a particular
-  time.
-
-  ex:
-  The vector [450 1350] represents the time bracket 7:30am-10:30pm where
-  7:30am is represented as 450 which is (+ (* 60 7) 30)
-  10:30pm is represened as 1350 which is (+ (* 60 22) 30)"
-  [db-conn id fuel-prices service-fees service-time-bracket]
-  (!update db-conn "zones"
-           {:fuel_prices fuel-prices
-            :service_fees service-fees
-            :service_time_bracket service-time-bracket}
-           {:id id})
-  ;; update the zones as well
-  (update-zones! db-conn))
-
 (defn courier-assigned-zones
   "Given a courier-id, return a set of all zones they are assigned to"
   [db-conn courier-id]

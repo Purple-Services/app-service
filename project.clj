@@ -26,7 +26,8 @@
                  [environ "1.0.0"] ;; for defining environments used by src/purple/config.clj
                  [analytics-clj "0.3.0"]
                  [org.clojure/algo.generic "0.1.2"]
-                 [version-clj "0.1.2"]]
+                 [version-clj "0.1.2"]
+                 [dashboard-clj "1.0.0-SNAPSHOT"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
@@ -34,7 +35,7 @@
   :ring {:handler purple.handler/app
          :auto-reload? true
          :auto-refresh? true
-         :reload-paths ["src" "resources"]}
+         :reload-paths ["src" "resources" "checkouts"]}
   :aws {:beanstalk {:environments [{:name "prod"}
                                    {:name "purple-dev-env"}]
                     :s3-bucket "leinbeanstalkpurple"
