@@ -183,17 +183,6 @@
   [db-conn code]
   (empty? (doall (!select db-conn "coupons" [:id] {:code code}))))
 
-(defn create-standard-coupon
-  [db-conn code value expiration-time]
-  (if (is-code-available? db-conn (format-coupon-code code))
-    (!insert db-conn "coupons" {:id (rand-str-alpha-num 20)
-                                :code (format-coupon-code code)
-                                :type "standard"
-                                :value value
-                                :expiration_time expiration-time})
-    {:success false
-     :message "Sorry, that code is already being used."}))
-
 ;; this could be faster if just tried the insert and then retried if failing
 ;; on duplicate unique key: code
 (defn create-referral-coupon
