@@ -37,7 +37,9 @@
                       ;; ignore sql comments
                       (clojure.string/replace #"--.*\n" "")
                       (clojure.string/split #";\n"))]
-    (map #(clojure.string/replace % #"\n" "") sql-lines)))
+    (->> sql-lines
+         (map #(clojure.string/replace % #"\n" ""))
+         (filter #(not (clojure.string/blank? %))))))
 
 (defn create-ebdb-database
   "Set up the ebdb database and grant access to it for purplemaster"
@@ -52,12 +54,14 @@
   (let [ebdb-sql (process-sql (:ebdb-create-sql db-config))
         zcta-sql (process-sql (-> (:ebdb-zcta-sql db-config)
                                   io/input-stream
-                                  GZIPInputStream.))]
+                                  GZIPInputStream.))
+        ]
     (do
       (with-connection purplemaster-ebdb-config
         (apply do-commands ebdb-sql))
       (with-connection purplemaster-ebdb-config
-        (apply do-commands zcta-sql)))))
+        (apply do-commands zcta-sql))
+      )))
 
 
 (defn get-value-of-command-line-option

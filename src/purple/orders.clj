@@ -10,7 +10,8 @@
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]
             [ardoq.analytics-clj :as segment]
-            [clojure.string :as s]))
+            [clojure.string :as s]
+            [cheshire.core :refer [generate-string]]))
 
 ;; Order status definitions
 ;; unassigned - not assigned to any courier yet
@@ -162,7 +163,12 @@
             :stripe_charge_id (:id charge)
             :stripe_customer_id_charged (:customer charge)
             :stripe_balance_transaction_id (:balance_transaction charge)
-            :time_paid (:created charge)}
+            :time_paid (:created charge)
+            :payment_info (-> charge
+                              :source
+                              (select-keys
+                               [:id :brand :exp_month :exp_year :last4])
+                              generate-string)}
            {:id order-id}))
 
 (defn calculate-cost
