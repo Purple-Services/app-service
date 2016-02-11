@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# Not very customized yet, just downloads ebdb database from server and
+# creates a sql file to be used for local development
+#
+# Usage:
+# retrieve_db <filename.sql>
+# ex:
+# $ retrieve_db database/ebdb.sql
+#
+sql_file=$1
+mysqldump -u purplemaster -pHHjdnb873HHjsnhhd -h purple-dev-db.cqxql2suz5ru.us-west-2.rds.amazonaws.com -c --ignore-table=ebdb.state_log ebdb | sed 's/utf8mb4/utf8/' > $sql_file
