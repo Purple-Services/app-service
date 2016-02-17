@@ -1,25 +1,24 @@
-(ns purple.handler
-  (:import [purpleOpt PurpleOpt])
-  (:use purple.util
-        cheshire.core
-        ring.util.response
-        clojure.walk
-        [purple.db :only [conn !select !insert !update mysql-escape-str]])
-  (:require [purple.config :as config]
-            [purple.users :as users]
-            [purple.couriers :as couriers]
-            [purple.orders :as orders]
-            [purple.dispatch :as dispatch]
-            [purple.coupons :as coupons]
-            [purple.pages :as pages]
+(ns app-service.handler
+  (:require [clojure.walk :refer [keywordize-keys]]
+            [common.db :refer [conn]]
+            [common.config :as config]
+            [common.coupons :refer [format-coupon-code]]
+            [common.orders :refer [cancel]]
+            [common.users :refer [details send-feedback valid-session?]]
+            [common.util :refer [unless-p ver<]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [clojure.string :as s]
+            [app-service.users :as users]
+            [app-service.orders :as orders]
+            [app-service.dispatch :as dispatch]
+            [app-service.coupons :as coupons]
+            [app-service.pages :as pages]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.ssl :refer [wrap-ssl-redirect]]
             [ring.middleware.json :as middleware]
-            [dashboard-clj.core :refer [dashboard dashboard-routes]]))
+            [ring.util.response :refer [header response redirect]]
+            [dashboard-service.handler :refer [dashboard]]))
 
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
@@ -34,7 +33,7 @@
 
 (defmacro demand-user-auth
   [db-conn user-id token & body]
-  `(if (users/valid-session? ~db-conn ~user-id ~token)
+  `(if (valid-session? ~db-conn ~user-id ~token)
      (do ~@body)
      {:success false
       :message "Something's wrong. Please log out and log back in."}))
@@ -159,10 +158,10 @@
                         db-conn
                         (:user_id b)
                         (:token b)
-                        (users/details db-conn
-                                       (:user_id b)
-                                       :user-meta {:app_version (:version b)
-                                                   :os (:os b)}))))))))
+                        (details db-conn
+                                 (:user_id b)
+                                 :user-meta {:app_version (:version b)
+                                             :os (:os b)}))))))))
   (context "/orders" []
            (wrap-force-ssl
             (defroutes orders-routes
@@ -214,9 +213,9 @@
                         db-conn
                         (:user_id b)
                         (:token b)
-                        (orders/cancel db-conn
-                                       (:user_id b)
-                                       (:order_id b)))))))))
+                        (cancel db-conn
+                                (:user_id b)
+                                (:order_id b)))))))))
   (context "/dispatch" []
            (wrap-force-ssl
             (defroutes dispatch-routes
@@ -302,17 +301,7 @@
                                             (:email b)))))))))
   (context "/dashboard" []
            (wrap-force-ssl
-            (dashboard
-             (conn)
-             ;; the dispatch zones atom
-             dispatch/zones
-             ;; these fn's are included and used as atoms
-             ;; in the dashboard-clj library because they are
-             ;; tightly coupled to web-service
-             orders/cancel
-             orders/update-status-by-admin
-             orders/assign-to-courier-by-admin
-             #(PurpleOpt/computeDistance %))))
+            (dashboard)))
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []

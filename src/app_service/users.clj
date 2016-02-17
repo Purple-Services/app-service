@@ -1,31 +1,23 @@
-(ns purple.users
-  (:use purple.util
-        cheshire.core
-        gapi.core
-        clojure.walk
-        [clojure.set :only [join]]
-        [purple.db :only [conn !select !insert !update mysql-escape-str]])
-  (:require [purple.config :as config]
-            [purple.orders :as orders]
-            [purple.coupons :as coupons]
-            [purple.payment :as payment]
-            [purple.sift :as sift]
+(ns app-service.users
+  (:require [cheshire.core :refer [generate-string parse-string]]
+            [common.config :as config]
+            [common.couriers :refer [get-by-courier]]
+            [common.db :refer [!select !insert !update]]
+            [app-service.coupons :refer [create-referral-coupon]]
+            [common.payment :as payment]
+            [common.users :refer [auth-native? details get-by-user
+                                  get-user-by-id get-user safe-authd-user-keys
+                                  valid-email? valid-password?]]
+            [common.util :refer [make-call new-auth-token only-prod
+                                 rand-str-alpha-num segment-client send-email
+                                 send-sms sns-client sns-create-endpoint]]
+            [app-service.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]
-            [clj-time.core :as time]
-            [clj-time.coerce :as time-coerce]
-            [clojure.string :as s]))
-
-(def safe-authd-user-keys
-  "The keys of a user map that are safe to send out to auth'd user."
-  [:id :type :email :name :phone_number :referral_code
-   :referral_gallons :is_courier])
-
-(defn get-user
-  "Gets a user from db. Optionally add WHERE constraints."
-  [db-conn & {:keys [where]}]
-  (first (!select db-conn "users" ["*"] (merge {} where))))
+            [clojure.string :as s]
+            [clojure.walk :refer [keywordize-keys]]
+            [gapi.core :refer [build call]]))
 
 (defn get-user-by-platform-id
   "Gets a user from db by user type and platform-id."
@@ -37,28 +29,6 @@
                             "facebook" {:id (str "fb" platform-id)}
                             "google" {:id (str "g" platform-id)}
                             (throw (Exception. "Unknown user type."))))))
-
-(defn get-user-by-id
-  "Gets a user from db by user-id."
-  [db-conn user-id]
-  (get-user db-conn :where {:id user-id}))
-
-(defn get-users-by-ids
-  "Gets multiple users by a list of ids."
-  [db-conn ids]
-  (if (seq ids)
-    (!select db-conn
-             "users"
-             ["*"]
-             {}
-             :custom-where
-             (str "id IN (\""
-                  (->> ids
-                       (map mysql-escape-str)
-                       (interpose "\",\"")
-                       (apply str))
-                  "\")"))
-    []))
 
 (defn get-user-by-reset-key
   "Gets a user from db by reset_key (for password reset)."
@@ -72,20 +42,6 @@
   (cond (= (count id) 20) "native"
         (= "fb" (subs id 0 2)) "facebook"
         (= "g" (subs id 0 1)) "google"))
-
-(defn include-user-data
-  "Enrich a coll of maps that have :id's of users (e.g., couriers), with user
-  data."
-  [db-conn m]
-  (join m
-        (map #(select-keys % safe-authd-user-keys)
-             (get-users-by-ids db-conn (map :id m)))
-        {:id :id}))
-
-(defn auth-native?
-  "Is password correct for this user map?"
-  [user auth-key]
-  (bcrypt/check auth-key (:password_hash user)))
 
 (defn get-user-from-fb
   "Get the Facebook user data from Facebook's Graph based on given acess token."
@@ -151,7 +107,8 @@
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
-                  :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
+                  :has_push_notifications_set_up
+                  (not (s/blank? (:arn_endpoint user))))
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
      :saved_locations (merge {:home {:displayText ""
                                      :googlePlaceId ""}
@@ -160,15 +117,15 @@
                              (parse-string (:saved_locations user) true))
      :cards (into [] (get-users-cards user))
      :orders (into [] (if (:is_courier user)
-                        (orders/get-by-courier db-conn (:id user))
-                        (orders/get-by-user db-conn (:id user))))
+                        (get-by-courier db-conn (:id user))
+                        (get-by-user db-conn (:id user))))
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
 (defn add
   "Adds new user. Will fail if user_id is already being used."
   [db-conn user & {:keys [password client-ip]}]
-  (let [referral-code (coupons/create-referral-coupon db-conn (:id user))
+  (let [referral-code (create-referral-coupon db-conn (:id user))
         result (!insert db-conn
                         "users"
                         (assoc (if (= "native" (:type user))
@@ -184,11 +141,9 @@
         (segment/identify segment-client (:id user)
                           {:email (:email user)
                            :referral_code referral-code
-
                            ;; todo fix this
                            ;; :createdAt (time-coerce/from-sql-time
                            ;;             (:timestamp_created %))
-
                            })
         (segment/track segment-client (:id user) "Sign Up")))
     result))
@@ -220,7 +175,8 @@
                                        (send-email
                                         {:to "chris@purpledelivery.com"
                                          :subject "Purple - Error"
-                                         :body (str "Facebook user didn't provide email: "
+                                         :body (str "Facebook user didn't "
+                                                    "provide email: "
                                                     (str "fb" (:id fb-user)))}))
                                       (throw (Exception. "No email.")))))
                    "google" (let [google-user (get-user-from-google auth-key)
@@ -239,17 +195,24 @@
                                      (send-email
                                       {:to "chris@purpledelivery.com"
                                        :subject "Purple - Error"
-                                       :body (str "Google user didn't provide email: "
-                                                  (str "g" (:id google-user)))}))
+                                       :body (str "Google user didn't provide "
+                                                  "email: "
+                                                  (str "g"
+                                                       (:id google-user)))}))
                                     (throw (Exception. "No email.")))))
                    (throw (Exception. "Invalid login.")))
                  :client-ip client-ip)
             (login db-conn type platform-id auth-key :client-ip client-ip)))
       (catch Exception e (case (.getMessage e)
-                           "Invalid login." {:success false
-                                             :message "Incorrect email / password combination."}
-                           "No email." {:success false
-                                        :message "You must provide access to your email address. Please contact us via the Feedback form, or use a different method to log in."}
+                           "Invalid login."
+                           {:success false
+                            :message "Incorrect email / password combination."}
+                           "No email."
+                           {:success false
+                            :message (str "You must provide access to your "
+                                          "email address. Please contact us "
+                                          "via the Feedback form, or use a "
+                                          "different method to log in.")}
                            {:success false
                             :message "Unknown error."})))))
 
@@ -260,16 +223,6 @@
     (or (not user)
         (and ignore-user-id
              (= ignore-user-id (:id user))))))
-
-(defn valid-email?
-  "Syntactically valid email address?"
-  [email]
-  (boolean (re-matches #"^\S+@\S+\.\S+$" email)))
-
-(defn valid-password?
-  "Only for native users."
-  [password]
-  (boolean (re-matches #"^.{6,100}$" password)))
 
 (defn valid-phone-number?
   "Given a phone-number string, ensure that it only contains numbers, #,
@@ -301,58 +254,8 @@
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false
-     :message "Email Address is incorrectly formatted or is already associated with an account."}))
-
-(defn valid-session?
-  [db-conn user-id token]
-  (let [session (!select db-conn
-                         "sessions"
-                         [:id
-                          :timestamp_created]
-                         {:user_id user-id
-                          :token token})]
-    (if (seq session)
-      true
-      false)))
-
-(defn update-user-metadata
-  [db-conn user-id app-version os]
-  (do (segment/identify segment-client user-id
-                        {:app_version app-version}) ;; TODO this is happening a lot
-      (!update db-conn
-               "users"
-               (filter (comp not nil? val)
-                       {:app_version app-version
-                        :os os})
-               {:id user-id})))
-
-(defn details
-  [db-conn user-id & {:keys [user-meta]}]
-  (if-let [user (get-user-by-id db-conn user-id)]
-    (do (when (and user-meta
-                   (or (not= (:app_version user-meta) (:app_version user))
-                       (not= (:os user-meta) (:os user))))
-          (update-user-metadata db-conn
-                                user-id
-                                (:app_version user-meta)
-                                (:os user-meta)))
-        {:success true
-         :user (assoc (select-keys user safe-authd-user-keys)
-                      :has_push_notifications_set_up (not (s/blank? (:arn_endpoint user))))
-         :vehicles (into [] (get-users-vehicles db-conn user-id))
-         :saved_locations (merge {:home {:displayText ""
-                                         :googlePlaceId ""}
-                                  :work {:displayText ""
-                                         :googlePlaceId ""}}
-                                 (parse-string (:saved_locations user) true))
-         :cards (into [] (get-users-cards user))
-         :orders (into [] (if (:is_courier user)
-                            (orders/get-by-courier db-conn (:id user))
-                            (orders/get-by-user db-conn (:id user))))
-         :system {:referral_referred_value config/referral-referred-value
-                  :referral_referrer_gallons config/referral-referrer-gallons}})
-    {:success false
-     :message "User could not be found."}))
+     :message (str "Email Address is incorrectly formatted or is already "
+                   "associated with an account.")}))
 
 (defn update-user
   "The user-id given is assumed to have been auth'd already."
@@ -512,7 +415,8 @@
     (update-user-stripe-fields db-conn user-id (:resp customer-resp))))
 
 (defn add-card
-  "Add card. If user's first card, create Stripe customer object (+ card) instead."
+  "Add card. If user's first card, create Stripe customer object (+ card)
+  instead."
   [db-conn user-id stripe-token]
   (let [user (get-user-by-id db-conn user-id)
         customer-id (:stripe_customer_id user)
@@ -521,7 +425,8 @@
           (payment/create-stripe-customer user-id stripe-token)
           (let [card-resp (payment/add-stripe-card customer-id stripe-token)]
             (if (:success card-resp)
-              (payment/set-default-stripe-card customer-id (-> card-resp :resp :id))
+              (payment/set-default-stripe-card customer-id
+                                               (-> card-resp :resp :id))
               card-resp)))]
     (if (:success customer-resp)
       (do (segment/track segment-client user-id "Add Credit Card")
@@ -554,7 +459,8 @@
                       {:success false
                        :message "Please enter your full name."}
                       
-                      (and phone-number (not (valid-phone-number? phone-number)))
+                      (and phone-number
+                           (not (valid-phone-number? phone-number)))
                       {:success false
                        :message "Please enter a valid phone number."}
 
@@ -566,7 +472,9 @@
                                                            :ignore-user-id
                                                            user-id)))))
                       {:success false
-                       :message "Email Address is incorrectly formatted or is already associated with an account."}
+                       :message (str "Email Address is incorrectly formatted "
+                                     "or is already associated with an "
+                                     "account.")}
 
                       :else (update-user db-conn user-id user))))
                  
@@ -579,14 +487,16 @@
 
                  (:saved_locations body)
                  (merge-unless-failed
-                  (update-saved-locations db-conn user-id (:saved_locations body)))
+                  (update-saved-locations db-conn user-id
+                                          (:saved_locations body)))
                  
                  (:card body)
                  (merge-unless-failed
                   (let [card (:card body)]
                     (case (:action card)
                       "delete" (delete-card db-conn user-id (:id card))
-                      "makeDefault" (set-default-card db-conn user-id (:id card))
+                      "makeDefault" (set-default-card db-conn user-id
+                                                      (:id card))
                       ;; adding a card will also make it default
                       nil (add-card db-conn user-id (:stripe_token card))))))]
     (if (:success result)
@@ -595,8 +505,8 @@
 
 ;; This can be simplified to remove the user lookup, once we are using the Live
 ;; APNS App ARN for both customer and courier accounts. However, currently the
-;; courier accounts use the Sandbox App ARN since their app is downloaded through
-;; PhoneGap Build, not the App Store.
+;; courier accounts use the Sandbox App ARN since their app is downloaded
+;; through PhoneGap Build, not the App Store.
 ;; 
 ;; For customers, this is normally called right after their first order is
 ;; requested. For couriers, this is called at the first time they log in as a
@@ -604,21 +514,23 @@
 ;; have me mark them as courier in the database (is_courier), then log back in.
 ;;
 ;; TODO with the new version of the app 1.0.8, the push notifications are setup
-;; at a different time, and this needs to be revised to handle couriers correctly.
+;; at a different time, and this needs to be revised to handle couriers
+;; correctly.
 (defn add-sns
   "cred for APNS (apple) is the device token, for GCM (android) it is regid"
   [db-conn user-id push-platform cred]
   (let [user (get-user-by-id db-conn user-id)
         ;; the reason we always try to create the endpoint is because we want
         ;; push notifications to go to any new device they are currently using
-        arn-endpoint (sns-create-endpoint sns-client
-                                          cred
-                                          user-id
-                                          (case push-platform
-                                            "apns" (if (:is_courier user)
-                                                     config/sns-app-arn-apns-courier
-                                                     config/sns-app-arn-apns)
-                                            "gcm" config/sns-app-arn-gcm))]
+        arn-endpoint (sns-create-endpoint
+                      sns-client
+                      cred
+                      user-id
+                      (case push-platform
+                        "apns" (if (:is_courier user)
+                                 config/sns-app-arn-apns-courier
+                                 config/sns-app-arn-apns)
+                        "gcm" config/sns-app-arn-gcm))]
     (!update db-conn
              "users"
              {:arn_endpoint arn-endpoint}
@@ -650,7 +562,8 @@
                        ". Please click the link included in "
                        "that message to reset your password.")})
       {:success false
-       :message "Sorry, that email address does not have an account on Purple."})))
+       :message (str "Sorry, that email address does not have an account on "
+                     "Purple.")})))
 
 (defn change-password
   "Only for native accounts."
@@ -669,13 +582,20 @@
 
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
-  (send-email (merge {:to email-address}
-                     (if-not (nil? user_id)
-                       (let [user (get-user-by-id db-conn user_id)]
-                         {:subject (str (:name user) " invites you to try Purple")
-                          :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"})
-                       {:subject "Invitation to Try Purple"
-                        :body "Check out the Purple app; a gas delivery service. Simply request gas and we will come to your vehicle and fill it up. https://purpledelivery.com/download"}))))
+  (send-email
+   (merge {:to email-address}
+          (if-not (nil? user_id)
+            (let [user (get-user-by-id db-conn user_id)]
+              {:subject (str (:name user) " invites you to try Purple")
+               :body
+               (str "Check out the Purple app; a gas delivery service. "
+                    "Simply request gas and we will come to your vehicle "
+                    "and fill it up. https://purpledelivery.com/download")})
+            {:subject "Invitation to Try Purple"
+             :body
+             (str "Check out the Purple app; a gas delivery service. "
+                  "Simply request gas and we will come to your vehicle "
+                  "and fill it up. https://purpledelivery.com/download")}))))
 
 (defn auth-charge-user
   "Charges user amount (an int in cents) using default payment method."
@@ -687,36 +607,14 @@
            (send-email
             {:to "chris@purpledelivery.com"
              :subject "Purple - Error"
-             :body (str "Error authing charge on user, no payment method is set up.")}))
+             :body (str "Error authing charge on user, no payment method "
+                        "is set up.")}))
           {:success false})
       (payment/auth-charge-stripe-customer customer-id
                                            order-id
                                            amount
                                            description
                                            (:email u)))))
-
-(defn unpaid-balance
-  [db-conn user-id]
-  (reduce +
-          (map :total_price
-               (!select db-conn
-                        "orders"
-                        [:total_price]
-                        {:user_id user-id
-                         :status "complete"
-                         :paid 0}
-                        :append "AND total_price > 0")))) ; $0 order = no charge
-
-(defn send-push
-  "Sends a push notification to user."
-  [db-conn user-id message]
-  (let [user (get-user-by-id db-conn user-id)]
-    (when-not (s/blank? (:arn_endpoint user))
-      (sns-publish sns-client
-                   (:arn_endpoint user)
-                   message))
-    {:success true}))
-
 (defn text-user
   "Sends an SMS message to user."
   [db-conn user-id message]

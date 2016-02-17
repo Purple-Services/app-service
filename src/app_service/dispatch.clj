@@ -1,19 +1,22 @@
-(ns purple.dispatch
-  (:use purple.util
-        clojure.data.priority-map
-        [purple.db :only [conn !select !insert !update mysql-escape-str]]
-        [clojure.algo.generic.functor :only [fmap]]
-        clojure.walk)
-  (:require [purple.config :as config]
-            [purple.orders :as orders]
-            [purple.users :as users]
+(ns app-service.dispatch
+  (:require [common.db :refer [conn !select !insert !update]]
+            [common.config :as config]
+            [common.util :refer [! cents->dollars-str five-digit-zip-code
+                                 get-event-time in? minute-of-day->hmma
+                                 only-prod segment-client send-sms
+                                 split-on-comma unix->minute-of-day]]
+            [common.orders :as orders]
+            [common.users :as users]
             [ardoq.analytics-clj :as segment]
+            [clojure.algo.generic.functor :refer [fmap]]
             [clojure.java.jdbc :as sql]
-            [overtone.at-at :as at-at]
             [clojure.string :as s]
-            [purple.couriers :as couriers])
-  (:import [org.joda.time DateTime DateTimeZone]
-           [purpleOpt PurpleOpt]))
+            [clojure.walk :refer [keywordize-keys stringify-keys]]
+            [overtone.at-at :as at-at]
+            [app-service.couriers :as couriers]
+            [app-service.orders :refer [get-all-current]]
+            [app-service.users :refer [call-user]]
+            [opt.planner :refer [compute-suggestion]]))
 
 (def job-pool (at-at/mk-pool))
 
@@ -147,15 +150,16 @@
             during-holiday? (< 1451700047 ;; 6pm Jan 1st
                                (quot (System/currentTimeMillis) 1000)
                                1451725247) ;; Jan 2nd
-            good-time?-fn (fn [minutes-needed]
-                            (and (not during-holiday?)
-                                 (<= opening-minute
-                                     current-minute
-                                     ;;(- closing-minute minutes-needed)
-                                     ;; removed the check for enough time
-                                     ;; because our end time just means we accept orders
-                                     ;; until then (regardless of deadline)
-                                     closing-minute)))]
+            good-time?-fn
+            (fn [minutes-needed]
+              (and (not during-holiday?)
+                   (<= opening-minute
+                       current-minute
+                       ;;(- closing-minute minutes-needed)
+                       ;; removed the check for enough time
+                       ;; because our end time just means we accept orders
+                       ;; until then (regardless of deadline)
+                       closing-minute)))]
         {:success true
          :availabilities (map (partial available good-time?-fn zip-code)
                               ["87" "91"])
@@ -203,10 +207,11 @@
                        :time [1 3]
                        :price_per_gallon 0
                        :service_fee [100 0]}]
-       :unavailable-reason (str "Sorry, we are unable to deliver gas to your "
-                                "location. We are rapidly expanding our service "
-                                "area and hope to offer service to your "
-                                "location very soon.")})))
+       :unavailable-reason
+       (str "Sorry, we are unable to deliver gas to your "
+            "location. We are rapidly expanding our service "
+            "area and hope to offer service to your "
+            "location very soon.")})))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
@@ -240,7 +245,7 @@
                         (- (quot config/process-interval 1000) 1))))
         twilio-url (str config/base-url "twiml/courier-new-order")
         f #(when (tardy? (get-event-time (:event_log %) "assigned"))
-             (users/call-user db-conn (:courier_id %) twilio-url))]
+             (call-user db-conn (:courier_id %) twilio-url))]
     (run! f assigned-orders)))
 
 (defn new-assignments
@@ -250,32 +255,30 @@
     (filter
      (comp new-and-first val)
      (fmap (comp keywordize-keys (partial into {}))
-           (into {}
-                 (PurpleOpt/computeSuggestion
-                  (map->java-hash-map
-                   {"orders" (->> os
-                                  (map #(assoc %
-                                               :status_times
-                                               (-> (:event_log %)
-                                                   (s/split #"\||\s")
-                                                   (->> (remove s/blank?)
-                                                        (apply hash-map)
-                                                        (fmap read-string)))
-                                               :zone (order->zone-id %)))
-                                  (map (juxt :id stringify-keys))
-                                  (into {}))
-                    "couriers" (->> cs
-                                    (map #(assoc %
-                                                 :assigned_orders
-                                                 (->> os
-                                                      (filter
-                                                       (fn [o]
-                                                         (= (:courier_id o)
-                                                            (:id %))))
-                                                      (map :id))
-                                                 :zones (apply list (:zones %))))
-                                    (map (juxt :id stringify-keys))
-                                    (into {}))})))))))
+           (compute-suggestion
+            {"orders" (->> os
+                           (map #(assoc %
+                                        :status_times
+                                        (-> (:event_log %)
+                                            (s/split #"\||\s")
+                                            (->> (remove s/blank?)
+                                                 (apply hash-map)
+                                                 (fmap read-string)))
+                                        :zone (order->zone-id %)))
+                           (map (juxt :id stringify-keys))
+                           (into {}))
+             "couriers" (->> cs
+                             (map #(assoc %
+                                          :assigned_orders
+                                          (->> os
+                                               (filter
+                                                (fn [o]
+                                                  (= (:courier_id o)
+                                                     (:id %))))
+                                               (map :id))
+                                          :zones (apply list (:zones %))))
+                             (map (juxt :id stringify-keys))
+                             (into {}))})))))
 
 ;; We start with a prev-state of blank; so that auto-assign is called when
 ;; server is booted.
@@ -299,7 +302,7 @@
 
 (defn auto-assign
   [db-conn]
-  (let [os (orders/get-all-current db-conn)
+  (let [os (get-all-current db-conn)
         cs (couriers/get-all-on-duty db-conn)]
     (!insert
      db-conn
@@ -309,7 +312,8 @@
             :on-duty-couriers (map #(select-keys % [:id :active :on_duty
                                                     :connected :busy :zones
                                                     :gallons_87 :gallons_91
-                                                    :lat :lng :last_ping]) cs)})})
+                                                    :lat :lng :last_ping]) cs)})
+      })
     (when (diff-state? os cs)
       (run! #(orders/assign db-conn (key %) (:suggested_courier (val %))
                             :no-reassigns true)
@@ -334,39 +338,3 @@
             :connected 1
             :last_ping (quot (System/currentTimeMillis) 1000)}
            {:id user-id}))
-
-(defn courier-assigned-zones
-  "Given a courier-id, return a set of all zones they are assigned to"
-  [db-conn courier-id]
-  (let [zones (:zones (first
-                       (!select db-conn
-                                "couriers"
-                                [:zones]
-                                {:id courier-id})))]
-    (if (nil? (seq zones))
-      (set zones) ; the empty set
-      (set
-       (map read-string
-            (split-on-comma zones))))))
-
-(defn get-courier-zips
-  "Given a courier-id, get all of the zip-codes that a courier is assigned to"
-  [db-conn courier-id]
-  (let [courier-zones (filter #(contains?
-                                (courier-assigned-zones db-conn courier-id)
-                                (:id %))
-                              @zones)
-        zip-codes (apply concat (map :zip_codes courier-zones))]
-    (set zip-codes)))
-
-(defn get-zctas-for-zips
-  "Given a string of comma-seperated zips and db-conn, return a list of
-  zone/coordinates maps."
-  [db-conn zips]
-  (let [in-clause (str "("
-                       (s/join ","
-                               (map #(str "'" % "'")
-                                    (split-on-comma zips)))
-                       ")")]
-    (!select db-conn "zctas" ["*"] {}
-             :custom-where (str "zip in " in-clause))))
