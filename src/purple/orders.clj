@@ -81,7 +81,7 @@
                          (mysql-escape-str courier-id)
                          "\" AND target_time_start > "
                          (- (quot (System/currentTimeMillis) 1000)
-                            (* 60 60 24 16)) ;; 16 days
+                            (* 60 60 24)) ;; 24 hours
                          ") "
                          "ORDER BY target_time_end DESC"))
         customer-ids (distinct (map :user_id os))
