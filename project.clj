@@ -1,6 +1,5 @@
 (defproject purple "1.2.2-SNAPSHOT"
-  :description "Purple"
-  :url "http://purpledelivery.com"
+  :description "Purple mobile app web service."
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [compojure "1.1.8"]
                  [ring/ring-json "0.1.2"]
