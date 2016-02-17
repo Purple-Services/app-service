@@ -1,10 +1,11 @@
-(ns purple.test.users
-  (:require [purple.users :refer [valid-phone-number? valid-name? add register
-                                  get-user edit add-vehicle]]
+(ns app.test.users
+  (:require [app.users :refer [valid-phone-number? valid-name? add register
+                               edit add-vehicle]]
+            [common.users :refer [get-user]]
             [clojure.test :refer [deftest is test-ns use-fixtures
                                   test-ns testing]]
-            [purple.test.db :refer [database-fixture ebdb-test-config]]
-            [purple.util :refer [rand-str-alpha-num]]
+            [app.test.db :refer [database-fixture ebdb-test-config]]
+            [common.util :refer [rand-str-alpha-num]]
             [clojure.string :as string]))
 
 (use-fixtures :each database-fixture)

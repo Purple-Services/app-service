@@ -21,8 +21,7 @@
                  [analytics-clj "0.3.0"]
                  [org.clojure/algo.generic "0.1.2"]
                  [common "1.0.0-SNAPSHOT"]
-                 [opt "0.1.0-SNAPSHOT"]
-                 [dashboard-service "1.0.0-SNAPSHOT"]]
+                 [opt "0.1.0-SNAPSHOT"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]

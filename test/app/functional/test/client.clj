@@ -1,13 +1,14 @@
-(ns purple.test.client
+(ns app.functional.test.client
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
-            [purple.test.dashboard :refer
+            [app.functional.test.dashboard :refer
              [sleep wait-until-alert-text
               start-server stop-server]]
-            [purple.users :refer [get-user-by-id get-user]]
-            [purple.test.db :refer [db-config]]
+            [common.users :refer [get-user-by-id get-user]]
+            [app.test.db :refer [db-config]]
             [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer [use-fixtures deftest is test-ns testing]]
+            [clojure.test :refer [use-fixtures deftest is test-ns testing
+                                  run-tests]]
             [environ.core :refer [env]])
   (:import [org.openqa.selenium.chrome ChromeOptions ChromeDriver]
            [org.openqa.selenium.remote DesiredCapabilities]
@@ -35,7 +36,7 @@
   (stop-browser))
 
 ;; the client app is currently configured to use port 3000
-(def test-port 3000)
+(def test-port 4000)
 
 (defn with-server [t]
   (let [server (start-server test-port)]
@@ -58,7 +59,7 @@
 (defn go-to-client
   "Go to the client"
   []
-  (to (env :client-index-file)))
+  (to "file:///Users/james/PurpleInc/app/index.html"))
 
 (defn login-page
   []

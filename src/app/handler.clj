@@ -1,5 +1,10 @@
 (ns app.handler
   (:require [clojure.walk :refer [keywordize-keys]]
+            [app.users :as users]
+            [app.orders :as orders]
+            [app.dispatch :as dispatch]
+            [app.coupons :as coupons]
+            [app.pages :as pages]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
@@ -9,16 +14,10 @@
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [app.users :as users]
-            [app.orders :as orders]
-            [app.dispatch :as dispatch]
-            [app.coupons :as coupons]
-            [app.pages :as pages]
             [ring.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.ssl :refer [wrap-ssl-redirect]]
             [ring.middleware.json :as middleware]
             [ring.util.response :refer [header response redirect]]
-            [dashboard-service.handler :refer [dashboard]]))
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]))
 
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
@@ -299,9 +298,6 @@
                                              :user_id (:user_id b)))
                          (users/send-invite db-conn
                                             (:email b)))))))))
-  (context "/dashboard" []
-           (wrap-force-ssl
-            (dashboard)))
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []

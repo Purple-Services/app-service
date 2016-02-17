@@ -1,16 +1,18 @@
-(ns purple.test.dashboard
+(ns app.functional.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
-            [purple.handler :refer [app]]
-            [purple.db :refer [!select]]
-            [purple.dispatch :as dispatch]
-            [purple.test.db :refer [ebdb-test-config
-                                    setup-ebdb-test-pool!
-                                    clear-test-database
-                                    db-config]]
-            [purple.test.orders :as orders]
+            [app.handler :refer [app]]
+            [common.db :refer [!select]]
+            [common.zones :refer [get-fuel-prices get-service-fees
+                                  get-service-time-bracket]]
+            [app.dispatch :as dispatch]
+            [app.test.db :refer [ebdb-test-config
+                                 setup-ebdb-test-pool!
+                                 clear-test-database
+                                 db-config]]
+            [app.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-webdriver.taxi :refer :all]
-            [purple.util :refer [split-on-comma]]))
+            [common.util :refer [split-on-comma]]))
 
 ;; normally, the test server runs on port 3000. If you would like to manually
 ;; run tests, you can set this to (def test-port 3000) in the repl
@@ -271,7 +273,7 @@ both are cycled and the busy status of the courier is checked"
     (let [zone-id 1]
       (test-zone-modification
        zone-id "87-price" #(:87
-                            (dispatch/get-fuel-prices
+                            (get-fuel-prices
                              (get-zip-with-zone-id zone-id)))))))
 
 (defn modify-zone-service-fee
@@ -279,7 +281,7 @@ both are cycled and the busy status of the courier is checked"
   (testing "Make sure that the zone service fee can be modified and saved."
     (let [zone-id 2]
       (test-zone-modification
-       zone-id "1-hr-fee" #(:60 (dispatch/get-service-fees
+       zone-id "1-hr-fee" #(:60 (get-service-fees
                                  (get-zip-with-zone-id zone-id)))))))
 
 (defn modify-zone-time-bracket
@@ -287,7 +289,7 @@ both are cycled and the busy status of the courier is checked"
   (testing "Make sure that the zone time bracket can be modified and saved."
     (let [zone-id 3]
       (test-zone-modification
-       zone-id "service-start" #(first (dispatch/get-service-time-bracket
+       zone-id "service-start" #(first (get-service-time-bracket
                                         (get-zip-with-zone-id zone-id)))))))
 
 (defn courier-phone-number-present
