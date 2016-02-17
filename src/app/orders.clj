@@ -1,4 +1,4 @@
-(ns app-service.orders
+(ns app.orders
   (:require [common.coupons :refer [format-coupon-code
                                     get-license-plate-by-vehicle-id
                                     mark-code-as-used
@@ -20,10 +20,10 @@
             [common.zones :refer [get-fuel-prices get-service-fees
                                   get-service-time-bracket
                                   get-one-hour-orders-allowed order->zone-id]]
-            [app-service.coupons :as coupons]
-            [app-service.couriers :as couriers]
-            [app-service.sift :as sift]
-            [app-service.users :refer [auth-charge-user]]
+            [app.coupons :as coupons]
+            [app.couriers :as couriers]
+            [app.sift :as sift]
+            [app.users :refer [auth-charge-user]]
             [ardoq.analytics-clj :as segment]
             [clojure.string :as s]
             [cheshire.core :refer [generate-string]]))

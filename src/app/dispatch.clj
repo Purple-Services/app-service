@@ -1,4 +1,4 @@
-(ns app-service.dispatch
+(ns app.dispatch
   (:require [common.db :refer [conn !select !insert !update]]
             [common.config :as config]
             [common.util :refer [! cents->dollars-str five-digit-zip-code
@@ -17,9 +17,9 @@
             [clojure.string :as s]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [overtone.at-at :as at-at]
-            [app-service.couriers :as couriers]
-            [app-service.orders :refer [get-all-current]]
-            [app-service.users :refer [call-user]]
+            [app.couriers :as couriers]
+            [app.orders :refer [get-all-current]]
+            [app.users :refer [call-user]]
             [opt.planner :refer [compute-suggestion]]))
 
 (def job-pool (at-at/mk-pool))

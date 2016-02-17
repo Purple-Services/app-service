@@ -1,5 +1,5 @@
-(defproject app-service "1.0.0-SNAPSHOT"
-  :description "web server for purpledelivery.com mobile app"
+(defproject app "1.5.0-SNAPSHOT"
+  :description "Purple mobile app web service."
   :url "http://purpledelivery.com"
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [compojure "1.1.8"]
@@ -26,7 +26,7 @@
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]]
-  :ring {:handler app-service.handler/app
+  :ring {:handler app.handler/app
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}

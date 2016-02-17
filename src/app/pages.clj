@@ -1,7 +1,7 @@
-(ns app-service.pages
+(ns app.pages
   (:require
    [net.cgrand.enlive-html :refer [content deftemplate set-attr]]
-   [app-service.users :as users]
+   [app.users :as users]
    [common.config :as config]))
 
 (deftemplate index-template "templates/index.html"
