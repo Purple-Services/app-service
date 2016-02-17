@@ -1,9 +1,8 @@
-(ns purple.pages
-  (:use [purple.db :only [conn]]
-        net.cgrand.enlive-html
-        :reload)
-  (:require [purple.users :as users]
-            [purple.config :as config]))
+(ns app-service.pages
+  (:require
+   [net.cgrand.enlive-html :refer [content deftemplate set-attr]]
+   [app-service.users :as users]
+   [common.config :as config]))
 
 (deftemplate index-template "templates/index.html"
   [x]
