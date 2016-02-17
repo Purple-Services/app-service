@@ -7,6 +7,10 @@
                                  split-on-comma unix->minute-of-day]]
             [common.orders :as orders]
             [common.users :as users]
+            [common.zones :refer [get-fuel-prices get-service-fees
+                                  get-service-time-bracket
+                                  get-zone-by-zip-code order->zone-id
+                                  zip-in-zones?]]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
             [clojure.java.jdbc :as sql]
@@ -19,88 +23,6 @@
             [opt.planner :refer [compute-suggestion]]))
 
 (def job-pool (at-at/mk-pool))
-
-(defn get-all-zones-from-db
-  "Get all zones from the database."
-  [db-conn]
-  (!select db-conn "zones" ["*"] {}))
-
-;; holds all zone definitions in local memory, some parsing in there too
-(! (def zones (atom (map #(update-in % [:zip_codes] split-on-comma)
-                         (get-all-zones-from-db (conn))))))
-
-(defn update-zones!
-  "Update the zones var held in memory with that in the database"
-  [db-conn]
-  (reset! zones (map #(update-in % [:zip_codes] split-on-comma)
-                     (get-all-zones-from-db db-conn))))
-
-(defn get-zones-by-ids
-  "Given a string of comma-seperated zones, return all zones in string."
-  [zones-str]
-  (let [zone-matches-id?
-        (fn [zone]
-          (some
-           identity
-           (map #(= (:id zone) %)
-                (map read-string (split-on-comma zones-str)))))]
-    (filter zone-matches-id? @zones)))
-
-(defn order->zone-id
-  "Determine which zone the order is in; gives the zone id."
-  [order]
-  (let [zip-code (five-digit-zip-code (:address_zip order))]
-    (:id (first (filter #(in? (:zip_codes %) zip-code)
-                        @zones)))))
-
-(defn zip-in-zones?
-  "Determine whether or not zip-code can be found in zones."
-  [zip-code]
-  (->> @zones
-       (filter #(in? (:zip_codes %) (five-digit-zip-code zip-code)))
-       seq
-       boolean))
-
-(defn get-zone-by-zip-code
-  "Given a zip code, return the corresponding zone."
-  [zip-code]
-  (-> (filter #(= (:id %) (order->zone-id {:address_zip zip-code})) @zones)
-      first))
-
-(defn get-fuel-prices
-  "Given a zip code, return the fuel prices for that zone."
-  [zip-code]
-  (-> zip-code
-      (get-zone-by-zip-code)
-      :fuel_prices
-      (read-string)))
-
-(defn get-service-fees
-  "Given a zip-code, return the service fees for that zone."
-  [zip-code]
-  (-> zip-code
-      (get-zone-by-zip-code)
-      :service_fees
-      (read-string)))
-
-(defn get-service-time-bracket
-  "Given a zip-code, return the service time bracket for that zone."
-  [zip-code]
-  (-> zip-code
-      (get-zone-by-zip-code)
-      :service_time_bracket
-      (read-string)))
-
-;; This is only considering the time element. They could be disallowed
-;; for other reasons.
-(defn get-one-hour-orders-allowed
-  "Given a zip-code, return the time in minutes that one hour orders are
-  allowed."
-  [zip-code]
-  (-> zip-code
-      (get-service-time-bracket)
-      first
-      (+ 90)))
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
