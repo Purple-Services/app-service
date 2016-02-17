@@ -1,5 +1,5 @@
-(ns purple.test.db
-  (:require [purple.db :as db]
+(ns app.test.db
+  (:require [common.db :as db]
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
@@ -26,7 +26,7 @@
         db-name "ebdb_test"
         db-password "localpurpledevelopment2015"
         db-user "purplemaster"
-        db-sql "resources/database/ebdb.sql"
+        db-sql "database/ebdb.sql"
         db-config {:classname "com.mysql.jdbc.Driver"
                    :subprotocol "mysql"
                    :subname (str "//" db-host ":" db-port "/" db-name)
@@ -44,7 +44,9 @@
                    (clojure.string/split #";\n") ; sepereate chunks into
                                                  ; statements
                    )]
-    (map #(clojure.string/replace % #"\n" "") sql-lines)))
+    (->> sql-lines
+         (map #(clojure.string/replace % #"\n" ""))
+         (filter #(not (clojure.string/blank? %))))))
 
 (defn create-tables-and-populate-database
   "Create tables and load test data for a datbase"

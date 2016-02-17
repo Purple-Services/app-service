@@ -1,13 +1,13 @@
-(ns purple.test.payment
+(ns app.test.payment
   (:use cheshire.core)
-  (:require [purple.payment :refer [stripe-req]]
+  (:require [common.payment :refer [stripe-req]]
             [clj-http.client :as client]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
-            [purple.config :as config]
-            [purple.handler :refer :all]
-            [purple.users :refer [get-user-by-id get-user]]
-            [purple.db :refer [conn]]
-            [purple.test.db :refer [setup-ebdb-test-for-conn-fixture]]
+            [common.config :as config]
+            [app.handler :refer :all]
+            [common.users :refer [get-user-by-id get-user]]
+            [common.db :refer [conn]]
+            [app.test.db :refer [setup-ebdb-test-for-conn-fixture]]
             ))
 
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)

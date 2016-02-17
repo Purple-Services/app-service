@@ -1,8 +1,8 @@
-(ns purple.test.handler
+(ns app.test.handler
   (:use cheshire.core)
   (:require [clojure.test :refer :all]
-            [purple.handler :refer :all]
-            [purple.test.db :refer [setup-ebdb-test-for-conn-fixture]]
+            [app.handler :refer :all]
+            [app.test.db :refer [setup-ebdb-test-for-conn-fixture]]
             [ring.mock.request :as mock]))
 
 
@@ -26,7 +26,8 @@
   (let [post-data {:type "native"
                    :platform_id "test@test.com"
                    :auth_key "qwerty123"}
-        response (app (-> (mock/request :post "/user/login" (generate-string post-data))
+        response (app (-> (mock/request :post "/user/login"
+                                        (generate-string post-data))
                           (mock/content-type "application/json")))
         body (parse-string (:body response) true)
         token (:token body)
@@ -40,7 +41,8 @@
                        :version "1.0.7"
                        :user {:phone_number "800-555-1212"
                               :name "Test User"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
         (is (:success body))))
@@ -51,7 +53,8 @@
                        :version "1.0.7"
                        :user {:phone_number "555-1212"
                               :name "Test User"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
         (is (not (:success body)))))
@@ -61,7 +64,8 @@
                        :token token
                        :version "1.0.7"
                        :user {:name "Test User"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
         (is (:success body))))
@@ -71,7 +75,8 @@
                        :token token
                        :version "1.0.7"
                        :user {:name "Test User" :phone_number "800-555-1212"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
         (is (:success body))))
@@ -81,7 +86,8 @@
                        :token token
                        :version "1.0.7"
                        :user {:name "Test User" :phone_number "555-1212"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
         (is (not (:success body)))))
@@ -91,7 +97,8 @@
                        :token token
                        :version "1.0.7"
                        :user {:name "TestUser" :phone_number "800-555-1212"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
         (is (not(:success body)))))
@@ -101,10 +108,9 @@
                        :token token
                        :version "1.0.7"
                        :user {:name "TestUser" :phone_number "800-555-1212"}}
-            response (app (->  (mock/request :post "/user/edit" (generate-string post-data))
+            response (app (->  (mock/request :post "/user/edit"
+                                             (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (not (:success body)))))
-    
-    ))
+        (is (not (:success body)))))))
 
