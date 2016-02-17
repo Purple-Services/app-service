@@ -1,4 +1,4 @@
-(ns app-service.coupons
+(ns app.coupons
   (:require [common.config :as config]
             [common.coupons :refer [gen-coupon-code
                                     get-coupon-by-code

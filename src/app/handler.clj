@@ -1,4 +1,4 @@
-(ns app-service.handler
+(ns app.handler
   (:require [clojure.walk :refer [keywordize-keys]]
             [common.db :refer [conn]]
             [common.config :as config]
@@ -9,11 +9,11 @@
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [app-service.users :as users]
-            [app-service.orders :as orders]
-            [app-service.dispatch :as dispatch]
-            [app-service.coupons :as coupons]
-            [app-service.pages :as pages]
+            [app.users :as users]
+            [app.orders :as orders]
+            [app.dispatch :as dispatch]
+            [app.coupons :as coupons]
+            [app.pages :as pages]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.ssl :refer [wrap-ssl-redirect]]
             [ring.middleware.json :as middleware]

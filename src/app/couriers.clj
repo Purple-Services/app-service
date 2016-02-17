@@ -1,4 +1,4 @@
-(ns app-service.couriers
+(ns app.couriers
   (:require [common.config :as config]
             [common.couriers :refer [process-courier get-couriers]]
             [common.db :refer [!select mysql-escape-str]]

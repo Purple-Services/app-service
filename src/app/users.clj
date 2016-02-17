@@ -1,9 +1,9 @@
-(ns app-service.users
+(ns app.users
   (:require [cheshire.core :refer [generate-string parse-string]]
             [common.config :as config]
             [common.couriers :refer [get-by-courier]]
             [common.db :refer [!select !insert !update]]
-            [app-service.coupons :refer [create-referral-coupon]]
+            [app.coupons :refer [create-referral-coupon]]
             [common.payment :as payment]
             [common.users :refer [auth-native? details get-by-user
                                   get-user-by-id get-user safe-authd-user-keys
@@ -11,7 +11,7 @@
             [common.util :refer [make-call new-auth-token only-prod
                                  rand-str-alpha-num segment-client send-email
                                  send-sms sns-client sns-create-endpoint]]
-            [app-service.sift :as sift]
+            [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
             [clj-http.client :as client]

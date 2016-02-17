@@ -1,4 +1,4 @@
-(ns app-service.sift
+(ns app.sift
   (:require [common.config :as config]
             [common.util :refer [not-nil-vec]]
             [common.zones :refer [order->zone-id]]
