@@ -223,8 +223,8 @@
                      ;; the rest are handled as new system
                      ;; which means it is simply given in minutes
                      (Integer. (:time order)))
-        license-plate (coupons/get-license-plate-by-vehicle-id db-conn
-                                                               (:vehicle_id order))
+        license-plate (get-license-plate-by-vehicle-id db-conn
+                                                       (:vehicle_id order))
         user ((resolve 'purple.users/get-user-by-id) db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         o (assoc (select-keys order [:vehicle_id :special_instructions
@@ -319,11 +319,11 @@
                                                       :license_plate :coupon_code
                                                       :referral_gallons_used]))
             (when-not (zero? (:referral_gallons_used o))
-              (coupons/mark-gallons-as-used db-conn
+              (mark-gallons-as-used db-conn
                                             (:user_id o)
                                             (:referral_gallons_used o)))
             (when-not (s/blank? (:coupon_code o))
-              (coupons/mark-code-as-used db-conn
+              (mark-code-as-used db-conn
                                          (:coupon_code o)
                                          (:license_plate o)
                                          (:user_id o)))
