@@ -225,7 +225,7 @@
                      (Integer. (:time order)))
         license-plate (get-license-plate-by-vehicle-id db-conn
                                                        (:vehicle_id order))
-        user ((resolve 'purple.users/get-user-by-id) db-conn user-id)
+        user (get-user-by-id db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
@@ -276,7 +276,7 @@
                                 :reason "outside-service-hours"))
           {:success false
            :message (let [service-time-bracket
-                          ((resolve 'purple.dispatch/get-service-time-bracket)
+                          (get-service-time-bracket
                            (:address_zip o))]
                       (str "Sorry, the service hours for this ZIP code are "
                            (minute-of-day->hmma (first service-time-bracket))
@@ -287,7 +287,7 @@
       :else
       (let [auth-charge-result (if (zero? (:total_price o))
                                  {:success true}
-                                 ((resolve 'purple.users/auth-charge-user)
+                                 (auth-charge-user
                                   db-conn
                                   (:user_id o)
                                   (:id o)
@@ -328,9 +328,7 @@
                                          (:license_plate o)
                                          (:user_id o)))
             (future ;; we can process the rest of this asynchronously
-              (let [order->zone-id (resolve 'purple.dispatch/order->zone-id)
-                    include-user-data (resolve 'purple.users/include-user-data)
-                    available-couriers
+              (let [available-couriers
                     (->> (couriers/get-all-available db-conn)
                          (couriers/filter-by-zone (order->zone-id o))
                          (include-user-data db-conn))]
