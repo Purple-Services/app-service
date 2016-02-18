@@ -240,6 +240,8 @@ Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your
 
 Generally, try to follow: https://github.com/bbatsov/clojure-style-guide
 
+Try to keep lines less than 80 columns wide.
+
 ## License
 
 Copyright © 2015 Purple Services Inc
