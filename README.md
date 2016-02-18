@@ -1,6 +1,6 @@
-# Purple Web Service
+# Purple App Service
 
-The RESTful web service that the Purple mobile app uses. Also, provides a Dashboard and a few web pages.
+Mobile app API + logic specific to mobile app.
 
 ## Running Locally
 
