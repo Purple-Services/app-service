@@ -81,7 +81,7 @@
                          (mysql-escape-str courier-id)
                          "\" AND target_time_start > "
                          (- (quot (System/currentTimeMillis) 1000)
-                            (* 60 60 24 16)) ;; 16 days
+                            (* 60 60 24)) ;; 24 hours
                          ") "
                          "ORDER BY target_time_end DESC"))
         customer-ids (distinct (map :user_id os))
@@ -415,11 +415,10 @@
                 
                 (only-prod
                  (run! #(send-sms % (new-order-text db-conn o charge-authorized?))
-                       (concat (map :phone_number available-couriers)
-                               (only-prod ["3103109961" ;; Joe
-                                           "7143154380" ;; Gustavo
-                                           "3234592100" ;; Rana
-                                           ])))
+                       (only-prod ["3103109961" ;; Joe
+                                   "7143154380" ;; Gustavo
+                                   "3234592100" ;; Rana
+                                   ]))
                  (send-email {:to "chris@purpledelivery.com"
                               :subject "Purple - New Order"
                               :body (str o)}))
@@ -654,11 +653,15 @@ and their id matches the order's courier_id"
         change-order-assignment #(!update db-conn "orders"
                                           {:courier_id new-courier-id}
                                           {:id order-id})
-        notify-new-courier #((resolve 'purple.users/send-push)
-                             db-conn new-courier-id
-                             (str "You have been assigned a new order,"
-                                  " please check your "
-                                  "Orders to view it"))
+        send-push (resolve 'purple.users/send-push)
+        text-user (resolve 'purple.users/text-user)
+        notify-new-courier #(do (send-push db-conn
+                                           new-courier-id
+                                           (str "You have been assigned a new order,"
+                                                " please check your "
+                                                "Orders to view it"))
+                                (text-user db-conn new-courier-id
+                                           (new-order-text db-conn order true)))
         notify-old-courier #((resolve 'purple.users/send-push)
                              db-conn old-courier-id
                              (str "You are no longer assigned to the order at: "
