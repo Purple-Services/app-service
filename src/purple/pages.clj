@@ -528,7 +528,6 @@
                                               {:active true
                                                :on_duty true})
                                      (map #(update-in % [:zones] split-on-comma))
-                                     (map #(assoc % :assigned_orders []))
                                      (map (juxt :id stringify-keys))
                                      (into {}))})))]
     (apply str
