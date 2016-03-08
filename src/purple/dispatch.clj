@@ -246,7 +246,7 @@
 (defn new-assignments
   [os cs]
   (let [new-and-first #(and (:new_assignment %)
-                            (= 1 (:suggested_courier_pos %)))]
+                            (= 1 (:courier_pos %)))]
     (filter
      (comp new-and-first val)
      (fmap (comp keywordize-keys (partial into {}))
@@ -265,15 +265,7 @@
                                   (map (juxt :id stringify-keys))
                                   (into {}))
                     "couriers" (->> cs
-                                    (map #(assoc %
-                                                 :assigned_orders
-                                                 (->> os
-                                                      (filter
-                                                       (fn [o]
-                                                         (= (:courier_id o)
-                                                            (:id %))))
-                                                      (map :id))
-                                                 :zones (apply list (:zones %))))
+                                    (map #(assoc % :zones (apply list (:zones %))))
                                     (map (juxt :id stringify-keys))
                                     (into {}))})))))))
 
@@ -311,7 +303,7 @@
                                                     :gallons_87 :gallons_91
                                                     :lat :lng :last_ping]) cs)})})
     (when (diff-state? os cs)
-      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %))
+      (run! #(orders/assign db-conn (key %) (:courier_id (val %))
                             :no-reassigns true)
             (new-assignments os cs)))))
 
