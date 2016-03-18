@@ -166,10 +166,10 @@
            {:id order-id}))
 
 (defn calculate-cost
-  "Calculate cost of order based on current prices."
+  "Calculate cost of order based on current prices. Returns cost in cents."
   [db-conn
    octane       ;; String
-   gallons      ;; Integer
+   gallons      ;; Double
    time         ;; Integer, minutes
    coupon-code  ;; String
    vehicle-id   ;; String
@@ -178,22 +178,23 @@
    zip-code     ;; String
    & {:keys [bypass-zip-code-check]}]
   (max 0
-       (+ (* ((keyword octane)
-              ((resolve 'purple.dispatch/get-fuel-prices) zip-code))
-             (- gallons
-                (min gallons
-                     referral-gallons-used)))
-          ((keyword (str time))
-           ((resolve 'purple.dispatch/get-service-fees) zip-code))
-          (if-not (s/blank? coupon-code)
-            (:value (coupons/code->value
-                     db-conn
-                     coupon-code
-                     vehicle-id
-                     user-id
-                     zip-code
-                     :bypass-zip-code-check bypass-zip-code-check))
-            0))))
+       (int (Math/ceil
+             (+ (* ((keyword octane)
+                    ((resolve 'purple.dispatch/get-fuel-prices) zip-code))
+                   (- gallons
+                      (min gallons
+                           referral-gallons-used)))
+                ((keyword (str time))
+                 ((resolve 'purple.dispatch/get-service-fees) zip-code))
+                (if-not (s/blank? coupon-code)
+                  (:value (coupons/code->value
+                           db-conn
+                           coupon-code
+                           vehicle-id
+                           user-id
+                           zip-code
+                           :bypass-zip-code-check bypass-zip-code-check))
+                  0))))))
 
 (defn valid-price?
   "Is the stated 'total_price' accurate?"
@@ -296,7 +297,7 @@
                  :target_time_end (+ (quot (System/currentTimeMillis) 1000)
                                      (* 60 time-limit))
                  :time-limit time-limit
-                 :gallons (Integer. (:gallons order))
+                 :gallons (Double. (:gallons order))
                  :gas_type (unless-p nil?
                                      (:gas_type order)
                                      (infer-gas-type-by-price (:gas_price order)
@@ -305,7 +306,7 @@
                  :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
                  :license_plate license-plate
                  ;; we'll use as many referral gallons as available
-                 :referral_gallons_used (min (Integer. (:gallons order))
+                 :referral_gallons_used (min (Double. (:gallons order))
                                              referral-gallons-available)
                  :coupon_code (format-coupon-code (or (:coupon_code order) "")))]
 

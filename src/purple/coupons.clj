@@ -150,7 +150,7 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE users SET referral_gallons = referral_gallons - "
-          (Integer. gallons)
+          (Double. gallons)
           " WHERE id = \"" (mysql-escape-str user-id) "\""))))
 
 (defn mark-gallons-as-unused
@@ -159,7 +159,7 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE users SET referral_gallons = referral_gallons + "
-          (Integer. gallons)
+          (Double. gallons)
           " WHERE id = \"" (mysql-escape-str user-id) "\""))))
 
 (defn apply-referral-bonus
@@ -172,7 +172,7 @@
       (sql/with-connection db-conn
         (sql/do-prepared
          (str "UPDATE users SET referral_gallons = referral_gallons + "
-              (Integer. config/referral-referrer-gallons)
+              (Double. config/referral-referrer-gallons)
               " WHERE id = \"" (mysql-escape-str user-id) "\"")))
       ((resolve 'purple.users/send-push) db-conn user-id
        (str "Thank you for sharing Purple with your friend! We've added "
