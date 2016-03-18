@@ -127,7 +127,10 @@
         good-times (filter #(and (zip-in-zones? zip-code) (good-time?-fn %))
                            (keys delivery-times))]
     {:octane octane
-     :gallons 15 ;; for now, we always assume 15 is available
+     :gallon_choices {:0 7.5
+                      :1 10
+                      :2 15}
+     :gallons 15 ;; keep this for legacy app version < 1.2.2
      :price_per_gallon ((keyword octane) (get-fuel-prices zip-code))
      :times (into {} (map (juxt identity delivery-times) good-times))}))
 
@@ -321,8 +324,8 @@
            "couriers"
            {:lat lat
             :lng lng
-            :gallons_87 (Integer. (:87 gallons))
-            :gallons_91 (Integer. (:91 gallons))
+            :gallons_87 (Double. (:87 gallons))
+            :gallons_91 (Double. (:91 gallons))
             :connected 1
             :last_ping (quot (System/currentTimeMillis) 1000)}
            {:id user-id}))
