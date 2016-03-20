@@ -24,7 +24,7 @@ General INPUT (for major functions):
 			"courier_id" (String); // "" (empty string) if no courier is assigned; CAUTION
 			"zone" (Integer);
 			"gas_type" (String);
-			"gallons" (Integer);
+			"gallons" (Double);
 			"target_time_start" (Integer);
 			"target_time_end" (Integer);
 			"status" (String);
@@ -1177,7 +1177,7 @@ public class PurpleOpt {
 
 	// average servicing time in second by gallons
 	static int iOrderServingTime(HashMap<String,Object> order) {
-		Integer gallons = (Integer) order.get("gallons");
+		Double gallons = (Double) order.get("gallons");
 		switch (gallons.intValue()) {
 		case 10:
 			return 60 * mins10GallonOrder;
