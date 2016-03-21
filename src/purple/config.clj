@@ -119,6 +119,11 @@
 ;; The # of gallons credited to the Referrer upon usage of their coupon code
 (def referral-referrer-gallons 5)
 
+;; Only affects version 1.3.0 and higher
+(def gallon_choices {:0 7.5
+                     :1 10
+                     :2 15})
+
 ;; The flow of order status; nil means status can't be changed
 (def status->next-status
   {"unassigned"  "assigned"
