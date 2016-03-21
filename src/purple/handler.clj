@@ -548,7 +548,7 @@
        (redirect "https://build.phonegap.com/apps/1205677/install/kP_AVprocspwUdewxfht"))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
-  (GET "/" [] (wrap-page (response (pages/home))))
+  (GET "/" [] (redirect "http://purpleapp.com"))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 
