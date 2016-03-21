@@ -97,7 +97,8 @@
   (-> zip-code
       (get-service-time-bracket)
       first
-      (+ 90)))
+      (+ 0) ;; for 1 1/2 hour delay: (+ 90)
+      ))
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
@@ -127,9 +128,7 @@
         good-times (filter #(and (zip-in-zones? zip-code) (good-time?-fn %))
                            (keys delivery-times))]
     {:octane octane
-     :gallon_choices {:0 7.5
-                      :1 10
-                      :2 15}
+     :gallon_choices config/gallon_choices
      :gallons 15 ;; keep this for legacy app version < 1.2.2
      :price_per_gallon ((keyword octane) (get-fuel-prices zip-code))
      :times (into {} (map (juxt identity delivery-times) good-times))}))
