@@ -318,13 +318,13 @@
 
 (defn courier-ping
   "The courier app periodically pings us with courier status details."
-  [db-conn user-id lat lng gallons]
+  [db-conn user-id lat lng gallons_87 gallons_91]
   (!update db-conn
            "couriers"
            {:lat lat
             :lng lng
-            :gallons_87 (Double. (:87 gallons))
-            :gallons_91 (Double. (:91 gallons))
+            :gallons_87 gallons_87
+            :gallons_91 gallons_91
             :connected 1
             :last_ping (quot (System/currentTimeMillis) 1000)}
            {:id user-id}))

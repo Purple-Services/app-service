@@ -294,17 +294,10 @@
                         (:token b)
                         (dispatch/courier-ping db-conn
                                                (:user_id b)
-                                               (if (nil? (:lat b))
-                                                 0
-                                                 (unless-p
-                                                  Double/isNaN
-                                                  (Double. (:lat b)) 0))
-                                               (if (nil? (:lng b))
-                                                 0
-                                                 (unless-p
-                                                  Double/isNaN
-                                                  (Double. (:lng b)) 0))
-                                               (or (:gallons b) 0)))))))))
+                                               (coerce-double (:lat b))
+                                               (coerce-double (:lng b))
+                                               (coerce-double (:87 (:gallons b)))
+                                               (coerce-double (:91 (:gallons b)))))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
