@@ -97,6 +97,11 @@
          flatten
          (apply str))))
 
+(defn coerce-double
+  "Coerces various inputs regardless of type into a Double. (nil is 0.0)"
+  [x]
+  (Double/parseDouble (str (or x 0))))
+
 (defn map->java-hash-map
   "Recursively convert Clojure PersistentArrayMap to Java HashMap."
   [m]
