@@ -72,17 +72,16 @@
 (defn get-by-courier
   "Gets all of a courier's assigned orders."
   [db-conn courier-id]
-  (let [courier-zip-codes  ((resolve 'purple.dispatch/get-courier-zips)
-                            db-conn courier-id)
-        os (!select db-conn "orders" ["*"] {}
+  (let [os (!select db-conn "orders" ["*"] {}
                     :custom-where
                     (str "(courier_id = \""
                          (mysql-escape-str courier-id)
-                         "\" AND target_time_start > "
+                         "\" AND (target_time_start > "
                          (- (quot (System/currentTimeMillis) 1000)
                             (* 60 60 24)) ;; 24 hours
-                         ") "
-                         "ORDER BY target_time_end DESC"))
+                         ;; or any order that is current even if older
+                         " OR (status != \"complete\" AND status != \"cancelled\")))" 
+                         " ORDER BY target_time_end DESC"))
         customer-ids (distinct (map :user_id os))
         customers (group-by :id
                             (!select db-conn
