@@ -52,7 +52,8 @@
         good-times (filter #(and (zip-in-zones? zip-code) (good-time?-fn %))
                            (keys delivery-times))]
     {:octane octane
-     :gallons 15 ;; for now, we always assume 15 is available
+     :gallon_choices config/gallon_choices
+     :gallons 15 ;; keep this for legacy app version < 1.2.2
      :price_per_gallon ((keyword octane) (get-fuel-prices zip-code))
      :times (into {} (map (juxt identity delivery-times) good-times))}))
 
@@ -173,7 +174,7 @@
 (defn new-assignments
   [os cs]
   (let [new-and-first #(and (:new_assignment %)
-                            (= 1 (:suggested_courier_pos %)))]
+                            (= 1 (:courier_pos %)))]
     (filter
      (comp new-and-first val)
      (fmap (comp keywordize-keys (partial into {}))
@@ -190,15 +191,7 @@
                            (map (juxt :id stringify-keys))
                            (into {}))
              "couriers" (->> cs
-                             (map #(assoc %
-                                          :assigned_orders
-                                          (->> os
-                                               (filter
-                                                (fn [o]
-                                                  (= (:courier_id o)
-                                                     (:id %))))
-                                               (map :id))
-                                          :zones (apply list (:zones %))))
+                             (map #(assoc % :zones (apply list (:zones %))))
                              (map (juxt :id stringify-keys))
                              (into {}))})))))
 
@@ -237,7 +230,7 @@
                                                     :lat :lng :last_ping]) cs)})
       })
     (when (diff-state? os cs)
-      (run! #(orders/assign db-conn (key %) (:suggested_courier (val %))
+      (run! #(orders/assign db-conn (key %) (:courier_id (val %))
                             :no-reassigns true)
             (new-assignments os cs)))))
 
@@ -250,13 +243,13 @@
 
 (defn courier-ping
   "The courier app periodically pings us with courier status details."
-  [db-conn user-id lat lng gallons]
+  [db-conn user-id lat lng gallons_87 gallons_91]
   (!update db-conn
            "couriers"
            {:lat lat
             :lng lng
-            :gallons_87 (Integer. (:87 gallons))
-            :gallons_91 (Integer. (:91 gallons))
+            :gallons_87 gallons_87
+            :gallons_91 gallons_91
             :connected 1
             :last_ping (quot (System/currentTimeMillis) 1000)}
            {:id user-id}))

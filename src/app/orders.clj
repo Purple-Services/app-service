@@ -16,7 +16,8 @@
                                  send-email
                                  send-sms
                                  unless-p unix->fuller unix->full
-                                 unix->minute-of-day]]
+                                 unix->minute-of-day
+                                 coerce-double]]
             [common.zones :refer [get-fuel-prices get-service-fees
                                   get-service-time-bracket
                                   get-one-hour-orders-allowed order->zone-id]]
@@ -108,34 +109,35 @@
            {:id order-id}))
 
 (defn calculate-cost
-  "Calculate cost of order based on current prices."
-  [db-conn
-   octane       ;; String
-   gallons      ;; Integer
-   time         ;; Integer, minutes
-   coupon-code  ;; String
-   vehicle-id   ;; String
-   user-id
-   referral-gallons-used
-   zip-code     ;; String
+  "Calculate cost of order based on current prices. Returns cost in cents."
+  [db-conn               ;; Database Connection 
+   octane                ;; String
+   gallons               ;; Double
+   time                  ;; Integer, minutes
+   coupon-code           ;; String
+   vehicle-id            ;; String
+   user-id               ;; String
+   referral-gallons-used ;; Double
+   zip-code              ;; String
    & {:keys [bypass-zip-code-check]}]
   (max 0
-       (+ (* ((keyword octane)
-              (get-fuel-prices zip-code))
-             (- gallons
-                (min gallons
-                     referral-gallons-used)))
-          ((keyword (str time))
-           (get-service-fees zip-code))
-          (if-not (s/blank? coupon-code)
-            (:value (coupons/code->value
-                     db-conn
-                     coupon-code
-                     vehicle-id
-                     user-id
-                     zip-code
-                     :bypass-zip-code-check bypass-zip-code-check))
-            0))))
+       (int (Math/ceil
+             (+ (* ((keyword octane)
+                    (get-fuel-prices zip-code))
+                   (- gallons
+                      (min gallons
+                           referral-gallons-used)))
+                ((keyword (str time))
+                 (get-service-fees zip-code))
+                (if-not (s/blank? coupon-code)
+                  (:value (coupons/code->value
+                           db-conn
+                           coupon-code
+                           vehicle-id
+                           user-id
+                           zip-code
+                           :bypass-zip-code-check bypass-zip-code-check))
+                  0))))))
 
 (defn valid-price?
   "Is the stated 'total_price' accurate?"
@@ -238,16 +240,16 @@
                  :target_time_end (+ (quot (System/currentTimeMillis) 1000)
                                      (* 60 time-limit))
                  :time-limit time-limit
-                 :gallons (Integer. (:gallons order))
+                 :gallons (coerce-double (:gallons order))
                  :gas_type (unless-p nil?
                                      (:gas_type order)
                                      (infer-gas-type-by-price (:gas_price order)
                                                               (:address_zip order)))
-                 :lat (unless-p Double/isNaN (Double. (:lat order)) 0)
-                 :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
+                 :lat (coerce-double (:lat order))
+                 :lng (coerce-double (:lng order))
                  :license_plate license-plate
                  ;; we'll use as many referral gallons as available
-                 :referral_gallons_used (min (Integer. (:gallons order))
+                 :referral_gallons_used (min (coerce-double (:gallons order))
                                              referral-gallons-available)
                  :coupon_code (format-coupon-code (or (:coupon_code order) "")))]
 
@@ -320,13 +322,13 @@
                                                       :referral_gallons_used]))
             (when-not (zero? (:referral_gallons_used o))
               (mark-gallons-as-used db-conn
-                                            (:user_id o)
-                                            (:referral_gallons_used o)))
+                                    (:user_id o)
+                                    (:referral_gallons_used o)))
             (when-not (s/blank? (:coupon_code o))
               (mark-code-as-used db-conn
-                                         (:coupon_code o)
-                                         (:license_plate o)
-                                         (:user_id o)))
+                                 (:coupon_code o)
+                                 (:license_plate o)
+                                 (:user_id o)))
             (future ;; we can process the rest of this asynchronously
               (let [available-couriers
                     (->> (couriers/get-all-available db-conn)
