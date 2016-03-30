@@ -10,7 +10,7 @@
             [common.coupons :refer [format-coupon-code]]
             [common.orders :refer [cancel]]
             [common.users :refer [details send-feedback valid-session?]]
-            [common.util :refer [unless-p ver<]]
+            [common.util :refer [unless-p ver< coerce-double]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -249,17 +249,10 @@
                         (:token b)
                         (dispatch/courier-ping db-conn
                                                (:user_id b)
-                                               (if (nil? (:lat b))
-                                                 0
-                                                 (unless-p
-                                                  Double/isNaN
-                                                  (Double. (:lat b)) 0))
-                                               (if (nil? (:lng b))
-                                                 0
-                                                 (unless-p
-                                                  Double/isNaN
-                                                  (Double. (:lng b)) 0))
-                                               (or (:gallons b) 0)))))))))
+                                               (coerce-double (:lat b))
+                                               (coerce-double (:lng b))
+                                               (coerce-double (:87 (:gallons b)))
+                                               (coerce-double (:91 (:gallons b)))))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
@@ -312,7 +305,7 @@
        (redirect "https://build.phonegap.com/apps/1205677/install/kP_AVprocspwUdewxfht"))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
-  (GET "/" [] (wrap-page (response (pages/home))))
+  (GET "/" [] (redirect "http://purpleapp.com"))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
 
