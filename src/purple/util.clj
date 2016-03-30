@@ -97,6 +97,11 @@
          flatten
          (apply str))))
 
+(defn coerce-double
+  "Coerces various inputs regardless of type into a Double. (nil is 0.0)"
+  [x]
+  (Double/parseDouble (str (or x 0))))
+
 (defn map->java-hash-map
   "Recursively convert Clojure PersistentArrayMap to Java HashMap."
   [m]
@@ -311,15 +316,18 @@
      (def twilio-sms-factory (.getMessageFactory (.getAccount twilio-client)))
      (def twilio-call-factory (.getCallFactory (.getAccount twilio-client)))))
 
-
 (defn send-sms
   [to-number message]
-  (catch-notify
-   (.create twilio-sms-factory
-            (ArrayList. [(BasicNameValuePair. "Body" message)
-                         (BasicNameValuePair. "To" to-number)
-                         (BasicNameValuePair. "From" config/twilio-from-number)]))))
-
+  (try (.create twilio-sms-factory
+                (ArrayList. [(BasicNameValuePair. "Body" message)
+                             (BasicNameValuePair. "To" to-number)
+                             (BasicNameValuePair. "From" config/twilio-from-number)]))
+       (catch Exception e
+         (only-prod (send-email {:to "chris@purpledelivery.com"
+                                 :subject "Purple - Twilio Exception Caught"
+                                 :body (str e
+                                            "\nTo-number: " to-number
+                                            "\nMessage: " message)})))))
 
 (defn make-call
   [to-number call-url]

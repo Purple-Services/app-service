@@ -150,7 +150,7 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE users SET referral_gallons = referral_gallons - "
-          (Double. gallons)
+          (coerce-double gallons)
           " WHERE id = \"" (mysql-escape-str user-id) "\""))))
 
 (defn mark-gallons-as-unused
@@ -159,25 +159,21 @@
   (sql/with-connection db-conn
     (sql/do-prepared
      (str "UPDATE users SET referral_gallons = referral_gallons + "
-          (Double. gallons)
+          (coerce-double gallons)
           " WHERE id = \"" (mysql-escape-str user-id) "\""))))
 
 (defn apply-referral-bonus
   "Add benefits of referral to origin account."
-  [db-conn code]
-  (when-not (s/blank? code)
-    (when-let [user-id (-> (!select db-conn "users" [:id] {:referral_code code})
-                           first ;; if this when-let fails, that means this was
-                           :id)] ;; tried on a standard coupon not referral
-      (sql/with-connection db-conn
-        (sql/do-prepared
-         (str "UPDATE users SET referral_gallons = referral_gallons + "
-              (Double. config/referral-referrer-gallons)
-              " WHERE id = \"" (mysql-escape-str user-id) "\"")))
-      ((resolve 'purple.users/send-push) db-conn user-id
-       (str "Thank you for sharing Purple with your friend! We've added "
-            config/referral-referrer-gallons
-            " gallons to your account!")))))
+  [db-conn user-id]
+  (sql/with-connection db-conn
+    (sql/do-prepared
+     (str "UPDATE users SET referral_gallons = referral_gallons + "
+          config/referral-referrer-gallons
+          " WHERE id = \"" (mysql-escape-str user-id) "\"")))
+  ((resolve 'purple.users/send-push) db-conn user-id
+   (str "Thank you for sharing Purple with your friend! We've added "
+        config/referral-referrer-gallons
+        " gallons to your account!")))
 
 (defn is-code-available?
   [db-conn code]

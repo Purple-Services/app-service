@@ -60,7 +60,6 @@
                   ["*"]
                   {:id id})))
 
-
 (defn get-by-user
   "Gets all of a user's orders."
   [db-conn user-id]
@@ -73,17 +72,16 @@
 (defn get-by-courier
   "Gets all of a courier's assigned orders."
   [db-conn courier-id]
-  (let [courier-zip-codes  ((resolve 'purple.dispatch/get-courier-zips)
-                            db-conn courier-id)
-        os (!select db-conn "orders" ["*"] {}
+  (let [os (!select db-conn "orders" ["*"] {}
                     :custom-where
                     (str "(courier_id = \""
                          (mysql-escape-str courier-id)
-                         "\" AND target_time_start > "
+                         "\" AND (target_time_start > "
                          (- (quot (System/currentTimeMillis) 1000)
                             (* 60 60 24)) ;; 24 hours
-                         ") "
-                         "ORDER BY target_time_end DESC"))
+                         ;; or any order that is current even if older
+                         " OR (status != \"complete\" AND status != \"cancelled\")))" 
+                         " ORDER BY target_time_end DESC"))
         customer-ids (distinct (map :user_id os))
         customers (group-by :id
                             (!select db-conn
@@ -297,16 +295,16 @@
                  :target_time_end (+ (quot (System/currentTimeMillis) 1000)
                                      (* 60 time-limit))
                  :time-limit time-limit
-                 :gallons (Double. (:gallons order))
+                 :gallons (coerce-double (:gallons order))
                  :gas_type (unless-p nil?
                                      (:gas_type order)
                                      (infer-gas-type-by-price (:gas_price order)
                                                               (:address_zip order)))
-                 :lat (unless-p Double/isNaN (Double. (:lat order)) 0)
-                 :lng (unless-p Double/isNaN (Double. (:lng order)) 0)
+                 :lat (coerce-double (:lat order))
+                 :lng (coerce-double (:lng order))
                  :license_plate license-plate
                  ;; we'll use as many referral gallons as available
-                 :referral_gallons_used (min (Double. (:gallons order))
+                 :referral_gallons_used (min (coerce-double (:gallons order))
                                              referral-gallons-available)
                  :coupon_code (format-coupon-code (or (:coupon_code order) "")))]
 
@@ -504,7 +502,12 @@ and their id matches the order's courier_id"
 
 (defn after-payment
   [db-conn o]
-  (do (coupons/apply-referral-bonus db-conn (:coupon_code o))
+  (do (when-not (s/blank? (:coupon_code o))
+        (when-let [user-id (-> (!select db-conn "users" [:id] {:referral_code
+                                                               (:coupon_code o)})
+                               first ;; if this when-let fails, that means this
+                               :id)] ;; is a standard coupon not referral coupon
+          (coupons/apply-referral-bonus db-conn user-id)))
       (segment/track segment-client (:user_id o) "Complete Order"
                      (assoc (segment-props o)
                             :revenue (cents->dollars (:total_price o))))
