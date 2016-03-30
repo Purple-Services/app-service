@@ -1,5 +1,5 @@
-(ns purple.test.util
-  (:use purple.util)
+(ns app.test.util
+  (:use common.util)
   (:require [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]
             [clj-time.format :as time-format]

@@ -1,28 +1,29 @@
-(ns purple.couriers
-  (:use purple.util
-        [purple.db :only [conn !select !insert !update mysql-escape-str]])
-  (:require [purple.config :as config]
+(ns app.couriers
+  (:require [common.config :as config]
+            [common.couriers :refer [process-courier get-couriers]]
+            [common.db :refer [!select mysql-escape-str]]
+            [common.util :refer [in?]]
             [clojure.string :as s]))
 
-(defn parse-courier-zones
-  "Converts couriers' 'zones' from string to a set of Integer's."
-  [c]
-  (->> (:zones c)
-       split-on-comma
-       (map #(Integer. %))
-       set
-       (assoc c :zones)))
+;; (defn parse-courier-zones
+;;   "Converts couriers' 'zones' from string to a set of Integer's."
+;;   [c]
+;;   (->> (:zones c)
+;;        split-on-comma
+;;        (map #(Integer. %))
+;;        set
+;;        (assoc c :zones)))
 
-(defn get-couriers
-  "Gets couriers from db. Optionally add WHERE constraints."
-  [db-conn & {:keys [where]}]
-  (map parse-courier-zones
-       (!select db-conn "couriers" ["*"] (merge {} where))))
+;; (defn get-couriers
+;;   "Gets couriers from db. Optionally add WHERE constraints."
+;;   [db-conn & {:keys [where]}]
+;;   (map parse-courier-zones
+;;        (!select db-conn "couriers" ["*"] (merge {} where))))
 
-(defn all-couriers
-  "All couriers."
-  [db-conn]
-  (get-couriers db-conn))
+;; (defn all-couriers
+;;   "All couriers."
+;;   [db-conn]
+;;   (get-couriers db-conn))
 
 (defn get-all-on-duty
   "All the couriers that are currently connected."
@@ -48,7 +49,7 @@
 (defn get-all-expired
   "All the 'connected' couriers that haven't pinged recently."
   [db-conn]
-  (map parse-courier-zones
+  (map process-courier
        (!select db-conn "couriers" ["*"] {}
                 :custom-where
                 (str "active = 1 AND connected = 1 AND ("

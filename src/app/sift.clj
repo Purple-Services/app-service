@@ -1,9 +1,7 @@
-(ns purple.sift
-  (:use purple.util
-        cheshire.core
-        clojure.walk
-        [purple.db :only [conn !select !insert !update mysql-escape-str]])
-  (:require [purple.config :as config]
+(ns app.sift
+  (:require [common.config :as config]
+            [common.util :refer [not-nil-vec]]
+            [common.zones :refer [order->zone-id]]
             [clj-http.client :as client]
             [clojure.string :as s]))
 
@@ -64,7 +62,7 @@
          :time_limit (:time-limit order)
          :gas_price (* (:gas_price order) 10000)
          :service_fee (* (:service_fee order) 10000)
-         :zone_id (try ((resolve 'purple.dispatch/order->zone-id) order)
+         :zone_id (try (order->zone-id order)
                        (catch Exception e nil))))
 
 (defn charge-authorization
