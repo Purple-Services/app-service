@@ -28,7 +28,8 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
-  :aws {:beanstalk {:environments [{:name "prod"}
+  :aws {:beanstalk {:app-name "purple"
+                    :environments [{:name "prod"}
                                    {:name "purple-dev-env"}]
                     :s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}})
