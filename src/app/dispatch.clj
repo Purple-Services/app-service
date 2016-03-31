@@ -255,4 +255,4 @@
                          (when (not (nil? set-on-duty))
                            {:on_duty set-on-duty}))
                   {:id user-id})
-         {:on_duty (couriers/on-duty? db-conn user-id))})
+         {:on_duty (couriers/on-duty? db-conn user-id)}))
