@@ -19,7 +19,7 @@
                  [com.twilio.sdk/twilio-java-sdk "4.2.0"] ;; SMS and Phone Calls
                  [analytics-clj "0.3.0"]
                  [org.clojure/algo.generic "0.1.2"]
-                 [common "1.0.2-SNAPSHOT"]
+                 [common "1.0.3-SNAPSHOT"]
                  [opt "1.0.0-SNAPSHOT"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
