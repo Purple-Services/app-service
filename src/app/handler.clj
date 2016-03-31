@@ -252,7 +252,8 @@
                                                (coerce-double (:lat b))
                                                (coerce-double (:lng b))
                                                (coerce-double (:87 (:gallons b)))
-                                               (coerce-double (:91 (:gallons b)))))))))))
+                                               (coerce-double (:91 (:gallons b)))
+                                               (:set_on_duty b)))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
