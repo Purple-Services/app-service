@@ -1,12 +1,65 @@
-# Purple Web Service
+# Purple App Service
 
-The RESTful web service that the Purple mobile app uses. Also, provides a Dashboard and a few web pages.
+The RESTful web service that the Purple mobile app uses
 
 ## Running Locally
 
+### Getting started
+
+There a few git repos that make up the Purple ecosystem. Create a "Purple-Services"
+dir somewhere in your home dir or other appropriate place to keep all of the repos.
+
+These repos make up the clojure server-side code:
+
+Git repo: Purple-Services/app-service
+Clojure project name: app
+Description: mobile app api + logic specific to mobile app
+
+Git repo: Purple-Services/dashboard-service
+Clojure project name: dashboard
+Description: dashboard api + logic specific to dashboard
+
+Git repo: Purple-Services/common
+CLojure project name: common
+Description: library containing majority of logic (used by web/dashboard-service) + database calls + misc
+
+Git repo: Purple-Services/opt
+Clojure project name: opt
+Description: library containing optimization logic (auto-assign heuristics, gas station planning, gas station list aggregation code).
+
+
+Clone all of these repos to your Purple-Services dir. The common and opt libraries must be installed into your local repository.
+
+```bash
+~/Purple-Services/common$ lein install
+~/Purple-Services/opt$ lein install
+```
+
+There should be little, if any, editing of these two libraries during development. However, sometimes common
+must be developed in parallel to dashboard-service or app-service. Use the checkouts/ dir (https://github.com/technomancy/leiningen/blob/master/doc/TUTORIAL.md#checkout-dependencies) to facilitate this by linking to your local repos with ln.
+
+```bash
+~/Purple-Services/app-service/checkouts$ ln -s ~/Purple-Services/common common
+~/Purple-Services/app-service/checkouts$ ln -s ~/Purple-Services/opt opt
+```
+
+You'll end up with a dir structure like this:
+
+    .
+    |-- project.clj
+    |-- README.md
+    |-- checkouts
+    |   `-- common [link to ~/Purple-Services/common]
+    |   `-- opt    [link to ~/Purple-Services/opt]
+    `-- src
+        `-- app
+            `-- handler.clj
+
+
+
 ### Configuration
 
-The file src/purple/config.clj contains all of the information needed for configuration. For local development, <project_root>/profiles.clj is used to define environment variables. However, profiles.clj is included in .gitignore and is not included in the repository. When you first start working on the project, you will have to create profiles.clj in the project root dir using the following template:
+For local development, <project_root>/profiles.clj is used to define environment variables. However, profiles.clj isincluded in .gitignore and is not included in the repository. When you first start working on the project, you will have to create profiles.clj in the project root dir using the following template:
 
 ```clojure
 {:dev { :env {:aws-access-key-id "ANYTHINGWHENLOCAL"
@@ -26,12 +79,6 @@ The file src/purple/config.clj contains all of the information needed for config
               :twilio-form-number "+13239243338"
               :base-url "http://localhost:3000/"
               :has-ssl "NO"
-              :basic-auth-username "purpleadmin"
-              :basic-auth-password "gasdelivery8791"
-              :basic-auth-read-only-username "purplestats"
-              :basic-auth-read-only-password "gasdelivery8791"
-              :basic-auth-courier-manager-username "purplemanager"
-              :basic-auth-courier-manager-password "gasdelivery8791"
               :segment-write-key "test"
               :sift-science-api-key "test"
               :dashboard-google-browser-api-key "AIzaSyA0p8k_hdb6m-xvAOosuYQnkDwjsn8NjFg"
@@ -42,13 +89,14 @@ The file src/purple/config.clj contains all of the information needed for config
 
 Because profiles.clj will override the entires for :profiles in project.clj, the required :dependencies must be included in profiles.clj
 
-**In order to use lein with this environment, you will need to use the lein-environ plug. Add [lein-environ "1.0.0"] to your {:user {:plugins }} entry of your ~/.lein/profiles.clj file**
-
 **Note**: The value of :db-host is the database host used for development. If you have MySQL configured on your machine, you can use the value "localhost" with a :db-password that you set. Otherwise, you can use the AWS valueshost and pwd values to access the remote development server. You will eventually need to setup a local MySQL server in order to run tests that access the database. See "Using a local MySQL Database for Development" below about how to configure this.
 
+### Get private dependencies
+
+There are two dependencies that are private to Purple, common and opt. 
 ### Request addition of your IP address to RDS
 
-Navigate to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed in order to access the test database so that you will be able to develope locally. This must be done before continuing further if you plan to connect to the development database on AWS as opposed to using your local MySQL database.
+Navigate to https://www.whatismyip.com/ and send your IP address to Chris in order to be added to the AWS RDS. You will have to update your IP address whenever it changes. This step must be completed in order to access the test database so that you will be able to develop locally. This must be done before continuing further if you plan to connect to the development database on AWS as opposed to using your local MySQL database.
 
 ### Start the local server for development
 
@@ -57,7 +105,7 @@ To start a web server for the application, run:
 
     lein ring server
 
-from the web-service dir
+from the app-service dir
 
 ### Open the Purple home page in a browser
 
@@ -84,45 +132,49 @@ You may encounter window.alert() errors which may only provide brief messages. T
 
 
 ### Initial client setup
-The client is a Sencha Touch web application. Obtain a zip file with the latest client from Chris. Unzip the file and go to the working dir with the index.html file. Chrome will need the '--disable-web-security' flag, which is not the default. If you already have a browser open, you will need to use the '--user-data-dir=/tmp/chrome2/' workaround to launch a new, separate Chrome session. This can be done in Mac OS X with the following command:
+The client is a Sencha Touch web application written in Coffeescript. Clone Purple-Services/app into Purple-Services.
+
+1. Compile coffeescript
+```bash
+coffee -o . -cb src
+```
+2. Edit app/util.js
+
+Change "VERSION" to "LOCAL".
+Edit "WEB_SERVICE_BASE_URL" for "LOCAL" to reflect the local dev environment. i.e. "http://localhost:3000/"
+
+3. Open the client
 
 ```bash
-$ /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-web-security --user-data-dir=/tmp/chrome2/ index.html
+Purple-Services/app$ /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --disable-web-security --user-data-dir=/tmp/chrome2/ index_debug.html
 ```
+
+Note: The server must be running in order for the client to run properly.
 
 You will be presented with a map and a 'Request Gas' button. Chrome will request to use your location information. If you allow it, Chrome will move the map to reflect your current location information. In order to test the app, you will need to change your current location to an address served by Purple. To do this:
 
-1. Click on the current address
-2. Type "Beverly Hills"
-3. Click on "Beverly Hills CA, United States"
-4. Click "Request Gas"
-5. You will now be shown a login page. You can create an account by clicking "Create Account".
-6. Enter your information in the fields provided and click 'Register'
-7. Enter your name and phone number, click 'Register'
+### Create an account
+
+1. Allow location services
+2. Click on the current address in the bottom purple bar.
+3. You will be immediately sent to the login screen. Create a new account.
+   (If you have problems, check in phpmyadmin that the username you choose isn't already taken)
+4. You will now be shown a login page. Createa new account.
+5. Click on the address in the lower purple bar.
+6. Type "Beverly Hills"
+7. Click on "Beverly Hills CA, United States"
 
 ### Request Gas
 
 
-1. Click on the 'Request Gas' button. You will be taken to the 'Add Vehicle' menu.
-2. Enter information for the 'Year','Make','Model','Color','Gas' and 'License Plate'. Click and Drag in order to scroll through popup menus. The 'Take Photo' menu item can be left blank. You won't be able to use this feature in Chrome because it requires a native mobile camera. 
-3. Click 'Save Changes'. If you have any errors, see the 'Errors' section above.
-4. You will be taken to the 'Request Gas' menu. After making your selections, click 'Review Order'. Click 'Confirm Order' to confirm it.
-5. You will have to add credit card information. You can use '4242424242424242' as the Card Number and any valid expiration and cvc number (i.e. three digit number). Click 'Save Changes'.
-6. After you review the order, 'Confirm Order'. You will be presented with a list of your Orders.
-
-### View Requests on dashboard
-
-Navigate to http://localhost:3000/dashboard 
-Use the following credentials
-
-**Username**: purpleadmin
-
-**Password**: gasdelivery8791
-
-You should see your new order with the Status 'Unassigned'
+8. Click on the 'Request Gas' button. You will be taken to the 'Add Vehicle' menu.
+9. Enter information for the 'Year','Make','Model','Color','Gas' and 'License Plate'. Click and Drag in order to scroll through popup menus. The 'Take Photo' menu item can be left blank. You won't be able to use this feature in Chrome because it requires a native mobile camera.
+10. Click 'Save Changes'. If you have any errors, see the 'Errors' section above.
+11. You will be taken to the 'Request Gas' menu. After making your selections, click 'Review Order'. Click 'Confirm Order' to confirm it.
+12. You will have to add credit card information. You can use '4242424242424242' as the Card Number and any valid expiration and cvc number (i.e. three digit number) and zip code. Click 'Save Changes'.
+13. After you review the order, 'Confirm Order'. Dismiss the alert. You will be presented with a list of your Orders.
 
 ### Login with the Courier Client
-
 
 Couriers fulfill orders by delivering gas to the client. A courier should have the app logged in and running in the background on their phone whenever they are on duty. The courier app will ping the web service every 10 seconds. When a new order is created, all connected couriers get notified. Unassigned orders are shown in the courier app in a list. They can press the 'Accept Order' button for that order.
 
@@ -167,6 +219,26 @@ There are three files provided in the database dir:
 
 **ebdb_zcta.sql.gz** will create a table of Zip Code Tabulation Areas (zcta) which define the borders of a zip code
 
+ebdb.sql can be updated with the retrieve_db script
+
+```bash
+~/Purple-Services/app-service$ scripts/retrieve_db ebdb.sql
+```
+
+The scripts for populating the database rely on mysqldump to retrieve the
+ebdb database from the server. However, fields that are of type text,
+medium_text or other blob types do not retain their default values.
+
+The following values must be altered:
+
+orders.text_rating, orders.event_log, coupons.zip_codes, users.stripe_cards
+
+The following command can be used to change the default value to empty ("")
+
+```sql
+> ALTER TABLE `orders` CHANGE `text_rating` `text_rating` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT "";
+```
+
 In order to use it, you obviously must have MySQL working on your local machine. It is advisable to also use phpmyadmin.
 
 We have also provided a clojure script that must be run from the command line using the '[lein-exec](https://github.com/kumarshantanu/lein-exec)' plugin. In order to use it, add the following line to your {:user {:plugins }} entry of your ~/.lein/profiles.clj:
@@ -191,43 +263,6 @@ src/profiles.clj
 database/ebdb_setup.sql
 ```
 
-## Running Selenium functional tests
-
-There are functional tests (test/purple/dashboard.clj) that use [clj-webdriver](https://github.com/semperos/clj-webdriver), a clojure Selenium WebDriver library. These tests automatically control a Chrome web browser and ensure proper app behavior. Before these tests can be run successfully, you need to first install Chrome and its [ChromeDriver](https://code.google.com/p/selenium/wiki/ChromeDriver). You can download the Mac version of ChromeDriver [here](https://sites.google.com/a/chromium.org/chromedriver/downloads). After unzipping the file, move it to a place that is on your PATH. For example, /opt/local/bin/chromedriver.
-
-You will also need to add entries required by the functional tests to {:dev {:dependencies}}. Because we have already created a profiles.clj file, we need to add the selenium dependencies there. We also need to add ring-jetty-adapter because the functional tests run the app server on a test port so that the tests can be run without having a dev server running locally. Modify profiles.clj and add these requirements:
-
-```clojure
-:dependencies [[javax.servlet/servlet-api "2.5"]
-               [ring-mock "0.1.5"]
-               [clj-webdriver "0.7.2"]
-               [org.seleniumhq.selenium/selenium-java "2.47.0"]
-               [ring/ring-jetty-adapter "1.4.0"]
-               ]
-```
-
-These modifications should allow the tests to run properly with ChromeDriver 2.19.
-
-There are additional functional tests for the client (test/purple/client.clj). You will need a version of the client and pointer to its index.html file in profiles.clj for env. On my machine, the file is located at
-
-```bash
-file:///Users/james/PurpleInc/Purple/index.html
-```
-
-so in profiles.clj I made an entry to my {:dev {:env }} map:
-
-```clojure
-:client-index-file "file:///Users/james/PurpleInc/Purple/index.html"
-```
-
-Because the client was compiled to use port 3000, the server must be running via
-
-```bash
-$ lein ring server
-```
-
-in order for the client tests to pass.
-
 ## Deploying to Development Server
 
 The server is manually configured with the required System properties in the AWS console. Therefore, the top entry of src/purple/config.clj only sets vars when the environment is "test" or "dev".
@@ -240,6 +275,8 @@ Use lein-beanstalk to deploy to AWS ElasticBeanstalk (you must first set up your
 
 Generally, try to follow: https://github.com/bbatsov/clojure-style-guide
 
+Try to keep lines less than 80 columns wide.
+
 ## License
 
-Copyright © 2015 Purple Services Inc
+Copyright © 2016 Purple Services Inc
