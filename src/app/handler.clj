@@ -1,6 +1,7 @@
 (ns app.handler
   (:require [clojure.walk :refer [keywordize-keys]]
             [app.users :as users]
+            [app.couriers :as couriers]
             [app.orders :as orders]
             [app.dispatch :as dispatch]
             [app.coupons :as coupons]
@@ -247,13 +248,14 @@
                         db-conn
                         (:user_id b)
                         (:token b)
-                        (dispatch/courier-ping db-conn
-                                               (:user_id b)
-                                               (coerce-double (:lat b))
-                                               (coerce-double (:lng b))
-                                               (coerce-double (:87 (:gallons b)))
-                                               (coerce-double (:91 (:gallons b)))
-                                               (:set_on_duty b)))))))))
+                        (couriers/ping db-conn
+                                       (:user_id b)
+                                       (:version b)
+                                       (coerce-double (:lat b))
+                                       (coerce-double (:lng b))
+                                       (coerce-double (:87 (:gallons b)))
+                                       (coerce-double (:91 (:gallons b)))
+                                       (:set_on_duty b)))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
