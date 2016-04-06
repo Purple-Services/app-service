@@ -1,29 +1,9 @@
 (ns app.couriers
   (:require [common.config :as config]
             [common.couriers :refer [process-courier get-couriers]]
-            [common.db :refer [!select mysql-escape-str]]
-            [common.util :refer [in?]]
+            [common.db :refer [!select !update mysql-escape-str]]
+            [common.util :refer [in? ver<]]
             [clojure.string :as s]))
-
-;; (defn parse-courier-zones
-;;   "Converts couriers' 'zones' from string to a set of Integer's."
-;;   [c]
-;;   (->> (:zones c)
-;;        split-on-comma
-;;        (map #(Integer. %))
-;;        set
-;;        (assoc c :zones)))
-
-;; (defn get-couriers
-;;   "Gets couriers from db. Optionally add WHERE constraints."
-;;   [db-conn & {:keys [where]}]
-;;   (map parse-courier-zones
-;;        (!select db-conn "couriers" ["*"] (merge {} where))))
-
-;; (defn all-couriers
-;;   "All couriers."
-;;   [db-conn]
-;;   (get-couriers db-conn))
 
 (defn get-all-on-duty
   "All the couriers that are currently connected."
@@ -73,3 +53,23 @@
   "Is this courier on duty?"
   [db-conn id]
   (in? (map :id (get-all-on-duty db-conn)) id))
+
+(defn ping
+  "The courier app periodically pings us with courier status details."
+  [db-conn user-id app-version lat lng gallons_87 gallons_91 set-on-duty]
+  (merge (if (ver< (or app-version "0") "1.11.0")
+           {:success false
+            :message "Please update your courier app to the latest version."
+            :message_title "Error"}
+           (!update db-conn
+                    "couriers"
+                    (merge {:lat lat
+                            :lng lng
+                            :gallons_87 gallons_87
+                            :gallons_91 gallons_91
+                            :connected 1
+                            :last_ping (quot (System/currentTimeMillis) 1000)}
+                           (when (not (nil? set-on-duty))
+                             {:on_duty set-on-duty}))
+                    {:id user-id}))
+         {:on_duty (on-duty? db-conn user-id)}))
