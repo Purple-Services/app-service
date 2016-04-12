@@ -178,7 +178,8 @@
                                     (:order b)
                                     :bypass-zip-code-check
                                     (ver< (or (:version b) "0")
-                                          "1.2.2"))))))
+                                          "1.2.2")
+                                    :app-version (or (:version b) "0"))))))
               (POST "/rate" {body :body}
                     (response
                      (let [b (keywordize-keys body)

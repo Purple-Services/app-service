@@ -8,15 +8,15 @@
                                    next-status segment-props service
                                    unpaid-balance]]
             [common.users :refer [details get-user-by-id include-user-data]]
-            [common.util :refer [cents->dollars-str in?
+            [common.util :refer [cents->dollars-str
+                                 in?
+                                 ver=
                                  minute-of-day->hmma
-                                 only-prod
+                                 only-prod unless-p
                                  rand-str-alpha-num
                                  segment-client
-                                 send-email
-                                 send-sms
-                                 unless-p unix->fuller unix->full
-                                 unix->minute-of-day
+                                 send-email send-sms
+                                 unix->fuller unix->full unix->minute-of-day
                                  coerce-double]]
             [common.zones :refer [get-fuel-prices get-service-fees
                                   get-service-time-bracket
@@ -217,7 +217,7 @@
 
 (defn add
   "The user-id given is assumed to have been auth'd already."
-  [db-conn user-id order & {:keys [bypass-zip-code-check]}]
+  [db-conn user-id order & {:keys [bypass-zip-code-check app-version]}]
   (let [time-limit (case (:time order)
                      ;; these are under the old system
                      "< 1 hr" 60
@@ -285,6 +285,11 @@
                            " to "
                            (minute-of-day->hmma (last service-time-bracket))
                            " today."))})
+
+      ;; mitigate the bug that causes multiple same orders because user doesn't
+      ;; get response 
+      (ver= app-version "1.3.0")
+      
       
       :else
       (let [auth-charge-result (if (zero? (:total_price o))
