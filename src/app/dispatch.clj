@@ -240,19 +240,3 @@
   ((juxt update-courier-state remind-couriers auto-assign) process-db-conn))
 
 (! (def process-job (at-at/every config/process-interval process job-pool)))
-
-(defn courier-ping
-  "The courier app periodically pings us with courier status details."
-  [db-conn user-id lat lng gallons_87 gallons_91 set-on-duty]
-  (merge (!update db-conn
-                  "couriers"
-                  (merge {:lat lat
-                          :lng lng
-                          :gallons_87 gallons_87
-                          :gallons_91 gallons_91
-                          :connected 1
-                          :last_ping (quot (System/currentTimeMillis) 1000)}
-                         (when (not (nil? set-on-duty))
-                           {:on_duty set-on-duty}))
-                  {:id user-id})
-         {:on_duty (couriers/on-duty? db-conn user-id)}))
