@@ -23,11 +23,24 @@
       (in? license-plate)))
 
 (defn used-by-user-id?
-  "Has this coupon been used by this user-id?"
+  "Has this coupon been used by this user ID?"
   [c user-id]
   (-> (:used_by_user_ids c)
       split-on-comma
       (in? user-id)))
+
+(defn num-uses
+  "How many times has this coupon been used?"
+  [c]
+  (-> (:used_by_user_ids c)
+      split-on-comma
+      (#(filter (complement s/blank?) %))
+      count))
+
+(defn under-max-uses?
+  "Has this coupon been used less than the maximum number of times?"
+  [c]
+  (< (num-uses c) (:max_uses c)))
 
 (defn has-ordered?
   "Has this license plate or user-id been used in a past order?"
@@ -66,7 +79,8 @@
        :message "Sorry, that coupon code cannot be used in this zip code."
        :value 0}
 
-      (< (:expiration_time coupon) (quot (System/currentTimeMillis) 1000))
+      (or (< (:expiration_time coupon) (quot (System/currentTimeMillis) 1000))
+          (not (under-max-uses? coupon)))
       {:success false
        :message "Sorry, that code is expired."
        :value 0}
