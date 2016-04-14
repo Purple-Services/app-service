@@ -77,7 +77,7 @@
 
 (defn gen-charge-description
   [db-conn order]
-  (str "Delivery of up to "
+  (str "Reliability service for up to "
        (:gallons order) " Gallons of Gasoline ("
        (->> (!select db-conn
                      "vehicles"
