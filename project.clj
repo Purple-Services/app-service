@@ -1,4 +1,4 @@
-(defproject app "1.5.1-SNAPSHOT"
+(defproject app "1.5.2-SNAPSHOT"
   :description "Purple mobile app web service."
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [compojure "1.1.8"]
