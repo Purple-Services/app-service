@@ -7,7 +7,7 @@
             [app.handler :refer :all]
             [common.users :refer [get-user-by-id get-user]]
             [common.db :refer [conn]]
-            [app.test.db :refer [setup-ebdb-test-for-conn-fixture]]
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]
             ))
 
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
