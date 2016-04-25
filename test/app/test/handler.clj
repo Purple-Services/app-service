@@ -2,7 +2,7 @@
   (:use cheshire.core)
   (:require [clojure.test :refer :all]
             [app.handler :refer :all]
-            [app.test.db :refer [setup-ebdb-test-for-conn-fixture]]
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]
             [ring.mock.request :as mock]))
 
 

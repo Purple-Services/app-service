@@ -4,7 +4,7 @@
             [common.users :refer [get-user]]
             [clojure.test :refer [deftest is test-ns use-fixtures
                                   test-ns testing]]
-            [app.test.db :refer [database-fixture ebdb-test-config]]
+            [app.test.db-tools :refer [database-fixture ebdb-test-config]]
             [common.util :refer [rand-str-alpha-num]]
             [clojure.string :as string]))
 

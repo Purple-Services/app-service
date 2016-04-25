@@ -1,39 +1,37 @@
-(ns app.test.db
+(ns app.test.db-tools
   (:require [common.db :as db]
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
 (def db-config
-  "Configuration file for connecting to the local database"
+  "Configuration map for connecting to local database."
   (let [db-host "localhost"
         db-port "3306"
         db-name "ebdb"
         db-password "localpurpledevelopment2015"
-        db-user "purplemaster"
-        db-config {:classname "com.mysql.jdbc.Driver"
-                   :subprotocol "mysql"
-                   :subname (str "//" db-host ":" db-port "/" db-name
-                                 "?useLegacyDatetimeCode=false"
-                                 "&serverTimezone=UTC")
-                   :user db-user
-                   :password db-password}]
-    db-config))
+        db-user "purplemaster"]
+    {:classname "com.mysql.jdbc.Driver"
+     :subprotocol "mysql"
+     :subname (str "//" db-host ":" db-port "/" db-name
+                   "?useLegacyDatetimeCode=false"
+                   "&serverTimezone=UTC")
+     :user db-user
+     :password db-password}))
 
 (def ebdb-test-config
-  "Configuration file for connecting to the local database"
+  "Configuration map for connecting to the local test database."
   (let [db-host "localhost"
         db-port "3306"
         db-name "ebdb_test"
         db-password "localpurpledevelopment2015"
         db-user "purplemaster"
-        db-sql "database/ebdb.sql"
-        db-config {:classname "com.mysql.jdbc.Driver"
-                   :subprotocol "mysql"
-                   :subname (str "//" db-host ":" db-port "/" db-name)
-                   :user db-user
-                   :password db-password
-                   :sql db-sql}]
-    db-config))
+        db-sql "database/ebdb.sql"]
+    {:classname "com.mysql.jdbc.Driver"
+     :subprotocol "mysql"
+     :subname (str "//" db-host ":" db-port "/" db-name)
+     :user db-user
+     :password db-password
+     :sql db-sql}))
 
 (defn process-sql
   "Process a SQL file into statements that can be applied with do-commands"
@@ -42,7 +40,7 @@
                    (slurp filename) ; read in the sql file
                    (clojure.string/replace #"--.*\n" "") ; ignore sql comments
                    (clojure.string/split #";\n") ; sepereate chunks into
-                                                 ; statements
+                                        ; statements
                    )]
     (->> sql-lines
          (map #(clojure.string/replace % #"\n" ""))
@@ -64,7 +62,7 @@
 
 (defn clear-and-populate-test-database
   []
-   ;; start with a clean ebdb_test database
+  ;; start with a clean ebdb_test database
   (clear-test-database)
   ;; populate the tables
   (create-tables-and-populate-database ebdb-test-config))
