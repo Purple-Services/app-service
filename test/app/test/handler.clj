@@ -11,7 +11,7 @@
 ;; to src/purple/config.clj
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
 
-(deftest test-app
+#_ (deftest test-app
   (testing "not-found route"
     (let [response (app (mock/request :get "/i-n-v-a-l-i-d"))]
       (is (= (:status response) 404))))
@@ -21,7 +21,7 @@
       (is (= (:status response) 200))
       )))
 
-(deftest test-user-interactions
+#_ (deftest test-user-interactions
   
   (let [post-data {:type "native"
                    :platform_id "test@test.com"

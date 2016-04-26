@@ -27,7 +27,8 @@
             [app.users :refer [auth-charge-user]]
             [ardoq.analytics-clj :as segment]
             [clojure.string :as s]
-            [cheshire.core :refer [generate-string]]))
+            [cheshire.core :refer [generate-string]])
+  (:import org.joda.time.DateTimeUtils))
 
 ;; Order status definitions
 ;; unassigned - not assigned to any courier yet
@@ -89,7 +90,8 @@
        (:address_street order)
        "\n" "When: "
        (unix->fuller
-        (quot (System/currentTimeMillis) 1000))))
+        (quot ;;(System/currentTimeMillis)
+         (DateTimeUtils/currentTimeMillis) 1000))))
 
 (defn stamp-with-charge
   "Give it a charge object from Stripe."
@@ -236,8 +238,12 @@
                  :id (rand-str-alpha-num 20)
                  :user_id user-id
                  :status "unassigned"
-                 :target_time_start (quot (System/currentTimeMillis) 1000)
-                 :target_time_end (+ (quot (System/currentTimeMillis) 1000)
+                 :target_time_start (quot ;;(System/currentTimeMillis)
+                                     (DateTimeUtils/currentTimeMillis)
+                                     1000)
+                 :target_time_end (+ (quot ;;(System/currentTimeMillis)
+                                      (DateTimeUtils/currentTimeMillis)
+                                      1000)
                                      (* 60 time-limit))
                  :time-limit time-limit
                  :gallons (coerce-double (:gallons order))

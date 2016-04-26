@@ -12,7 +12,7 @@
 
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
 
-(deftest confirm-stripe-req-merge-with
+#_ (deftest confirm-stripe-req-merge-with
   "Confirm the proper form of merge-with merge used in purple.payment/stripe-req"
   (let [common-opts {:as :json :coerce :always}
         opts (->> common-opts
@@ -31,7 +31,7 @@
                        :headers {"baz" "qux" "grault" "garply"}})))))
 
 ;; note: all of the following tests have been disabled as they no longer work
-(deftest test-charge-stripe-customer
+#_ (deftest test-charge-stripe-customer
   (let [db-conn (conn)]
     (let [u (get-user db-conn "native" "test@test.com")
           customer-id (:stripe_customer_id u)]

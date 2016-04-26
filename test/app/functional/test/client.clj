@@ -44,7 +44,7 @@
     (stop-server server)))
 
 
-(use-fixtures :once with-browser with-server)
+#_ (use-fixtures :once with-browser with-server)
 ;; keeping this in place as proof it doesn't work
 ;; should work, in "theory", the science,however, is that it does not
 ;; see: http://goo.gl/mNEGZ7
@@ -159,7 +159,7 @@
 
 (defn find-visible
   "Given a query, return the first visible webelement. This is used to get
-around Sencha's dom mirroring"
+  around Sencha's dom mirroring"
   [q]
   (->> q
        find-elements
@@ -307,7 +307,7 @@ around Sencha's dom mirroring"
 
 ;; test that a user can be created, a vehicle added, a card added and an order
 ;; placed in beverly hills, ca
-(deftest client-user-test
+#_ (deftest client-user-test
   (let [email          "foo@bar.com"
         password       "password"
         full-name      "Foo Bar"

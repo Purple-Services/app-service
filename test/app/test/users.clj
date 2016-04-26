@@ -10,7 +10,7 @@
 
 (use-fixtures :each database-fixture)
 
-(deftest phone-number-validator
+#_ (deftest phone-number-validator
   "Test that the phone number validator works"
   ;; The following tests should pass
   (is (valid-phone-number? "888-555-1212"))
@@ -30,7 +30,7 @@
   
   )
 
-(deftest name-validator
+#_ (deftest name-validator
   "Test that the name validator works"
 
   ;; The following tests should pass
@@ -57,7 +57,7 @@
                         user-id
                         body)))))
 
-(deftest user-with-extraneous-whitespace-in-email-not-registered
+#_ (deftest user-with-extraneous-whitespace-in-email-not-registered
   (testing "A native user with extraneous whitespace in email
 is not able to be registerd. Note: Client trims whitespace when accessing
 route /user/register.")
@@ -89,7 +89,7 @@ route /user/register.")
   (is (= (string/trim name)
          (:name (get-user db-config "native" email)))))
 
-(deftest extraneous-whitespace-in-name-trimmed
+#_ (deftest extraneous-whitespace-in-name-trimmed
   (testing "A users name is edited with extraneous whitespace automatically
 removed"
     ;; register a new user
@@ -103,7 +103,7 @@ removed"
       ;; name with leading and trailing whitespace is trimmed
       (test-trim ebdb-test-config email "    foo bar    "))))
 
-(deftest add-vehicle-test
+#_ (deftest add-vehicle-test
   (let [email "foo@bar.com"
         password "qwerty123"
         year "2015"

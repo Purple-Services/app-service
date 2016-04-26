@@ -56,7 +56,7 @@
   (t)
   (stop-browser))
 
-(use-fixtures :once with-browser with-server)
+#_ (use-fixtures :once with-browser with-server)
 
 ;; this function is used to slow down clojure so the browser has time to catch
 ;; up. If you are having problems with tests passing, particuarly if they appear
@@ -309,7 +309,7 @@ both are cycled and the busy status of the courier is checked"
                             "']/../"
                             "td[@class='courier_phone_number']")})))))))
 
-(deftest test-dashboard
+#_ (deftest test-dashboard
   (dashboard-greeting)
   (add-order-and-cancel-it)
   (add-order-assign-and-cancel)
