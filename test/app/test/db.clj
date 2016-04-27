@@ -78,7 +78,6 @@
 ;;
 ;; see: database/ebdb_setup.sql for proper permissions
 ;;
-;;
 ;; IF YOU DO NOT HAVE A LOCAL DATABASE SETUP,
 ;; YOU SHOULD RUN THE FOLLOWING SCRIPT DESCRIBED IN README.md FIRST!
 ;;
@@ -88,10 +87,6 @@
 ;; see database/eddb_setup.sql for creating the proper permissions for
 ;; ebdb_test.*
 ;;
-;; You will also need to populate the local database with data, see
-;; scripts/retrieve_db
-
-
 (defn database-fixture
   "Remove all test data from the database"
   [test]
