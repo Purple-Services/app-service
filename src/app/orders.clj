@@ -9,15 +9,12 @@
                                    unpaid-balance]]
             [common.users :refer [details get-user-by-id include-user-data]]
             [common.util :refer [cents->dollars-str in?
+                                 gallons->display-str
                                  minute-of-day->hmma
-                                 only-prod
-                                 rand-str-alpha-num
-                                 segment-client
-                                 send-email
-                                 send-sms
-                                 unless-p unix->fuller unix->full
-                                 unix->minute-of-day
-                                 coerce-double]]
+                                 rand-str-alpha-num coerce-double
+                                 segment-client send-email send-sms
+                                 unless-p only-prod
+                                 unix->fuller unix->full unix->minute-of-day]]
             [common.zones :refer [get-fuel-prices get-service-fees
                                   get-service-time-bracket
                                   get-one-hour-orders-allowed order->zone-id]]
@@ -78,18 +75,12 @@
 (defn gen-charge-description
   [db-conn order]
   (str "Reliability service for up to "
-       (:gallons order) " Gallons of Gasoline ("
-       (->> (!select db-conn
-                     "vehicles"
-                     [:gas_type]
-                     {:id (:vehicle_id order)})
+       (gallons->display-str (:gallons order)) " Gallons of Gasoline ("
+       (->> (!select db-conn "vehicles" [:gas_type] {:id (:vehicle_id order)})
             first
             :gas_type)
-       " Octane)\n" "Where: "
-       (:address_street order)
-       "\n" "When: "
-       (unix->fuller
-        (quot (System/currentTimeMillis) 1000))))
+       " Octane)\n" "Where: " (:address_street order)
+       "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000))))
 
 (defn stamp-with-charge
   "Give it a charge object from Stripe."
@@ -358,7 +349,6 @@
                 (only-prod
                  (run! #(send-sms % (new-order-text db-conn o charge-authorized?))
                        (only-prod ["3103109961" ;; Joe
-                                   "7143154380" ;; Gustavo
                                    "3234592100" ;; Rana
                                    ]))
                  (send-email {:to "chris@purpledelivery.com"
