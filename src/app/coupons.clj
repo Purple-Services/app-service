@@ -108,6 +108,7 @@
                     :value (:value coupon)}
         "referral" {:success true
                     :value config/referral-referred-value}))))
+
 (defn is-code-available?
   [db-conn code]
   (empty? (doall (!select db-conn "coupons" [:id] {:code code}))))
