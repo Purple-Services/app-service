@@ -10,7 +10,8 @@
                                   valid-email? valid-password?]]
             [common.util :refer [make-call new-auth-token only-prod
                                  rand-str-alpha-num segment-client send-email
-                                 send-sms sns-client sns-create-endpoint]]
+                                 send-sms sns-client sns-create-endpoint
+                                 log-error]]
             [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
@@ -580,6 +581,7 @@
     {:success false
      :message "Error: Reset Key is blank."}))
 
+;; deprecated?
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
   (send-email
@@ -590,31 +592,13 @@
                :body
                (str "Check out the Purple app; a gas delivery service. "
                     "Simply request gas and we will come to your vehicle "
-                    "and fill it up. https://purpledelivery.com/download")})
+                    "and fill it up. https://purpleapp.com/app")})
             {:subject "Invitation to Try Purple"
              :body
              (str "Check out the Purple app; a gas delivery service. "
                   "Simply request gas and we will come to your vehicle "
-                  "and fill it up. https://purpledelivery.com/download")}))))
+                  "and fill it up. https://purpleapp.com/app")}))))
 
-(defn auth-charge-user
-  "Charges user amount (an int in cents) using default payment method."
-  [db-conn user-id order-id amount description]
-  (let [u (get-user-by-id db-conn user-id)
-        customer-id (:stripe_customer_id u)]
-    (if (s/blank? customer-id)
-      (do (only-prod
-           (send-email
-            {:to "chris@purpledelivery.com"
-             :subject "Purple - Error"
-             :body (str "Error authing charge on user, no payment method "
-                        "is set up.")}))
-          {:success false})
-      (payment/auth-charge-stripe-customer customer-id
-                                           order-id
-                                           amount
-                                           description
-                                           (:email u)))))
 (defn text-user
   "Sends an SMS message to user."
   [db-conn user-id message]

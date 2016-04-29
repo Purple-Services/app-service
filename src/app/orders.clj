@@ -7,7 +7,8 @@
             [common.orders :refer [accept assign begin-route complete get-by-id
                                    next-status segment-props service
                                    unpaid-balance]]
-            [common.users :refer [details get-user-by-id include-user-data]]
+            [common.users :refer [details get-user-by-id include-user-data
+                                  auth-charge-user]]
             [common.util :refer [cents->dollars-str in?
                                  gallons->display-str
                                  minute-of-day->hmma
@@ -21,7 +22,6 @@
             [app.coupons :as coupons]
             [app.couriers :as couriers]
             [app.sift :as sift]
-            [app.users :refer [auth-charge-user]]
             [ardoq.analytics-clj :as segment]
             [clojure.string :as s]
             [cheshire.core :refer [generate-string]]))
@@ -81,6 +81,16 @@
             :gas_type)
        " Octane)\n" "Where: " (:address_street order)
        "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000))))
+
+(defn auth-charge-order
+  [db-conn order]
+  (auth-charge-user db-conn
+                    (:user_id order)
+                    (:total_price order)
+                    (gen-charge-description db-conn order)
+                    (:id order)
+                    :metadata {:order_id (:id order)}
+                    :just-auth true))
 
 (defn stamp-with-charge
   "Give it a charge object from Stripe."
@@ -280,12 +290,7 @@
       :else
       (let [auth-charge-result (if (zero? (:total_price o))
                                  {:success true}
-                                 (auth-charge-user
-                                  db-conn
-                                  (:user_id o)
-                                  (:id o)
-                                  (:total_price o)
-                                  (gen-charge-description db-conn o)))
+                                 (auth-charge-order db-conn o))
             charge-authorized? (:success auth-charge-result)]
         (if (not charge-authorized?)
           (do ;; payment failed, do not allow order to be placed
