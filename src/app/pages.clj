@@ -47,7 +47,16 @@
                                            :key key}))
       (not-found-page))))
 
-(defn twiml-simple
+(defn twiml-text
+  [message]
+  (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+       "<Response>"
+       "<Sms>"
+       message
+       "</Sms>"
+       "</Response>"))
+
+(defn twiml-voice
   [message]
   (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
        "<Response>"

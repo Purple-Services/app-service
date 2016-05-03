@@ -297,7 +297,11 @@
   (context "/twiml" []
            (defroutes twiml-routes
              (POST "/courier-new-order" []
-                   (-> (pages/twiml-simple config/delayed-assignment-message)
+                   (-> (pages/twiml-voice config/delayed-assignment-message)
+                       response
+                       wrap-xml))
+             (POST "/default-text-response" []
+                   (-> (pages/twiml-text "Sorry, messages sent to this number are not seen by Purple staff.")
                        response
                        wrap-xml))))
   (GET "/download" {headers :headers}
