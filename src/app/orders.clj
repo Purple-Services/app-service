@@ -349,10 +349,6 @@
                 
                 (only-prod
                  (let [order-text-info (new-order-text db-conn o charge-authorized?)]
-                   (run! #(send-sms % order-text-info)
-                         (only-prod ["3103109961" ;; Joe
-                                     "3234592100" ;; Rana
-                                     ]))
                    (client/post "https://hooks.slack.com/services/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"
                                 {:throw-exceptions false
                                  :content-type :json
