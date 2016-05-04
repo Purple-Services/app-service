@@ -11,6 +11,7 @@
                                   get-service-time-bracket
                                   get-zone-by-zip-code order->zone-id
                                   zip-in-zones?]]
+            [common.subscriptions :as subscriptions]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
             [clojure.java.jdbc :as sql]
@@ -95,20 +96,8 @@
                 " to "
                 (minute-of-day->hmma closing-minute)
                 " every day."))
-         :user (select-keys user [:referral_gallons :referral_code])
-         ;; LEGACY: we're still sending this for old versions of the app
-         :availability [{:octane "87"
-                         :gallons (if (zip-in-zones? zip-code)
-                                    15 0) ;; just assume 15 gallons
-                         :time [1 3]
-                         :price_per_gallon (:87 (get-fuel-prices zip-code))
-                         :service_fee [100 0]}
-                        {:octane "91"
-                         :gallons (if (zip-in-zones? zip-code)
-                                    15 0)
-                         :time [1 3]
-                         :price_per_gallon (:91 (get-fuel-prices zip-code))
-                         :service_fee [100 0]}]})
+         :user (assoc (select-keys user [:referral_gallons :referral_code])
+                      :subscription (subscriptions/get-usage db-conn user))})
       ;; bad ZIP, we don't service there yet
       {:success true
        :user (select-keys user [:referral_gallons :referral_code])
@@ -120,16 +109,6 @@
                          :gallons 15
                          :times {}
                          :price_per_gallon 0}]
-       :availability [{:octane "87"
-                       :gallons 0
-                       :time [1 3]
-                       :price_per_gallon 0
-                       :service_fee [100 0]}
-                      {:octane "91"
-                       :gallons 0
-                       :time [1 3]
-                       :price_per_gallon 0
-                       :service_fee [100 0]}]
        :unavailable-reason
        (str "Sorry, we are unable to deliver gas to your "
             "location. We are rapidly expanding our service "
