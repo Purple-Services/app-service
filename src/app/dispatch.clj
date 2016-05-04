@@ -71,31 +71,35 @@
             closing-minute (last  (get-service-time-bracket zip-code))
             current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
                                                       1000))
-            during-holiday? (< 1451700047 ;; 6pm Jan 1st
-                               (quot (System/currentTimeMillis) 1000)
-                               1451725247) ;; Jan 2nd
             good-time?-fn
             (fn [minutes-needed]
-              (and (not during-holiday?)
-                   (<= opening-minute
-                       current-minute
-                       ;;(- closing-minute minutes-needed)
-                       ;; removed the check for enough time
-                       ;; because our end time just means we accept orders
-                       ;; until then (regardless of deadline)
-                       closing-minute)))]
+              (<= opening-minute
+                  current-minute
+                  ;;(- closing-minute minutes-needed)
+                  ;; removed the check for enough time
+                  ;; because our end time just means we accept orders
+                  ;; until then (regardless of deadline)
+                  closing-minute))]
         {:success true
          :availabilities (map (partial available good-time?-fn zip-code)
                               ["87" "91"])
          ;; if unavailable (as the client will determine from :availabilities)
          :unavailable-reason
-         (if during-holiday?
-           "Sorry, we're closed for the holiday. We'll be back January 2nd!"
-           (str "Sorry, the service hours for this ZIP code are "
-                (minute-of-day->hmma opening-minute)
-                " to "
-                (minute-of-day->hmma closing-minute)
-                " every day."))
+         (cond
+           (= 5 opening-minute closing-minute) ;; hack / special case for closing zone
+           "We are busy. There are no couriers available. Please try again later."
+
+           (= 6 opening-minute closing-minute)
+           "We are closed for the holiday. We will be back soon. Please enjoy your holiday!"
+
+           (= 7 opening-minute closing-minute)
+           "We want everyone to stay safe and are closed due to inclement weather. We will be back shortly!"
+           
+           :else (str "Sorry, the service hours for this ZIP code are "
+                      (minute-of-day->hmma opening-minute)
+                      " to "
+                      (minute-of-day->hmma closing-minute)
+                      " every day."))
          :user (assoc (select-keys user [:referral_gallons :referral_code])
                       :subscription (subscriptions/get-usage db-conn user))})
       ;; bad ZIP, we don't service there yet
