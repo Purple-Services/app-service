@@ -104,20 +104,20 @@
                       :subscription (subscriptions/get-usage db-conn user))})
       ;; bad ZIP, we don't service there yet
       {:success true
-       :user (select-keys user [:referral_gallons :referral_code])
+       :user (assoc (select-keys user [:referral_gallons :referral_code])
+                    :subscription (subscriptions/get-usage db-conn user))
        :availabilities [{:octane "87"
                          :gallons 15
-                         :times {}
+                         :times {} ;; no times available
                          :price_per_gallon 0}
                         {:octane "91"
                          :gallons 15
-                         :times {}
+                         :times {} ;; no times available
                          :price_per_gallon 0}]
-       :unavailable-reason
-       (str "Sorry, we are unable to deliver gas to your "
-            "location. We are rapidly expanding our service "
-            "area and hope to offer service to your "
-            "location very soon.")})))
+       :unavailable-reason (str "Sorry, we are unable to deliver gas to your "
+                                "location. We are rapidly expanding our service "
+                                "area and hope to offer service to your "
+                                "location very soon.")})))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
