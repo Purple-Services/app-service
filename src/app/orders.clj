@@ -24,7 +24,8 @@
             [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [clojure.string :as s]
-            [cheshire.core :refer [generate-string]]))
+            [cheshire.core :refer [generate-string]]
+            [clj-http.client :as client]))
 
 ;; Order status definitions
 ;; unassigned - not assigned to any courier yet
@@ -352,13 +353,19 @@
                         :decline-reason-code (:decline_code (:error c))}))))
                 
                 (only-prod
-                 (run! #(send-sms % (new-order-text db-conn o charge-authorized?))
-                       (only-prod ["3103109961" ;; Joe
-                                   "3234592100" ;; Rana
-                                   ]))
-                 (send-email {:to "chris@purpledelivery.com"
-                              :subject "Purple - New Order"
-                              :body (str o)}))
+                 (let [order-text-info (new-order-text db-conn o charge-authorized?)]
+                   (client/post "https://hooks.slack.com/services/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"
+                                {:throw-exceptions false
+                                 :content-type :json
+                                 :form-params {:text (str order-text-info
+                                                          ;; TODO
+                                                          ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
+                                                          )
+                                               :icon_emoji ":fuelpump:"
+                                               :username "New Order"}})
+                   (send-email {:to "chris@purpledelivery.com"
+                                :subject "Purple - New Order"
+                                :body (str o)})))
                 
                 (segment/track segment-client (:user_id o) "Request Order"
                                (assoc (segment-props o)
