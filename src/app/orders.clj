@@ -8,7 +8,7 @@
                                    next-status segment-props service
                                    unpaid-balance]]
             [common.users :refer [details get-user-by-id include-user-data
-                                  auth-charge-user]]
+                                  charge-user]]
             [common.util :refer [cents->dollars-str in?
                                  gallons->display-str
                                  minute-of-day->hmma
@@ -85,13 +85,13 @@
 
 (defn auth-charge-order
   [db-conn order]
-  (auth-charge-user db-conn
-                    (:user_id order)
-                    (:total_price order)
-                    (gen-charge-description db-conn order)
-                    (:id order)
-                    :metadata {:order_id (:id order)}
-                    :just-auth true))
+  (charge-user db-conn
+               (:user_id order)
+               (:total_price order)
+               (gen-charge-description db-conn order)
+               (:id order)
+               :metadata {:order_id (:id order)}
+               :just-auth true))
 
 (defn stamp-with-charge
   "Give it a charge object from Stripe."
