@@ -79,8 +79,8 @@
                               (quot (System/currentTimeMillis) 1000))
                              close-minute)))
                (into {}))
-   :gallons 15 ;; for legacy app versions (< 1.2.2)
-   })
+   ;; for legacy app versions (< 1.2.2)
+   :gallons 15})
 
 (defn availability
   "Get an availability map to tell client what orders it can offer to user."
