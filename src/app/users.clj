@@ -11,6 +11,7 @@
             [common.util :refer [make-call new-auth-token only-prod
                                  rand-str-alpha-num segment-client send-email
                                  send-sms sns-client sns-create-endpoint
+                                 user-first-name user-last-name
                                  log-error]]
             [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
@@ -142,6 +143,7 @@
         (segment/identify segment-client (:id user)
                           {:email (:email user)
                            :referral_code referral-code
+                           :HASORDERED 0 ;; used by mailchimp
                            ;; todo fix this
                            ;; :createdAt (time-coerce/from-sql-time
                            ;;             (:timestamp_created %))
@@ -263,15 +265,21 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (do (doto (select-keys record-map [:name :phone_number :gender :email])
-          (#(!update db-conn "users" % {:id user-id}))
-          (#(sift/update-account (assoc % :id user-id)))
-          (#(segment/identify segment-client user-id
-                              (conj {:name (:name %)
-                                     :phone (:phone_number %)
-                                     :gender (:gender %)}
-                                    (when (:email %)
-                                      [:email (:email %)])))))
+    (do (!update db-conn
+                 "users"
+                 (select-keys record-map [:name :phone_number :gender :email])
+                 {:id user-id})
+        (let [user (get-user-by-id db-conn user-id)]
+          (segment/identify segment-client user-id
+                            {:email (:email user)
+                             :name (:name user)
+                             :phone (:phone_number user)
+                             :gender (:gender user)
+                             :firstName (user-first-name (:name user))
+                             :lastName (user-last-name (:name user))})
+          (sift/update-account
+           (assoc (select-keys user [:name :phone_number :gender :email])
+                  :id user-id)))
         {:success true})
     {:success false
      :message "Required fields cannot be empty."}))
