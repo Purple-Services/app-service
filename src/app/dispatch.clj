@@ -52,18 +52,21 @@
 (defn delivery-times-map
   "Given subscription usage map and service fee, create the delivery-times map."
   [sub service-fees]
-  {180 (merge {:order 0}
-              (delivery-time-map "within 3 hours"
-                                 (:180 service-fees)
-                                 (:num_free_three_hour sub)
-                                 (:num_free_three_hour_used sub)
-                                 (:discount_three_hour sub)))
-   60 (merge {:order 1}
-             (delivery-time-map "within 1 hour"
-                                (:60 service-fees)
-                                (:num_free_one_hour sub)
-                                (:num_free_one_hour_used sub)
-                                (:discount_one_hour sub)))})
+  (merge {}
+         ;; don't include the 3-hour option is they're using 1-hour subscription
+         (when (not (pos? (or (:num_free_one_hour sub) 0)))
+           {180 (merge {:order 0}
+                       (delivery-time-map "within 3 hours"
+                                          (:180 service-fees)
+                                          (:num_free_three_hour sub)
+                                          (:num_free_three_hour_used sub)
+                                          (:discount_three_hour sub)))})
+         {60 (merge {:order 1}
+                    (delivery-time-map "within 1 hour"
+                                       (:60 service-fees)
+                                       (:num_free_one_hour sub)
+                                       (:num_free_one_hour_used sub)
+                                       (:discount_one_hour sub)))}))
 
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
