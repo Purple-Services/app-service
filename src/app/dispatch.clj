@@ -72,7 +72,8 @@
 (defn available
   [open-minute close-minute zip-code sub octane]
   {:octane octane
-   :gallon_choices config/gallon_choices
+   :gallon_choices config/gallon-choices
+   :default_gallon_choice config/default-gallon-choice
    :price_per_gallon (get (get-fuel-prices zip-code) (keyword octane))
    :times (->> (get-service-fees zip-code)
                (delivery-times-map sub)
@@ -94,8 +95,7 @@
                    {:address_zip (five-digit-zip-code zip-code)})
     (merge
      {:success true
-      :user (assoc (select-keys user [:referral_gallons :referral_code])
-                   :subscription sub)}
+      :user (select-keys user [:referral_gallons :referral_code])}
      ;; construct a map of availability
      (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
        ;; we service this ZIP code

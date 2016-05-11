@@ -6,12 +6,12 @@
             [app.dispatch :as dispatch]
             [app.coupons :as coupons]
             [app.pages :as pages]
+            [common.util :refer [unless-p ver< coerce-double]]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
             [common.orders :refer [cancel]]
             [common.users :refer [details send-feedback valid-session?]]
-            [common.util :refer [unless-p ver< coerce-double]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -131,6 +131,18 @@
                                        (:user_id b)
                                        (:push_platform b)
                                        (:cred b))))))
+              ;; Subscribe to a membership plan
+              (POST "/subscribe" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (demand-user-auth
+                        db-conn
+                        (:user_id b)
+                        (:token b)
+                        (users/subscribe db-conn
+                                         (:user_id b)
+                                         (:subscription_id b))))))
               ;; Try a coupon code
               (POST "/code" {body :body}
                     (response
