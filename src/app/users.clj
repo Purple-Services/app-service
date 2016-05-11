@@ -1,18 +1,19 @@
 (ns app.users
   (:require [cheshire.core :refer [generate-string parse-string]]
             [common.config :as config]
-            [common.couriers :refer [get-by-courier]]
-            [common.db :refer [!select !insert !update]]
-            [app.coupons :refer [create-referral-coupon]]
-            [common.payment :as payment]
-            [common.users :refer [auth-native? details get-by-user
-                                  get-user-by-id get-user safe-authd-user-keys
-                                  valid-email? valid-password?]]
             [common.util :refer [make-call new-auth-token only-prod
                                  rand-str-alpha-num segment-client send-email
                                  send-sms sns-client sns-create-endpoint
                                  user-first-name user-last-name
                                  log-error]]
+            [common.db :refer [!select !insert !update]]
+            [common.couriers :refer [get-by-courier]]
+            [common.payment :as payment]
+            [common.subscriptions :as subscriptions]
+            [common.users :refer [auth-native? details get-by-user
+                                  get-user-by-id get-user safe-authd-user-keys
+                                  valid-email? valid-password?]]
+            [app.coupons :refer [create-referral-coupon]]
             [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
@@ -110,7 +111,9 @@
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
                   :has_push_notifications_set_up
-                  (not (s/blank? (:arn_endpoint user))))
+                  (not (s/blank? (:arn_endpoint user)))
+                  ;; :subscription_usage (subscriptions/get-usage db-conn user)
+                  )
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
      :saved_locations (merge {:home {:displayText ""
                                      :googlePlaceId ""}
@@ -121,6 +124,15 @@
      :orders (into [] (if (:is_courier user)
                         (get-by-courier db-conn (:id user))
                         (get-by-user db-conn (:id user))))
+     :system {:referral_referred_value config/referral-referred-value
+              :referral_referrer_gallons config/referral-referrer-gallons
+              :subscriptions
+              (into {} (map (juxt :id identity)
+                            (!select db-conn "subscriptions" ["*"] {}
+                                     :custom-where
+                                     (str "id IN ("
+                                          (s/join "," [1 2])
+                                          ")"))))}
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
@@ -622,3 +634,10 @@
     (make-call (:phone_number user)
                call-url)
     {:success true}))
+
+(defn subscribe
+  [db-conn user-id subscription-id]
+  (let [result (subscriptions/subscribe db-conn user-id subscription-id)]
+    (if (:success result)
+      (details db-conn user-id)
+      result)))
