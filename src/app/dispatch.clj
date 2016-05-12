@@ -31,8 +31,11 @@
   (if (zip-in-zones? zip-code)
     {:success true
      :gas_prices (get-fuel-prices zip-code)}
-    {:success true
-     :gas_prices (get-fuel-prices "90210")}))
+    {:success false
+     :message "Sorry, we cannot deliver to this location."
+     ;; to make legacy app versions happy
+     :gas_prices {:87 0
+                  :91 0}}))
 
 (defn delivery-time-map
   [time-str service-fee num-free num-free-used sub-discount]
