@@ -131,18 +131,33 @@
                                        (:user_id b)
                                        (:push_platform b)
                                        (:cred b))))))
-              ;; Subscribe to a membership plan
-              (POST "/subscribe" {body :body}
-                    (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
-                       (demand-user-auth
-                        db-conn
-                        (:user_id b)
-                        (:token b)
-                        (users/subscribe db-conn
-                                         (:user_id b)
-                                         (:subscription_id b))))))
+              (context "/subscriptions" []
+                       (defroutes subscriptions-routes
+                         ;; Subscribe to a membership plan
+                         (POST "/subscribe" {body :body}
+                               (response
+                                (let [b (keywordize-keys body)
+                                      db-conn (conn)]
+                                  (demand-user-auth
+                                   db-conn
+                                   (:user_id b)
+                                   (:token b)
+                                   (users/subscribe db-conn
+                                                    (:user_id b)
+                                                    (:subscription_id b))))))
+                         ;; update auto-renew setting
+                         (POST "/set-auto-renew" {body :body}
+                               (response
+                                (let [b (keywordize-keys body)
+                                      db-conn (conn)]
+                                  (demand-user-auth
+                                   db-conn
+                                   (:user_id b)
+                                   (:token b)
+                                   (users/set-auto-renew
+                                    db-conn
+                                    (:user_id b)
+                                    (:subscription_auto_renew b))))))))
               ;; Try a coupon code
               (POST "/code" {body :body}
                     (response

@@ -641,3 +641,12 @@
     (if (:success result)
       (details db-conn user-id)
       result)))
+
+(defn set-auto-renew
+  [db-conn user-id subscription-auto-renew]
+  (let [result (subscriptions/set-auto-renew db-conn
+                                             user-id
+                                             subscription-auto-renew)]
+    (if (:success result)
+      (details db-conn user-id)
+      result)))
