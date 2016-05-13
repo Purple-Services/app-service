@@ -44,12 +44,22 @@
          :text (str "within 1 hour (" (fee (:60 service-fees)) ")")
          :order 1}}))
 
+(defn enough-couriers?
+  [zip-code]
+  (let [zone-id (:id (get-zone-by-zip-code zip-code))]
+    (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
+        (pos? (->> (couriers/get-all-connected (conn))
+                   (couriers/filter-by-market (quot zone-id 50))
+                   count)))))
+
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
-  [good-time?-fn zip-code octane]
+  [good-time?-fn zip-code enough-couriers?-result octane]
   (let [service-fees (get-service-fees zip-code)
         delivery-times (delivery-times-map service-fees)
-        good-times (filter #(and (zip-in-zones? zip-code) (good-time?-fn %))
+        good-times (filter #(and (zip-in-zones? zip-code)
+                                 (good-time?-fn %)
+                                 enough-couriers?-result)
                            (keys delivery-times))]
     {:octane octane
      :gallon_choices config/gallon_choices
@@ -78,9 +88,11 @@
                   ;; removed the check for enough time
                   ;; because our end time just means we accept orders
                   ;; until then (regardless of deadline)
-                  closing-minute))]
+                  closing-minute))
+
+            enough-couriers?-result (enough-couriers? zip-code)]
         {:success true
-         :availabilities (map (partial available good-time?-fn zip-code)
+         :availabilities (map (partial available good-time?-fn zip-code enough-couriers?-result)
                               ["87" "91"])
          ;; if unavailable (as the client will determine from :availabilities)
          :unavailable-reason
@@ -93,6 +105,9 @@
 
            (= 7 opening-minute closing-minute)
            "We want everyone to stay safe and are closed due to inclement weather. We will be back shortly!"
+
+           (and (good-time?-fn 0) (not enough-couriers?-result))
+           "We are busy. There are no couriers available. Please try again later."
            
            :else (str "Sorry, the service hours for this ZIP code are "
                       (minute-of-day->hmma opening-minute)
