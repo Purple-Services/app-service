@@ -98,22 +98,40 @@
          :unavailable-reason
          (cond
            (= 5 opening-minute closing-minute) ;; hack / special case for closing zone
-           "We are busy. There are no couriers available. Please try again later."
+           (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                              {:address_zip (five-digit-zip-code zip-code)
+                               :reason "manual-closure-no-couriers"})
+               "We are busy. There are no couriers available. Please try again later.")
 
            (= 6 opening-minute closing-minute)
-           "We are closed for the holiday. We will be back soon. Please enjoy your holiday!"
+           (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                              {:address_zip (five-digit-zip-code zip-code)
+                               :reason "manual-closure-holiday"})
+               "We are closed for the holiday. We will be back soon. Please enjoy your holiday!")
 
            (= 7 opening-minute closing-minute)
-           "We want everyone to stay safe and are closed due to inclement weather. We will be back shortly!"
+           (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                              {:address_zip (five-digit-zip-code zip-code)
+                               :reason "manual-closure-inclement-weather"})
+               "We want everyone to stay safe and are closed due to inclement weather. We will be back shortly!")
 
-           (and (good-time?-fn 0) (not enough-couriers?-result))
-           "We are busy. There are no couriers available. Please try again later."
+           (not (good-time?-fn 0))
+           (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                              {:address_zip (five-digit-zip-code zip-code)
+                               :reason "outside-service-hours"})
+               (str "Sorry, the service hours for this ZIP code are "
+                    (minute-of-day->hmma opening-minute)
+                    " to "
+                    (minute-of-day->hmma closing-minute)
+                    " every day."))
            
-           :else (str "Sorry, the service hours for this ZIP code are "
-                      (minute-of-day->hmma opening-minute)
-                      " to "
-                      (minute-of-day->hmma closing-minute)
-                      " every day."))
+           (not enough-couriers?-result)
+           (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                              {:address_zip (five-digit-zip-code zip-code)
+                               :reason "no-couriers-available"})
+               "We are busy. There are no couriers available. Please try again later.")
+
+           :else "")
          :user (select-keys user [:referral_gallons :referral_code])
          ;; LEGACY: we're still sending this for old versions of the app
          :availability [{:octane "87"
@@ -150,10 +168,13 @@
                        :price_per_gallon 0
                        :service_fee [100 0]}]
        :unavailable-reason
-       (str "Sorry, we are unable to deliver gas to your "
-            "location. We are rapidly expanding our service "
-            "area and hope to offer service to your "
-            "location very soon.")})))
+       (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                          {:address_zip (five-digit-zip-code zip-code)
+                           :reason "outside-service-area"})
+           (str "Sorry, we are unable to deliver gas to your "
+                "location. We are rapidly expanding our service "
+                "area and hope to offer service to your "
+                "location very soon."))})))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
