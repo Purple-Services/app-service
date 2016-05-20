@@ -322,7 +322,8 @@
             {:success false
              :message (str "Sorry, we were unable to charge your credit card. "
                            "Please go to the \"Account\" page and tap on "
-                           "\"Payment Method\" to add a new card.")
+                           "\"Payment Method\" to add a new card. Also, "
+                           "ensure your email address is valid.")
              :message_title "Unable to Charge Card"})
           (do ;; successful payment (or free order), place order...
             (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
