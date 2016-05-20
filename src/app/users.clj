@@ -623,16 +623,14 @@
   "Sends an SMS message to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (only-prod (send-sms (:phone_number user)
-                         message))
+    (only-prod (send-sms (:phone_number user) message))
     {:success true}))
 
 (defn call-user
   "Calls user with automated message."
   [db-conn user-id call-url]
   (let [user (get-user-by-id db-conn user-id)]
-    (make-call (:phone_number user)
-               call-url)
+    (make-call (:phone_number user) call-url)
     {:success true}))
 
 (defn subscribe
@@ -644,9 +642,7 @@
 
 (defn set-auto-renew
   [db-conn user-id subscription-auto-renew]
-  (let [result (subscriptions/set-auto-renew db-conn
-                                             user-id
-                                             subscription-auto-renew)]
+  (let [result (subscriptions/set-auto-renew db-conn user-id subscription-auto-renew)]
     (if (:success result)
       (details db-conn user-id)
       result)))

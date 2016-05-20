@@ -34,8 +34,7 @@
     {:success false
      :message "Sorry, we cannot deliver to this location."
      ;; to make legacy app versions happy
-     :gas_prices {:87 0
-                  :91 0}}))
+     :gas_prices {:87 0 :91 0}}))
 
 (defn delivery-time-map
   [time-str service-fee num-free num-free-used sub-discount]
@@ -98,7 +97,8 @@
                    {:address_zip (five-digit-zip-code zip-code)})
     (merge
      {:success true
-      :user (select-keys user [:referral_gallons :referral_code])}
+      :user (merge (select-keys user [:referral_gallons :referral_code])
+                   {:subscription_usage sub})}
      ;; construct a map of availability
      (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
        ;; we service this ZIP code

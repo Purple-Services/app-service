@@ -268,9 +268,8 @@
                  :coupon_code (format-coupon-code (or (:coupon_code order) ""))
                  :subscription_id (if (subscriptions/valid-subscription? user)
                                     (:subscription_id user)
-                                    0))
-        ;; todo tire pressure check ; ensure they are able to get it with their sub
-        ]
+                                    0)
+                 :tire_pressure_check (or (:tire_pressure_check order) false))]
 
     (cond
       (not (valid-price? db-conn user o :bypass-zip-code-check bypass-zip-code-check))
@@ -304,6 +303,9 @@
                            " to "
                            (minute-of-day->hmma (last service-time-bracket))
                            " today."))})
+
+      ;; TODO ensure they are able to get tire pressure check with their sub
+      ;; if it's set to true only, of course
       
       :else
       (let [auth-charge-result (if (zero? (:total_price o))
@@ -334,7 +336,8 @@
                                                       :service_fee :total_price
                                                       :license_plate :coupon_code
                                                       :referral_gallons_used
-                                                      :subscription_id]))
+                                                      :subscription_id
+                                                      :tire_pressure_check]))
             (when-not (zero? (:referral_gallons_used o))
               (mark-gallons-as-used db-conn
                                     (:user_id o)
