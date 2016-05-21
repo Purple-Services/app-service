@@ -111,9 +111,7 @@
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
                   :has_push_notifications_set_up
-                  (not (s/blank? (:arn_endpoint user)))
-                  ;; :subscription_usage (subscriptions/get-usage db-conn user)
-                  )
+                  (not (s/blank? (:arn_endpoint user))))
      :vehicles (into [] (get-users-vehicles db-conn (:id user)))
      :saved_locations (merge {:home {:displayText ""
                                      :googlePlaceId ""}
