@@ -2,7 +2,7 @@
   (:require [common.db :refer [conn !select !insert !update]]
             [common.config :as config]
             [common.util :refer [! cents->dollars-str five-digit-zip-code
-                                 get-event-time in? minute-of-day->hmma
+                                 get-event-time in? minute-of-day->hmma now-unix
                                  only-prod segment-client send-sms
                                  split-on-comma unix->minute-of-day]]
             [common.orders :as orders]
@@ -11,6 +11,7 @@
                                   get-service-time-bracket
                                   get-zone-by-zip-code order->zone-id
                                   zip-in-zones?]]
+            [common.subscriptions :as subscriptions]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
             [clojure.java.jdbc :as sql]
@@ -30,19 +31,59 @@
   (if (zip-in-zones? zip-code)
     {:success true
      :gas_prices (get-fuel-prices zip-code)}
-    {:success true
-     :gas_prices (get-fuel-prices "90210")}))
+    {:success false
+     :message "Location Outside Service Area"
+     ;; to make legacy app versions happy
+     :gas_prices {:87 0 :91 0}}))
+
+(defn delivery-time-map
+  [time-str service-fee num-free num-free-used sub-discount]
+  (let [fee-str #(if (= % 0) "free" (str "$" (cents->dollars-str %)))
+        gen-text #(str time-str " (" % ")")]
+    (if (not (nil? num-free)) ;; using a subscription?
+      (let [num-free-left (- num-free num-free-used)]
+        (if (pos? num-free-left)
+          {:service_fee 0
+           :text (gen-text (str num-free-left " left"))}
+          (let [after-discount (max 0 (+ service-fee sub-discount))]
+            {:service_fee after-discount
+             :text (gen-text (fee-str after-discount))})))
+      {:service_fee service-fee
+       :text (gen-text (fee-str service-fee))})))
 
 (defn delivery-times-map
-  "Given a service fee, create the delivery-times map."
-  [service-fees]
-  (let [fee #(if (= % 0) "free" (str "$" (cents->dollars-str %)))]
-    {180 {:service_fee (:180 service-fees)
-          :text (str "within 3 hours (" (fee (:180 service-fees)) ")")
-          :order 0}
-     60 {:service_fee (:60 service-fees)
-         :text (str "within 1 hour (" (fee (:60 service-fees)) ")")
-         :order 1}}))
+  "Given subscription usage map and service fee, create the delivery-times map."
+  [sub service-fees]
+  (merge {}
+         ;; don't include the 3-hour option is they're using 1-hour subscription
+         (when (not (pos? (or (:num_free_one_hour sub) 0)))
+           {180 (merge {:order 0}
+                       (delivery-time-map "within 3 hours"
+                                          (:180 service-fees)
+                                          (:num_free_three_hour sub)
+                                          (:num_free_three_hour_used sub)
+                                          (:discount_three_hour sub)))})
+         {60 (merge {:order 1}
+                    (delivery-time-map "within 1 hour"
+                                       (:60 service-fees)
+                                       (:num_free_one_hour sub)
+                                       (:num_free_one_hour_used sub)
+                                       (:discount_one_hour sub)))}))
+
+(defn num-couriers-connected-in-market
+  "How many couriers are currently connected and on duty in the market that this
+  zone is in?"
+  [zone-id]
+  (->> (couriers/get-all-connected (conn))
+       (couriers/filter-by-market (quot zone-id 50))
+       count))
+
+(defn enough-couriers?
+  "Does the market that this ZIP is in have enough couriers to offer service?"
+  [zip-code]
+  (let [zone-id (:id (get-zone-by-zip-code zip-code))]
+    (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
+        (pos? (num-couriers-connected-in-market zone-id)))))
 
 (defn enough-couriers?
   [zip-code]
@@ -54,106 +95,106 @@
 
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
-  [good-time?-fn zip-code enough-couriers?-result octane]
-  (let [service-fees (get-service-fees zip-code)
-        delivery-times (delivery-times-map service-fees)
-        good-times (filter #(and (zip-in-zones? zip-code)
-                                 (good-time?-fn %)
-                                 enough-couriers?-result)
-                           (keys delivery-times))]
-    {:octane octane
-     :gallon_choices config/gallon_choices
-     :gallons 15 ;; keep this for legacy app version < 1.2.2
-     :price_per_gallon ((keyword octane) (get-fuel-prices zip-code))
-     :times (into {} (map (juxt identity delivery-times) good-times))}))
+  [good-time? zip-code subscription enough-couriers-delay octane]
+  {:octane octane
+   :gallon_choices config/gallon-choices
+   :default_gallon_choice config/default-gallon-choice
+   :price_per_gallon (get (get-fuel-prices zip-code) (keyword octane))
+   :times (->> (get-service-fees zip-code)
+               (delivery-times-map subscription)
+               (filter (fn [[time time-map]]
+                         (and good-time?
+                              @enough-couriers-delay)))
+               (into {}))
+   ;; for legacy app versions (< 1.2.2)
+   :gallons 15})
 
 (defn availability
-  "Get courier availability for given constraints."
+  "Get an availability map to tell client what orders it can offer to user."
   [db-conn zip-code user-id]
-  (let [user (users/get-user-by-id db-conn user-id)]
+  (let [user (users/get-user-by-id db-conn user-id)
+        subscription (subscriptions/get-usage db-conn user)]
     (segment/track segment-client user-id "Availability Check"
                    {:address_zip (five-digit-zip-code zip-code)})
-    (if (and (zip-in-zones? zip-code)
-             (:active (get-zone-by-zip-code zip-code)))
-      ;; good ZIP, but let's check if good time
-      (let [opening-minute (first (get-service-time-bracket zip-code))
-            closing-minute (last  (get-service-time-bracket zip-code))
-            current-minute (unix->minute-of-day (quot (System/currentTimeMillis)
-                                                      1000))
-            good-time?-fn
-            (fn [minutes-needed]
-              (<= opening-minute
-                  current-minute
-                  ;;(- closing-minute minutes-needed)
-                  ;; removed the check for enough time
-                  ;; because our end time just means we accept orders
-                  ;; until then (regardless of deadline)
-                  closing-minute))
+    (merge
+     {:success true
+      :user (merge (select-keys user users/safe-authd-user-keys)
+                   {:subscription_usage subscription})
+      :system {:referral_referred_value config/referral-referred-value
+               :referral_referrer_gallons config/referral-referrer-gallons
+               :subscriptions
+               (into {} (map (juxt :id identity)
+                             (!select db-conn "subscriptions" ["*"] {}
+                                      :custom-where
+                                      (str "id IN ("
+                                           (s/join "," [1 2])
+                                           ")"))))}}
+     ;; construct a map of availability
+     (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
+       ;; we service this ZIP code
+       (let [[open-minute close-minute] (get-service-time-bracket zip-code)
+             good-time? (<= open-minute
+                            (unix->minute-of-day (now-unix))
+                            close-minute)
+             enough-couriers-delay (delay (enough-couriers? zip-code))]
+         {:availabilities (map (partial available
+                                        good-time?
+                                        zip-code
+                                        subscription
+                                        enough-couriers-delay)
+                               ["87" "91"])
+          :unavailable-reason ;; iff unavailable (client determines from :availabilities)
+          (cond (= 5 open-minute close-minute) ;; special case for closing zone
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "manual-closure-no-couriers"})
+                    (str "We are busy. There are no couriers available. Please "
+                         "try again later."))
 
-            enough-couriers?-result (enough-couriers? zip-code)]
-        {:success true
-         :availabilities (map (partial available good-time?-fn zip-code enough-couriers?-result)
-                              ["87" "91"])
-         ;; if unavailable (as the client will determine from :availabilities)
-         :unavailable-reason
-         (cond
-           (= 5 opening-minute closing-minute) ;; hack / special case for closing zone
-           "We are busy. There are no couriers available. Please try again later."
+                (= 6 open-minute close-minute)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "manual-closure-holiday"})
+                    (str "We are closed for the holiday. We will be back soon. "
+                         "Please enjoy your holiday!"))
 
-           (= 6 opening-minute closing-minute)
-           "We are closed for the holiday. We will be back soon. Please enjoy your holiday!"
+                (= 7 open-minute close-minute)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "manual-closure-inclement-weather"})
+                    (str "We want everyone to stay safe and are closed due to "
+                         "inclement weather. We will be back shortly!"))
 
-           (= 7 opening-minute closing-minute)
-           "We want everyone to stay safe and are closed due to inclement weather. We will be back shortly!"
+                (not good-time?)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "outside-service-hours"})
+                    (str "Sorry, the service hours for this ZIP code are "
+                         (minute-of-day->hmma open-minute)
+                         " to "
+                         (minute-of-day->hmma close-minute)
+                         " every day."))
 
-           (and (good-time?-fn 0) (not enough-couriers?-result))
-           "We are busy. There are no couriers available. Please try again later."
-           
-           :else (str "Sorry, the service hours for this ZIP code are "
-                      (minute-of-day->hmma opening-minute)
-                      " to "
-                      (minute-of-day->hmma closing-minute)
-                      " every day."))
-         :user (select-keys user [:referral_gallons :referral_code])
-         ;; LEGACY: we're still sending this for old versions of the app
-         :availability [{:octane "87"
-                         :gallons (if (zip-in-zones? zip-code)
-                                    15 0) ;; just assume 15 gallons
-                         :time [1 3]
-                         :price_per_gallon (:87 (get-fuel-prices zip-code))
-                         :service_fee [100 0]}
-                        {:octane "91"
-                         :gallons (if (zip-in-zones? zip-code)
-                                    15 0)
-                         :time [1 3]
-                         :price_per_gallon (:91 (get-fuel-prices zip-code))
-                         :service_fee [100 0]}]})
-      ;; bad ZIP, we don't service there yet
-      {:success true
-       :user (select-keys user [:referral_gallons :referral_code])
-       :availabilities [{:octane "87"
-                         :gallons 15
-                         :times {}
-                         :price_per_gallon 0}
-                        {:octane "91"
-                         :gallons 15
-                         :times {}
-                         :price_per_gallon 0}]
-       :availability [{:octane "87"
-                       :gallons 0
-                       :time [1 3]
-                       :price_per_gallon 0
-                       :service_fee [100 0]}
-                      {:octane "91"
-                       :gallons 0
-                       :time [1 3]
-                       :price_per_gallon 0
-                       :service_fee [100 0]}]
-       :unavailable-reason
-       (str "Sorry, we are unable to deliver gas to your "
-            "location. We are rapidly expanding our service "
-            "area and hope to offer service to your "
-            "location very soon.")})))
+                (not @enough-couriers-delay)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "no-couriers-available"})
+                    (str "We are busy. There are no couriers available. Please "
+                         "try again later."))
+
+                ;; it's available, no unavailable-reason needed
+                :else "")})
+       ;; we don't service this ZIP code
+       {:availabilities [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
+                         {:octane "91" :gallons 15 :times {} :price_per_gallon 0}]
+        :unavailable-reason
+        (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                           {:address_zip (five-digit-zip-code zip-code)
+                            :reason "outside-service-area"})
+            (str "Sorry, we are unable to deliver gas to your "
+                 "location. We are rapidly expanding our service "
+                 "area and hope to offer service to your "
+                 "location very soon."))}))))
 
 (! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
