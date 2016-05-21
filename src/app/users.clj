@@ -1,16 +1,19 @@
 (ns app.users
   (:require [cheshire.core :refer [generate-string parse-string]]
             [common.config :as config]
-            [common.couriers :refer [get-by-courier]]
+            [common.util :refer [make-call new-auth-token only-prod
+                                 rand-str-alpha-num segment-client send-email
+                                 send-sms sns-client sns-create-endpoint
+                                 user-first-name user-last-name
+                                 log-error]]
             [common.db :refer [!select !insert !update]]
-            [app.coupons :refer [create-referral-coupon]]
+            [common.couriers :refer [get-by-courier]]
             [common.payment :as payment]
+            [common.subscriptions :as subscriptions]
             [common.users :refer [auth-native? details get-by-user
                                   get-user-by-id get-user safe-authd-user-keys
                                   valid-email? valid-password?]]
-            [common.util :refer [make-call new-auth-token only-prod
-                                 rand-str-alpha-num segment-client send-email
-                                 send-sms sns-client sns-create-endpoint]]
+            [app.coupons :refer [create-referral-coupon]]
             [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
             [crypto.password.bcrypt :as bcrypt]
@@ -119,6 +122,15 @@
      :orders (into [] (if (:is_courier user)
                         (get-by-courier db-conn (:id user))
                         (get-by-user db-conn (:id user))))
+     :system {:referral_referred_value config/referral-referred-value
+              :referral_referrer_gallons config/referral-referrer-gallons
+              :subscriptions
+              (into {} (map (juxt :id identity)
+                            (!select db-conn "subscriptions" ["*"] {}
+                                     :custom-where
+                                     (str "id IN ("
+                                          (s/join "," [1 2])
+                                          ")"))))}
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
@@ -141,6 +153,7 @@
         (segment/identify segment-client (:id user)
                           {:email (:email user)
                            :referral_code referral-code
+                           :HASORDERED 0 ;; used by mailchimp
                            ;; todo fix this
                            ;; :createdAt (time-coerce/from-sql-time
                            ;;             (:timestamp_created %))
@@ -262,15 +275,21 @@
   [db-conn user-id record-map]
   (if (not-any? (comp s/blank? str val)
                 (select-keys record-map required-data))
-    (do (doto (select-keys record-map [:name :phone_number :gender :email])
-          (#(!update db-conn "users" % {:id user-id}))
-          (#(sift/update-account (assoc % :id user-id)))
-          (#(segment/identify segment-client user-id
-                              (conj {:name (:name %)
-                                     :phone (:phone_number %)
-                                     :gender (:gender %)}
-                                    (when (:email %)
-                                      [:email (:email %)])))))
+    (do (!update db-conn
+                 "users"
+                 (select-keys record-map [:name :phone_number :gender :email])
+                 {:id user-id})
+        (let [user (get-user-by-id db-conn user-id)]
+          (segment/identify segment-client user-id
+                            {:email (:email user)
+                             :name (:name user)
+                             :phone (:phone_number user)
+                             :gender (:gender user)
+                             :firstName (user-first-name (:name user))
+                             :lastName (user-last-name (:name user))})
+          (sift/update-account
+           (assoc (select-keys user [:name :phone_number :gender :email])
+                  :id user-id)))
         {:success true})
     {:success false
      :message "Required fields cannot be empty."}))
@@ -580,6 +599,7 @@
     {:success false
      :message "Error: Reset Key is blank."}))
 
+;; deprecated?
 (defn send-invite
   [db-conn email-address & {:keys [user_id]}]
   (send-email
@@ -590,43 +610,37 @@
                :body
                (str "Check out the Purple app; a gas delivery service. "
                     "Simply request gas and we will come to your vehicle "
-                    "and fill it up. https://purpledelivery.com/download")})
+                    "and fill it up. https://purpleapp.com/app")})
             {:subject "Invitation to Try Purple"
              :body
              (str "Check out the Purple app; a gas delivery service. "
                   "Simply request gas and we will come to your vehicle "
-                  "and fill it up. https://purpledelivery.com/download")}))))
+                  "and fill it up. https://purpleapp.com/app")}))))
 
-(defn auth-charge-user
-  "Charges user amount (an int in cents) using default payment method."
-  [db-conn user-id order-id amount description]
-  (let [u (get-user-by-id db-conn user-id)
-        customer-id (:stripe_customer_id u)]
-    (if (s/blank? customer-id)
-      (do (only-prod
-           (send-email
-            {:to "chris@purpledelivery.com"
-             :subject "Purple - Error"
-             :body (str "Error authing charge on user, no payment method "
-                        "is set up.")}))
-          {:success false})
-      (payment/auth-charge-stripe-customer customer-id
-                                           order-id
-                                           amount
-                                           description
-                                           (:email u)))))
 (defn text-user
   "Sends an SMS message to user."
   [db-conn user-id message]
   (let [user (get-user-by-id db-conn user-id)]
-    (only-prod (send-sms (:phone_number user)
-                         message))
+    (only-prod (send-sms (:phone_number user) message))
     {:success true}))
 
 (defn call-user
   "Calls user with automated message."
   [db-conn user-id call-url]
   (let [user (get-user-by-id db-conn user-id)]
-    (make-call (:phone_number user)
-               call-url)
+    (make-call (:phone_number user) call-url)
     {:success true}))
+
+(defn subscribe
+  [db-conn user-id subscription-id]
+  (let [result (subscriptions/subscribe db-conn user-id subscription-id)]
+    (if (:success result)
+      (details db-conn user-id)
+      result)))
+
+(defn set-auto-renew
+  [db-conn user-id subscription-auto-renew]
+  (let [result (subscriptions/set-auto-renew db-conn user-id subscription-auto-renew)]
+    (if (:success result)
+      (details db-conn user-id)
+      result)))
