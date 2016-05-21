@@ -119,7 +119,16 @@
     (merge
      {:success true
       :user (merge (select-keys user users/safe-authd-user-keys)
-                   {:subscription_usage subscription})}
+                   {:subscription_usage subscription})
+      :system {:referral_referred_value config/referral-referred-value
+               :referral_referrer_gallons config/referral-referrer-gallons
+               :subscriptions
+               (into {} (map (juxt :id identity)
+                             (!select db-conn "subscriptions" ["*"] {}
+                                      :custom-where
+                                      (str "id IN ("
+                                           (s/join "," [1 2])
+                                           ")"))))}}
      ;; construct a map of availability
      (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
        ;; we service this ZIP code
