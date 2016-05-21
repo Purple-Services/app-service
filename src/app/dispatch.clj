@@ -118,7 +118,7 @@
                    {:address_zip (five-digit-zip-code zip-code)})
     (merge
      {:success true
-      :user (merge (select-keys user [:referral_gallons :referral_code])
+      :user (merge (select-keys user safe-authd-user-keys)
                    {:subscription_usage subscription})}
      ;; construct a map of availability
      (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
