@@ -85,14 +85,6 @@
     (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
         (pos? (num-couriers-connected-in-market zone-id)))))
 
-(defn enough-couriers?
-  [zip-code]
-  (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-    (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
-        (pos? (->> (couriers/get-all-connected (conn))
-                   (couriers/filter-by-market (quot zone-id 50))
-                   count)))))
-
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
   [good-time? zip-code subscription enough-couriers-delay octane]
