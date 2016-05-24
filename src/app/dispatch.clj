@@ -80,9 +80,11 @@
 
 (defn enough-couriers?
   "Does the market that this ZIP is in have enough couriers to offer service?"
-  [zip-code]
+  [zip-code subscription]
   (let [zone-id (:id (get-zone-by-zip-code zip-code))]
     (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
+        (and (not (nil? (:id subscription))) ;; subscribers are exempt
+             (not= (:id subscription) 0))
         (pos? (num-couriers-connected-in-market zone-id)))))
 
 ;; TODO this function should consider if a zone is actually "active"
@@ -105,7 +107,8 @@
   "Get an availability map to tell client what orders it can offer to user."
   [db-conn zip-code user-id]
   (let [user (users/get-user-by-id db-conn user-id)
-        subscription (subscriptions/get-usage db-conn user)]
+        subscription (when (subscriptions/valid-subscription? user)
+                       (subscriptions/get-with-usage db-conn user))]
     (segment/track segment-client user-id "Availability Check"
                    {:address_zip (five-digit-zip-code zip-code)})
     (merge
@@ -128,7 +131,7 @@
              good-time? (<= open-minute
                             (unix->minute-of-day (now-unix))
                             close-minute)
-             enough-couriers-delay (delay (enough-couriers? zip-code))]
+             enough-couriers-delay (delay (enough-couriers? zip-code subscription))]
          {:availabilities (map (partial available
                                         good-time?
                                         zip-code
