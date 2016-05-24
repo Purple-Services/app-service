@@ -131,7 +131,7 @@
                    (- gallons
                       (min gallons referral-gallons-used)))
                 ;; add service fee (w/ consideration of subscription)
-                (let [sub (subscriptions/get-usage db-conn user)
+                (let [sub (subscriptions/get-with-usage db-conn user)
                       service-fee ((keyword (str time))
                                    (get-service-fees zip-code))]
                   (if sub
