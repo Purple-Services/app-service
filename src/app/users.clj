@@ -642,5 +642,7 @@
   [db-conn user-id subscription-auto-renew]
   (let [result (subscriptions/set-auto-renew db-conn user-id subscription-auto-renew)]
     (if (:success result)
-      (details db-conn user-id)
+      (do (segment/track segment-client user-id "Set Subscription Auto Renew"
+                         {:auto_renew_value subscription-auto-renew})
+          (details db-conn user-id))
       result)))
