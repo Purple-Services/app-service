@@ -223,17 +223,13 @@
 (defn new-order-text
   [db-conn o charge-authorized?]
   (str "New order:"
-       (let [unpaid-balance (unpaid-balance
-                             db-conn (:user_id o))]
-         (when (> unpaid-balance 0)
-           (str "\n!UNPAID BALANCE: $"
-                (cents->dollars-str unpaid-balance))))
-       "\nDue: " (unix->full
-                  (:target_time_end o))
-       "\n" (:address_street o) ", "
-       (:address_zip o)
-       "\n" (:gallons o)
-       " Gallons of " (:gas_type o)))
+       (let [unpaid-balance (unpaid-balance db-conn (:user_id o))]
+         (when (pos? unpaid-balance)
+           (str "\n!UNPAID BALANCE: $" (cents->dollars-str unpaid-balance))))
+       "\nDue: " (unix->full (:target_time_end o))
+       "\n" (:address_street o) ", " (:address_zip o)
+       (when (:tire_pressure_check o) "\n+ TIRE PRESSURE CHECK")
+       "\n" (:gallons o) " Gallons of " (:gas_type o)))
 
 (defn add
   "The user-id given is assumed to have been auth'd already."
