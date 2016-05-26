@@ -384,10 +384,7 @@
                                                           ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
                                                           )
                                                :icon_emoji ":fuelpump:"
-                                               :username "New Order"}})
-                   (send-email {:to "chris@purpledelivery.com"
-                                :subject "Purple - New Order"
-                                :body (str o)})))
+                                               :username "New Order"}})))
                 
                 (segment/track segment-client (:user_id o) "Request Order"
                                (assoc (segment-props o)
