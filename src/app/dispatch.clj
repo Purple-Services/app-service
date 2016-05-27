@@ -119,11 +119,7 @@
                :referral_referrer_gallons config/referral-referrer-gallons
                :subscriptions
                (into {} (map (juxt :id identity)
-                             (!select db-conn "subscriptions" ["*"] {}
-                                      :custom-where
-                                      (str "id IN ("
-                                           (s/join "," [1 2])
-                                           ")"))))}}
+                             (!select db-conn "subscriptions" ["*"] {})))}}
      ;; construct a map of availability
      (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
        ;; we service this ZIP code
