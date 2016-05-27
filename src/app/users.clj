@@ -126,11 +126,7 @@
               :referral_referrer_gallons config/referral-referrer-gallons
               :subscriptions
               (into {} (map (juxt :id identity)
-                            (!select db-conn "subscriptions" ["*"] {}
-                                     :custom-where
-                                     (str "id IN ("
-                                          (s/join "," [1 2])
-                                          ")"))))}
+                            (!select db-conn "subscriptions" ["*"] {})))}
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
