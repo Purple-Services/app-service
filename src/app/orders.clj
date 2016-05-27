@@ -131,7 +131,7 @@
                    (- gallons
                       (min gallons referral-gallons-used)))
                 ;; add service fee (w/ consideration of subscription)
-                (let [sub (subscriptions/get-usage db-conn user)
+                (let [sub (subscriptions/get-with-usage db-conn user)
                       service-fee ((keyword (str time))
                                    (get-service-fees zip-code))]
                   (if sub
@@ -223,17 +223,13 @@
 (defn new-order-text
   [db-conn o charge-authorized?]
   (str "New order:"
-       (let [unpaid-balance (unpaid-balance
-                             db-conn (:user_id o))]
-         (when (> unpaid-balance 0)
-           (str "\n!UNPAID BALANCE: $"
-                (cents->dollars-str unpaid-balance))))
-       "\nDue: " (unix->full
-                  (:target_time_end o))
-       "\n" (:address_street o) ", "
-       (:address_zip o)
-       "\n" (:gallons o)
-       " Gallons of " (:gas_type o)))
+       (let [unpaid-balance (unpaid-balance db-conn (:user_id o))]
+         (when (pos? unpaid-balance)
+           (str "\n!UNPAID BALANCE: $" (cents->dollars-str unpaid-balance))))
+       "\nDue: " (unix->full (:target_time_end o))
+       "\n" (:address_street o) ", " (:address_zip o)
+       (when (:tire_pressure_check o) "\n+ TIRE PRESSURE CHECK")
+       "\n" (:gallons o) " Gallons of " (:gas_type o)))
 
 (defn add
   "The user-id given is assumed to have been auth'd already."
@@ -384,10 +380,7 @@
                                                           ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
                                                           )
                                                :icon_emoji ":fuelpump:"
-                                               :username "New Order"}})
-                   (send-email {:to "chris@purpledelivery.com"
-                                :subject "Purple - New Order"
-                                :body (str o)})))
+                                               :username "New Order"}})))
                 
                 (segment/track segment-client (:user_id o) "Request Order"
                                (assoc (segment-props o)

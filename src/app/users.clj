@@ -126,11 +126,7 @@
               :referral_referrer_gallons config/referral-referrer-gallons
               :subscriptions
               (into {} (map (juxt :id identity)
-                            (!select db-conn "subscriptions" ["*"] {}
-                                     :custom-where
-                                     (str "id IN ("
-                                          (s/join "," [1 2])
-                                          ")"))))}
+                            (!select db-conn "subscriptions" ["*"] {})))}
      :account_complete (not-any? (comp s/blank? str val)
                                  (select-keys user required-data))}))
 
@@ -642,5 +638,7 @@
   [db-conn user-id subscription-auto-renew]
   (let [result (subscriptions/set-auto-renew db-conn user-id subscription-auto-renew)]
     (if (:success result)
-      (details db-conn user-id)
+      (do (segment/track segment-client user-id "Set Subscription Auto Renew"
+                         {:auto_renew_value subscription-auto-renew})
+          (details db-conn user-id))
       result)))
