@@ -156,15 +156,57 @@
                     (str "We want everyone to stay safe and are closed due to "
                          "inclement weather. We will be back shortly!"))
 
+                (= 8 open-minute close-minute)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "manual-closure-custom"})
+                    (let [zone-id (:id (get-zone-by-zip-code zip-code))]
+                      (cond
+                        (= 1 (quot zone-id 50)) ;; san diego
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "7:30am to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+                        
+                        (= 2 (quot zone-id 50)) ;; oc
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "11am to 3pm, Monday to Friday. Thank you for "
+                             "your business.")
+
+                        (= 3 (quot zone-id 50)) ;; seattle
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "4:30pm to 8:30pm, Monday to Friday. Thank you for "
+                             "your business.")
+
+                        :else
+                        (str "Sorry, this ZIP code is currently closed."))))
+
                 (not good-time?)
                 (do (segment/track segment-client user-id "Availability Check Said Unavailable"
                                    {:address_zip (five-digit-zip-code zip-code)
                                     :reason "outside-service-hours"})
-                    (str "Sorry, the service hours for this ZIP code are "
-                         (minute-of-day->hmma open-minute)
-                         " to "
-                         (minute-of-day->hmma close-minute)
-                         " every day."))
+                    (let [zone-id (:id (get-zone-by-zip-code zip-code))]
+                      (cond
+                        (= 1 (quot zone-id 50)) ;; san diego
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "7:30am to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+                        
+                        (= 2 (quot zone-id 50)) ;; oc
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "11am to 3pm, Monday to Friday. Thank you for "
+                             "your business.")
+
+                        (= 3 (quot zone-id 50)) ;; seattle
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "4:30pm to 8:30pm, Monday to Friday. Thank you for "
+                             "your business.")
+
+                        :else
+                        (str "Sorry, the service hours for this ZIP code are "
+                             (minute-of-day->hmma open-minute)
+                             " to "
+                             (minute-of-day->hmma close-minute)
+                             " every day."))))
 
                 (not @enough-couriers-delay)
                 (do (segment/track segment-client user-id "Availability Check Said Unavailable"
