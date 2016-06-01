@@ -273,27 +273,30 @@
                          (assoc (segment-props o)
                                 :reason "price-changed-during-review"))
           {:success false
-           :message (str "Sorry, the price changed while you were creating your "
+           :message (str "The price changed while you were creating your "
                          "order. Please press the back button TWICE to go back "
-                         "to the map and start over.")})
+                         "to the map and start over.")
+           :message_title "Sorry"})
 
       (not (valid-time-limit? db-conn o))
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
                          (assoc (segment-props o)
                                 :reason "high-demand"))
           {:success false
-           :message (str "Sorry, we currently are experiencing high demand and "
+           :message (str "We currently are experiencing high demand and "
                          "can't promise a delivery within that time limit. Please "
-                         "go back and choose the \"within 3 hours\" option.")})
+                         "go back and choose the \"within 3 hours\" option.")
+           :message_title "Sorry"})
 
       (:tire_pressure_check o)
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
                          (assoc (segment-props o)
                                 :reason "tire-pressure-unavailable"))
           {:success false
-           :message (str "Sorry! Tire Pressure Fill-Up is currently unavailable. "
+           :message (str "Tire Pressure Fill-Up is currently unavailable. "
                          "Please go back and un-check the \""
-                         "TIRE FILL-UP?\" option.")})
+                         "TIRE FILL-UP?\" option.")
+           :message_title "Sorry"})
 
       (not (within-time-bracket? o))
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
