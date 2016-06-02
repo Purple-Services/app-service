@@ -3,6 +3,7 @@
             [common.couriers :refer [process-courier get-couriers]]
             [common.db :refer [!select !update mysql-escape-str]]
             [common.util :refer [in? ver<]]
+            [opt.gas-station-recommendation :as gas-rec]
             [clojure.string :as s]))
 
 (defn get-all-on-duty
@@ -73,3 +74,16 @@
                              {:on_duty set-on-duty}))
                     {:id user-id}))
          {:on_duty (on-duty? db-conn user-id)}))
+
+(defn get-stations
+  "Get gas station suggestions."
+  [lat lng]
+  (let [result (map (comp #(clojure.set/rename-keys % {:street :address_street})
+                          #(select-keys % [:id :brand :street :lat :lng])
+                          :station)
+                    (gas-rec/compute-suggestions lat lng {}))]
+    (if (seq result)
+      (merge {:success true}
+             (first result))
+      {:success false
+       :message "No gas stations found."})))
