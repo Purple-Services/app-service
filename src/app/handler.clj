@@ -282,7 +282,17 @@
                                        (coerce-double (:lng b))
                                        (coerce-double (:87 (:gallons b)))
                                        (coerce-double (:91 (:gallons b)))
-                                       (:set_on_duty b)))))))))
+                                       (:set_on_duty b))))))
+              (POST "/get-stations" {body :body}
+                    (response
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (demand-user-auth
+                        db-conn
+                        (:user_id b)
+                        (:token b)
+                        (couriers/get-stations (coerce-double (:lat b))
+                                               (coerce-double (:lng b))))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
