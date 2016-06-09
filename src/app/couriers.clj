@@ -1,8 +1,8 @@
 (ns app.couriers
   (:require [common.config :as config]
             [common.couriers :refer [process-courier get-couriers]]
-            [common.db :refer [!select !update mysql-escape-str]]
-            [common.util :refer [in? ver<]]
+            [common.db :refer [!select !insert !update mysql-escape-str]]
+            [common.util :refer [in? ver< now-unix]]
             [opt.gas-station-recommendation :as gas-rec]
             [clojure.string :as s]))
 
@@ -58,7 +58,7 @@
 (defn ping
   "The courier app periodically pings us with courier status details."
   [db-conn user-id app-version lat lng gallons_87 gallons_91 set-on-duty]
-  (merge (if (ver< (or app-version "0") "1.11.0")
+  (merge (if (ver< (or app-version "0") "1.11.4")
            {:success false
             :message "Please update your courier app to the latest version. You seem to be using the customer app or an old version of the courier app."
             :message_title "Error"}
@@ -77,13 +77,48 @@
 
 (defn get-stations
   "Get gas station suggestions."
-  [lat lng]
-  (let [result (map (comp #(clojure.set/rename-keys % {:street :address_street})
+  [db-conn lat lng dest-lat dest-lng]
+  (let [blacklist (map :station_id
+                       (!select db-conn
+                                "station_blacklist"
+                                [:station_id]
+                                {}
+                                :custom-where
+                                (str (quot (System/currentTimeMillis) 1000)
+                                     " < until")))
+        result (map (comp #(clojure.set/rename-keys % {:street :address_street})
                           #(select-keys % [:id :brand :street :lat :lng])
                           :station)
-                    (gas-rec/compute-suggestions lat lng {}))]
+                    (if dest-lat
+                      (gas-rec/compute-suggestions lat lng dest-lat dest-lng
+                                                   {:blacklist blacklist})
+                      (gas-rec/compute-suggestions lat lng
+                                                   {:blacklist blacklist})))]
     (if (seq result)
       (merge {:success true}
              (first result))
       {:success false
        :message "No gas stations found."})))
+
+(defn blacklist-station
+  "Blacklist a gas station by ID."
+  [db-conn user-id station-id reason]
+  (let [reason->until {"Permanently closed"    1999999999
+                       "Not open right now"    (+ (now-unix) 43200)  ; +12 hours
+                       "Long line"             (+ (now-unix) 10800)  ; +3 hours
+                       "Gas card not accepted" 1999999999
+                       "Price is too high"     (+ (now-unix) 864000) ; +10 days
+                       "Other"                 1999999999}
+        result (!insert db-conn
+                        "station_blacklist"
+                        {:station_id station-id
+                         :creator_user_id user-id
+                         :reason reason
+                         :until (reason->until reason)})]
+    (if (:success result)
+      {:success true
+       :message "Thank you for reporting this station! Please search again to find a new station."
+       :message_title "Thanks!"}
+      {:success false
+       :message "That station does not exist."
+       :message_title "Error"})))
