@@ -1,0 +1,342 @@
+[
+  {
+    "id": "PURPLEPREF0",
+    "brand": "ARCO",
+    "street": "12332 W Washington Blvd, Los Angeles, CA 90066",
+    "lng": -118.4302083,
+    "lat": 33.996778,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.70"
+      },
+      {
+        "type": "Regular",
+        "price": "2.50"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF1",
+    "brand": "COSTCO",
+    "street": "13463 Washington Blvd, Culver City, CA 90292",
+    "lng": -118.4494311,
+    "lat": 33.993111,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.69"
+      },
+      {
+          "type": "Regular",
+        "price": "2.49"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF4",
+    "brand": "ARCO",
+    "street": "5301 W Olympic Blvd, Los Angeles, CA 90036",
+    "lng": -118.3484114,
+    "lat": 34.0574645,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.69"
+      },
+      {
+        "type": "Regular",
+        "price": "2.49"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF5",
+    "brand": "ARCO",
+    "street": "4169 Venice Blvd, Los Angeles, CA 90019",
+    "lng": -118.3300647,
+    "lat": 34.0447772,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.81"
+      },
+      {
+        "type": "Regular",
+        "price": "2.59"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF8",
+    "brand": "ARCO",
+    "street": "1255 N Highland Ave, Hollywood, CA 90038",
+    "lng": -118.3411768,
+    "lat": 34.0942448,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.95"
+      },
+      {
+        "type": "Regular",
+        "price": "2.65"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF9",
+    "brand": "ARCO",
+    "street": "6100 Franklin Ave, Hollywood, CA 90028",
+    "lng": -118.3251009,
+    "lat": 34.1050492,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.85"
+      },
+      {
+        "type": "Regular",
+        "price": "2.67"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF10",
+    "brand": "ARCO",
+    "street": "4103 Verdugo Rd, Los Angeles, CA 90065",
+    "lng": -118.234211,
+    "lat": 34.1251679,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.85"
+      },
+      {
+        "type": "Regular",
+        "price": "2.65"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF11",
+    "brand": "ARCO",
+    "street": "4380 Eagle Rock Blvd, Eagle Rock, CA 90041",
+    "lng": -118.2232476,
+    "lat": 34.1238151,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.77"
+      },
+      {
+        "type": "Regular",
+        "price": "2.57"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF12",
+    "brand": "ARCO",
+    "street": "1633 N Altadena Dr, Pasadena, CA 91107",
+    "lng": -118.1007647,
+    "lat": 34.174233,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.89"
+      },
+      {
+        "type": "Regular",
+        "price": "2.69"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF13",
+    "brand": "ARCO",
+    "street": "2171 N Fair Oaks Ave, Altadena, CA 91001",
+    "lng": -118.1529922,
+    "lat": 34.1828304,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.85"
+      },
+      {
+        "type": "Regular",
+        "price": "2.65"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF14",
+    "brand": "ARCO",
+    "street": "5731 Firestone Blvd, South Gate, CA 90280",
+    "lng": -118.1677416,
+    "lat": 33.9496247,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.69"
+      },
+      {
+        "type": "Regular",
+        "price": "2.45"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF15",
+    "brand": "ARCO",
+    "street": "2740 E Olympic Blvd, Los Angeles, CA 90023",
+    "lng": -118.22028,
+    "lat": 34.0232207,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.87"
+      },
+      {
+        "type": "Regular",
+        "price": "2.57"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF16",
+    "brand": "ARCO",
+    "street": "3949 Dennison St, Los Angeles, CA 90023",
+    "lng": -118.1916852,
+    "lat": 34.0208737,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.87"
+      },
+      {
+        "type": "Regular",
+        "price": "2.57"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF17",
+    "brand": "COSTCO",
+    "street": "6333 Telegraph Rd, Commerce, CA 90040",
+    "lng": -118.1435471,
+    "lat": 33.9947085,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.37"
+      },
+      {
+        "type": "Regular",
+        "price": "2.63"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF18",
+    "brand": "COSTCO",
+    "street": "8810 Tampa Ave, Northridge, CA 91324",
+    "lng": -118.3251009,
+    "lat": 34.1050492,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.69"
+      },
+      {
+        "type": "Regular",
+        "price": "2.49"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF19",
+    "brand": "ARCO",
+    "street": "9110 Topanga Canyon Blvd, Chatsworth, CA 91311",
+    "lng": -118.6070037,
+    "lat": 34.2357366,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.73"
+      },
+      {
+        "type": "Regular",
+        "price": "2.55"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF20",
+    "brand": "ARCO",
+    "street": "4359 Coldwater Canyon Ave, Studio City, CA 91604",
+    "lng": -118.416288,
+    "lat": 34.1501259,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.89"
+      },
+      {
+        "type": "Regular",
+        "price": "2.79"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF22",
+    "brand": "ARCO",
+    "street": "3278 E Slauson Ave, Vernon, CA 90058",
+    "lng": -118.2112329,
+    "lat": 33.9890305,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.69"
+      },
+      {
+        "type": "Regular",
+        "price": "2.49"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF23",
+    "brand": "ARCO",
+    "street": "1605 Glendale Blvd, Los Angeles, CA 90026",
+    "lng": -118.2626403,
+    "lat": 34.0839729,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.81"
+      },
+      {
+        "type": "Regular",
+        "price": "2.59"
+      }
+    ]
+  },
+  {
+    "id": "PURPLEPREF24",
+    "brand": "ARCO",
+    "street": "550 Foothill Blvd, La Canada, CA 91011",
+    "lng": -118.1935427,
+    "lat": 34.2000547,
+    "prices": [
+      {
+        "type": "Premium",
+        "price": "2.83"
+      },
+      {
+        "type": "Regular",
+        "price": "2.63"
+      }
+    ]
+  }
+]
