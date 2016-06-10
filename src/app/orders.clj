@@ -357,50 +357,45 @@
                                  (:license_plate o)
                                  (:user_id o)))
             (future ;; we can process the rest of this asynchronously
-              (let [available-couriers
-                    (->> (couriers/get-all-available db-conn)
-                         (couriers/filter-by-zone (order->zone-id o))
-                         (include-user-data db-conn))]
-                
-                (when (and charge-authorized? (not (zero? (:total_price o))))
-                  (stamp-with-charge db-conn (:id o) (:charge auth-charge-result)))
+              (when (and charge-authorized? (not (zero? (:total_price o))))
+                (stamp-with-charge db-conn (:id o) (:charge auth-charge-result)))
 
-                ;; fraud detection
-                (when (not (zero? (:total_price o)))
-                  (let [c (:charge auth-charge-result)]
-                    (sift/charge-authorization
-                     o user
-                     (if charge-authorized?
-                       {:stripe-charge-id (:id c)
-                        :successful? true
-                        :card-last4 (:last4 (:card c))
-                        :stripe-cvc-check (:cvc_check (:card c))
-                        :stripe-funding (:funding (:card c))
-                        :stripe-brand (:brand (:card c))
-                        :stripe-customer-id (:customer c)}
-                       {:stripe-charge-id (:charge (:error c))
-                        :successful? false
-                        :decline-reason-code (:decline_code (:error c))}))))
-                
-                (only-prod
-                 (let [order-text-info (new-order-text db-conn o charge-authorized?)]
-                   (client/post "https://hooks.slack.com/services/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"
-                                {:throw-exceptions false
-                                 :content-type :json
-                                 :form-params {:text (str order-text-info
-                                                          ;; TODO
-                                                          ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
-                                                          )
-                                               :icon_emoji ":fuelpump:"
-                                               :username "New Order"}})))
-                
-                (segment/track segment-client (:user_id o) "Request Order"
-                               (assoc (segment-props o)
-                                      :charge-authorized charge-authorized?))
-                ;; used by mailchimp
-                (segment/identify segment-client (:user_id o)
-                                  {:email (:email user) ;; required every time
-                                   :HASORDERED 1})))
+              ;; fraud detection
+              (when (not (zero? (:total_price o)))
+                (let [c (:charge auth-charge-result)]
+                  (sift/charge-authorization
+                   o user
+                   (if charge-authorized?
+                     {:stripe-charge-id (:id c)
+                      :successful? true
+                      :card-last4 (:last4 (:card c))
+                      :stripe-cvc-check (:cvc_check (:card c))
+                      :stripe-funding (:funding (:card c))
+                      :stripe-brand (:brand (:card c))
+                      :stripe-customer-id (:customer c)}
+                     {:stripe-charge-id (:charge (:error c))
+                      :successful? false
+                      :decline-reason-code (:decline_code (:error c))}))))
+              
+              (only-prod
+               (let [order-text-info (new-order-text db-conn o charge-authorized?)]
+                 (client/post "https://hooks.slack.com/services/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"
+                              {:throw-exceptions false
+                               :content-type :json
+                               :form-params {:text (str order-text-info
+                                                        ;; TODO
+                                                        ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
+                                                        )
+                                             :icon_emoji ":fuelpump:"
+                                             :username "New Order"}})))
+              
+              (segment/track segment-client (:user_id o) "Request Order"
+                             (assoc (segment-props o)
+                                    :charge-authorized charge-authorized?))
+              ;; used by mailchimp
+              (segment/identify segment-client (:user_id o)
+                                {:email (:email user) ;; required every time
+                                 :HASORDERED 1}))
             {:success true
              :message (str "Your order has been accepted, and a courier will be "
                            "on the way soon! Please ensure that the fueling door "

@@ -1,8 +1,9 @@
 (ns app.couriers
   (:require [common.config :as config]
             [common.couriers :refer [process-courier get-couriers]]
-            [common.db :refer [!select !update mysql-escape-str]]
-            [common.util :refer [in? ver<]]
+            [common.db :refer [!select !insert !update mysql-escape-str]]
+            [common.util :refer [in? ver< now-unix]]
+            [opt.gas-station-recommendation :as gas-rec]
             [clojure.string :as s]))
 
 (defn get-all-on-duty
@@ -73,3 +74,51 @@
                              {:on_duty set-on-duty}))
                     {:id user-id}))
          {:on_duty (on-duty? db-conn user-id)}))
+
+(defn get-stations
+  "Get gas station suggestions."
+  [db-conn lat lng dest-lat dest-lng]
+  (let [blacklist (map :station_id
+                       (!select db-conn
+                                "station_blacklist"
+                                [:station_id]
+                                {}
+                                :custom-where
+                                (str (quot (System/currentTimeMillis) 1000)
+                                     " < until")))
+        result (map (comp #(clojure.set/rename-keys % {:street :address_street})
+                          #(select-keys % [:id :brand :street :lat :lng])
+                          :station)
+                    (if dest-lat
+                      (gas-rec/compute-suggestions lat lng dest-lat dest-lng
+                                                   {:blacklist blacklist})
+                      (gas-rec/compute-suggestions lat lng
+                                                   {:blacklist blacklist})))]
+    (if (seq result)
+      (merge {:success true}
+             (first result))
+      {:success false
+       :message "No gas stations found."})))
+
+(defn blacklist-station
+  "Blacklist a gas station by ID."
+  [db-conn user-id station-id reason]
+  (let [reason->until {"Permanently closed"    1999999999
+                       "Not open right now"    (+ (now-unix) 43200)  ; +12 hours
+                       "Long line"             (+ (now-unix) 10800)  ; +3 hours
+                       "Gas card not accepted" 1999999999
+                       "Price is too high"     (+ (now-unix) 864000) ; +10 days
+                       "Other"                 1999999999}
+        result (!insert db-conn
+                        "station_blacklist"
+                        {:station_id station-id
+                         :creator_user_id user-id
+                         :reason reason
+                         :until (reason->until reason)})]
+    (if (:success result)
+      {:success true
+       :message "Thank you for reporting this station! Please search again to find a new station."
+       :message_title "Thanks!"}
+      {:success false
+       :message "That station does not exist."
+       :message_title "Error"})))

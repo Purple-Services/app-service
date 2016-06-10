@@ -269,12 +269,9 @@
               ;; Courier app periodically updates web service with their status
               (POST "/ping" {body :body}
                     (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
+                     (let [b (keywordize-keys body) db-conn (conn)]
                        (demand-user-auth
-                        db-conn
-                        (:user_id b)
-                        (:token b)
+                        db-conn (:user_id b) (:token b)
                         (couriers/ping db-conn
                                        (:user_id b)
                                        (:version b)
@@ -282,7 +279,33 @@
                                        (coerce-double (:lng b))
                                        (coerce-double (:87 (:gallons b)))
                                        (coerce-double (:91 (:gallons b)))
-                                       (:set_on_duty b)))))))))
+                                       (:set_on_duty b))))))
+              (context "/gas-stations" []
+                       (defroutes gas-stations-routes
+                         (POST "/find" {body :body}
+                               (response
+                                (let [b (keywordize-keys body) db-conn (conn)]
+                                  (demand-user-auth
+                                   db-conn (:user_id b) (:token b)
+                                   (couriers/get-stations
+                                    db-conn
+                                    (coerce-double (:lat b))
+                                    (coerce-double (:lng b))
+                                    (if (nil? (:dest_lat b))
+                                      nil
+                                      (coerce-double (:dest_lat b)))
+                                    (if (nil? (:dest_lng b))
+                                      nil
+                                      (coerce-double (:dest_lng b))))))))
+                         (POST "/blacklist" {body :body}
+                               (response
+                                (let [b (keywordize-keys body) db-conn (conn)]
+                                  (demand-user-auth
+                                   db-conn (:user_id b) (:token b)
+                                   (couriers/blacklist-station db-conn
+                                                               (:user_id b)
+                                                               (:station_id b)
+                                                               (:reason b)))))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
