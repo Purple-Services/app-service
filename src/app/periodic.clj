@@ -37,9 +37,9 @@
 (defn init
   "Start all periodic tasks."
   []
-  (map force [job-pool
-              subs-job
-              dispatch-job]))
+  (run! force [job-pool
+               subs-job
+               dispatch-job]))
 
 (defn view
   "Helper function for inspection of currently scheduled tasks."
