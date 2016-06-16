@@ -1,17 +1,18 @@
 (ns app.handler
-  (:require [clojure.walk :refer [keywordize-keys]]
-            [app.users :as users]
-            [app.couriers :as couriers]
-            [app.orders :as orders]
-            [app.dispatch :as dispatch]
-            [app.coupons :as coupons]
-            [app.pages :as pages]
-            [common.util :refer [unless-p ver< coerce-double]]
+  (:require [common.util :refer [! unless-p ver< coerce-double]]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
             [common.orders :refer [cancel]]
             [common.users :refer [details send-feedback valid-session?]]
+            [app.users :as users]
+            [app.couriers :as couriers]
+            [app.orders :as orders]
+            [app.dispatch :as dispatch]
+            [app.periodic :as periodic]
+            [app.coupons :as coupons]
+            [app.pages :as pages]
+            [clojure.walk :refer [keywordize-keys]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -372,3 +373,5 @@
                  :access-control-allow-methods [:get :put :post :delete])
       (middleware/wrap-json-body)
       (middleware/wrap-json-response)))
+
+(! (periodic/init))

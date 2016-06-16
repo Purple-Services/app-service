@@ -487,6 +487,11 @@ and their id matches the order's courier_id"
 
 (defn rate
   [db-conn user-id order-id rating]
-  (do (update-rating
-       db-conn order-id (:number_rating rating) (:text_rating rating))
+  (do (update-rating db-conn
+                     order-id
+                     (:number_rating rating)
+                     (:text_rating rating))
+      (segment/track segment-client user-id "Rate Order"
+                     {:order_id order-id
+                      :number_rating (:number_rating rating)})
       (details db-conn user-id)))
