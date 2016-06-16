@@ -23,8 +23,6 @@
             [app.users :refer [call-user]]
             [opt.planner :refer [compute-suggestion]]))
 
-(def job-pool (at-at/mk-pool))
-
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
   [zip-code]
@@ -229,8 +227,6 @@
                  "area and hope to offer service to your "
                  "location very soon."))}))))
 
-(! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
-
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
   [db-conn]
@@ -327,9 +323,3 @@
                             :no-reassigns true)
             (new-assignments os cs)))))
 
-(defn process
-  "Does a few periodic tasks."
-  []
-  ((juxt update-courier-state remind-couriers auto-assign) process-db-conn))
-
-(! (def process-job (at-at/every config/process-interval process job-pool)))
