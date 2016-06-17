@@ -17,7 +17,8 @@
                    ;; 4pm  - do all subscription renewals
                    16 (subscriptions/renew-subs-expiring-tonight (conn))
                    ;; 10pm - set expiring users to sub ID 0
-                   22 (subscriptions/expire-all-old-subs (conn)))
+                   22 (subscriptions/expire-all-old-subs (conn))
+                   nil)
                 @job-pool)))
 
 (defn dispatch-tasks
