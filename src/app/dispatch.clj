@@ -80,7 +80,7 @@
   "Does the market that this ZIP is in have enough couriers to offer service?"
   [zip-code subscription]
   (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-    (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
+    (or (in? [0 2 3] (quot zone-id 50)) ;; LA, OC, SEA are exempt from this constraint
         (and (not (nil? (:id subscription))) ;; subscribers are exempt
              (not= (:id subscription) 0))
         (pos? (num-couriers-connected-in-market zone-id)))))
