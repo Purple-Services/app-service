@@ -288,15 +288,15 @@
                          "go back and choose the \"within 3 hours\" option.")
            :message_title "Sorry"})
 
-      (:tire_pressure_check o)
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "tire-pressure-unavailable"))
-          {:success false
-           :message (str "Tire Pressure Fill-Up is currently unavailable. "
-                         "Please go back and un-check the \""
-                         "TIRE FILL-UP?\" option.")
-           :message_title "Sorry"})
+      ;; (:tire_pressure_check o)
+      ;; (do (segment/track segment-client (:user_id o) "Request Order Failed"
+      ;;                    (assoc (segment-props o)
+      ;;                           :reason "tire-pressure-unavailable"))
+      ;;     {:success false
+      ;;      :message (str "Tire Pressure Fill-Up is currently unavailable. "
+      ;;                    "Please go back and un-check the \""
+      ;;                    "TIRE FILL-UP?\" option.")
+      ;;      :message_title "Sorry"})
 
       (not (within-time-bracket? o))
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
