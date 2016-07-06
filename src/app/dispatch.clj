@@ -161,12 +161,20 @@
                                     :reason "manual-closure-custom"})
                     (let [zone-id (:id (get-zone-by-zip-code zip-code))]
                       (cond
-                        (in? [1 2 3] (quot zone-id 50))
+                        (= 1 (quot zone-id 50)) ;; san diego
                         (str "Sorry, the service hours for this ZIP code are "
-                             (minute-of-day->hmma open-minute)
-                             " to "
-                             (minute-of-day->hmma close-minute)
-                             ", Monday to Friday. Thank you for your business.")
+                             "7:30am to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+                        
+                        (= 2 (quot zone-id 50)) ;; oc
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "9am to 3:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+
+                        (= 3 (quot zone-id 50)) ;; seattle
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "3pm to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
 
                         :else
                         (str "Sorry, this ZIP code is currently closed."))))
