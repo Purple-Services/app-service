@@ -1,5 +1,6 @@
 (ns app.orders
-  (:require [common.db :refer [!select !insert !update]]
+  (:require [common.config :as config]
+            [common.db :refer [!select !insert !update]]
             [common.util :refer [cents->dollars-str in?
                                  gallons->display-str
                                  minute-of-day->hmma
@@ -118,6 +119,7 @@
    octane                ;; String
    gallons               ;; Double
    time                  ;; Integer, minutes
+   tire-pressure-check   ;; Boolean
    coupon-code           ;; String
    vehicle-id            ;; String
    referral-gallons-used ;; Double
@@ -147,6 +149,10 @@
                         0
                         (max 0 (+ service-fee sub-discount))))
                     service-fee))
+                ;; add cost of tire pressure check if applicable
+                (if tire-pressure-check
+                  config/tire-pressure-check-price
+                  0)
                 ;; apply value of coupon code 
                 (if-not (s/blank? coupon-code)
                   (:value (coupons/code->value
@@ -167,6 +173,7 @@
                      (:gas_type o)
                      (:gallons o)
                      (:time-limit o)
+                     (:tire_pressure_check o)
                      (:coupon_code o)
                      (:vehicle_id o)
                      (:referral_gallons_used o)
@@ -288,16 +295,6 @@
                          "go back and choose the \"within 3 hours\" option.")
            :message_title "Sorry"})
 
-      ;; (:tire_pressure_check o)
-      ;; (do (segment/track segment-client (:user_id o) "Request Order Failed"
-      ;;                    (assoc (segment-props o)
-      ;;                           :reason "tire-pressure-unavailable"))
-      ;;     {:success false
-      ;;      :message (str "Tire Pressure Fill-Up is currently unavailable. "
-      ;;                    "Please go back and un-check the \""
-      ;;                    "TIRE FILL-UP?\" option.")
-      ;;      :message_title "Sorry"})
-
       (not (within-time-bracket? o))
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
                          (assoc (segment-props o)
@@ -311,9 +308,6 @@
                            " to "
                            (minute-of-day->hmma (last service-time-bracket))
                            " today."))})
-
-      ;; TODO ensure they are able to get tire pressure check with their sub
-      ;; if it's set to true only, of course
       
       :else
       (let [auth-charge-result (if (zero? (:total_price o))

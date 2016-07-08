@@ -98,6 +98,7 @@
                          (and good-time?
                               @enough-couriers-delay)))
                (into {}))
+   :tire_pressure_check_price config/tire-pressure-check-price
    ;; for legacy app versions (< 1.2.2)
    :gallons 15})
 
