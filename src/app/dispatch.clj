@@ -80,7 +80,7 @@
   "Does the market that this ZIP is in have enough couriers to offer service?"
   [zip-code subscription]
   (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-    (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
+    (or (in? [0 2 3] (quot zone-id 50)) ;; LA, OC, SEA are exempt from this constraint
         (and (not (nil? (:id subscription))) ;; subscribers are exempt
              (not= (:id subscription) 0))
         (pos? (num-couriers-connected-in-market zone-id)))))
@@ -155,6 +155,7 @@
                     (str "We want everyone to stay safe and are closed due to "
                          "inclement weather. We will be back shortly!"))
 
+                ;; This one should only be used for the weekend.
                 (= 8 open-minute close-minute)
                 (do (segment/track segment-client user-id "Availability Check Said Unavailable"
                                    {:address_zip (five-digit-zip-code zip-code)
@@ -168,13 +169,13 @@
                         
                         (= 2 (quot zone-id 50)) ;; oc
                         (str "Sorry, the service hours for this ZIP code are "
-                             "11am to 3pm, Monday to Friday. Thank you for "
-                             "your business.")
+                             "9am to 3:30pm, Monday to Friday. Thank you "
+                             "for your business.")
 
                         (= 3 (quot zone-id 50)) ;; seattle
                         (str "Sorry, the service hours for this ZIP code are "
-                             "4:30pm to 8:30pm, Monday to Friday. Thank you for "
-                             "your business.")
+                             "3pm to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
 
                         :else
                         (str "Sorry, this ZIP code is currently closed."))))
@@ -185,20 +186,12 @@
                                     :reason "outside-service-hours"})
                     (let [zone-id (:id (get-zone-by-zip-code zip-code))]
                       (cond
-                        (= 1 (quot zone-id 50)) ;; san diego
+                        (in? [1 2 3] (quot zone-id 50))
                         (str "Sorry, the service hours for this ZIP code are "
-                             "7:30am to 8:30pm, Monday to Friday. Thank you "
-                             "for your business.")
-                        
-                        (= 2 (quot zone-id 50)) ;; oc
-                        (str "Sorry, the service hours for this ZIP code are "
-                             "11am to 3pm, Monday to Friday. Thank you for "
-                             "your business.")
-
-                        (= 3 (quot zone-id 50)) ;; seattle
-                        (str "Sorry, the service hours for this ZIP code are "
-                             "4:30pm to 8:30pm, Monday to Friday. Thank you for "
-                             "your business.")
+                             (minute-of-day->hmma open-minute)
+                             " to "
+                             (minute-of-day->hmma close-minute)
+                             ", Monday to Friday. Thank you for your business.")
 
                         :else
                         (str "Sorry, the service hours for this ZIP code are "
