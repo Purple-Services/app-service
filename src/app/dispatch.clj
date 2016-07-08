@@ -23,8 +23,6 @@
             [app.users :refer [call-user]]
             [opt.planner :refer [compute-suggestion]]))
 
-(def job-pool (at-at/mk-pool))
-
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
   [zip-code]
@@ -82,7 +80,7 @@
   "Does the market that this ZIP is in have enough couriers to offer service?"
   [zip-code subscription]
   (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-    (or (= 0 (quot zone-id 50)) ;; LA is exempt from this constraint
+    (or (in? [0 2 3] (quot zone-id 50)) ;; LA, OC, SEA are exempt from this constraint
         (and (not (nil? (:id subscription))) ;; subscribers are exempt
              (not= (:id subscription) 0))
         (pos? (num-couriers-connected-in-market zone-id)))))
@@ -100,6 +98,7 @@
                          (and good-time?
                               @enough-couriers-delay)))
                (into {}))
+   :tire_pressure_check_price config/tire-pressure-check-price
    ;; for legacy app versions (< 1.2.2)
    :gallons 15})
 
@@ -156,15 +155,50 @@
                     (str "We want everyone to stay safe and are closed due to "
                          "inclement weather. We will be back shortly!"))
 
+                ;; This one should only be used for the weekend.
+                (= 8 open-minute close-minute)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "manual-closure-custom"})
+                    (let [zone-id (:id (get-zone-by-zip-code zip-code))]
+                      (cond
+                        (= 1 (quot zone-id 50)) ;; san diego
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "7:30am to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+                        
+                        (= 2 (quot zone-id 50)) ;; oc
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "9am to 3:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+
+                        (= 3 (quot zone-id 50)) ;; seattle
+                        (str "Sorry, the service hours for this ZIP code are "
+                             "3pm to 8:30pm, Monday to Friday. Thank you "
+                             "for your business.")
+
+                        :else
+                        (str "Sorry, this ZIP code is currently closed."))))
+
                 (not good-time?)
                 (do (segment/track segment-client user-id "Availability Check Said Unavailable"
                                    {:address_zip (five-digit-zip-code zip-code)
                                     :reason "outside-service-hours"})
-                    (str "Sorry, the service hours for this ZIP code are "
-                         (minute-of-day->hmma open-minute)
-                         " to "
-                         (minute-of-day->hmma close-minute)
-                         " every day."))
+                    (let [zone-id (:id (get-zone-by-zip-code zip-code))]
+                      (cond
+                        (in? [1 2 3] (quot zone-id 50))
+                        (str "Sorry, the service hours for this ZIP code are "
+                             (minute-of-day->hmma open-minute)
+                             " to "
+                             (minute-of-day->hmma close-minute)
+                             ", Monday to Friday. Thank you for your business.")
+
+                        :else
+                        (str "Sorry, the service hours for this ZIP code are "
+                             (minute-of-day->hmma open-minute)
+                             " to "
+                             (minute-of-day->hmma close-minute)
+                             " every day."))))
 
                 (not @enough-couriers-delay)
                 (do (segment/track segment-client user-id "Availability Check Said Unavailable"
@@ -186,8 +220,6 @@
                  "location. We are rapidly expanding our service "
                  "area and hope to offer service to your "
                  "location very soon."))}))))
-
-(! (def process-db-conn (conn))) ;; ok to use same conn forever? have to test..
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
@@ -285,9 +317,3 @@
                             :no-reassigns true)
             (new-assignments os cs)))))
 
-(defn process
-  "Does a few periodic tasks."
-  []
-  ((juxt update-courier-state remind-couriers auto-assign) process-db-conn))
-
-(! (def process-job (at-at/every config/process-interval process job-pool)))

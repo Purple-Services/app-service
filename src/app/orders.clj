@@ -1,5 +1,6 @@
 (ns app.orders
-  (:require [common.db :refer [!select !insert !update]]
+  (:require [common.config :as config]
+            [common.db :refer [!select !insert !update]]
             [common.util :refer [cents->dollars-str in?
                                  gallons->display-str
                                  minute-of-day->hmma
@@ -118,6 +119,7 @@
    octane                ;; String
    gallons               ;; Double
    time                  ;; Integer, minutes
+   tire-pressure-check   ;; Boolean
    coupon-code           ;; String
    vehicle-id            ;; String
    referral-gallons-used ;; Double
@@ -147,6 +149,10 @@
                         0
                         (max 0 (+ service-fee sub-discount))))
                     service-fee))
+                ;; add cost of tire pressure check if applicable
+                (if tire-pressure-check
+                  config/tire-pressure-check-price
+                  0)
                 ;; apply value of coupon code 
                 (if-not (s/blank? coupon-code)
                   (:value (coupons/code->value
@@ -167,6 +173,7 @@
                      (:gas_type o)
                      (:gallons o)
                      (:time-limit o)
+                     (:tire_pressure_check o)
                      (:coupon_code o)
                      (:vehicle_id o)
                      (:referral_gallons_used o)
@@ -273,18 +280,20 @@
                          (assoc (segment-props o)
                                 :reason "price-changed-during-review"))
           {:success false
-           :message (str "Sorry, the price changed while you were creating your "
+           :message (str "The price changed while you were creating your "
                          "order. Please press the back button TWICE to go back "
-                         "to the map and start over.")})
+                         "to the map and start over.")
+           :message_title "Sorry"})
 
       (not (valid-time-limit? db-conn o))
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
                          (assoc (segment-props o)
                                 :reason "high-demand"))
           {:success false
-           :message (str "Sorry, we currently are experiencing high demand and "
+           :message (str "We currently are experiencing high demand and "
                          "can't promise a delivery within that time limit. Please "
-                         "go back and choose the \"within 3 hours\" option.")})
+                         "go back and choose the \"within 3 hours\" option.")
+           :message_title "Sorry"})
 
       (not (within-time-bracket? o))
       (do (segment/track segment-client (:user_id o) "Request Order Failed"
@@ -299,9 +308,6 @@
                            " to "
                            (minute-of-day->hmma (last service-time-bracket))
                            " today."))})
-
-      ;; TODO ensure they are able to get tire pressure check with their sub
-      ;; if it's set to true only, of course
       
       :else
       (let [auth-charge-result (if (zero? (:total_price o))
@@ -345,50 +351,45 @@
                                  (:license_plate o)
                                  (:user_id o)))
             (future ;; we can process the rest of this asynchronously
-              (let [available-couriers
-                    (->> (couriers/get-all-available db-conn)
-                         (couriers/filter-by-zone (order->zone-id o))
-                         (include-user-data db-conn))]
-                
-                (when (and charge-authorized? (not (zero? (:total_price o))))
-                  (stamp-with-charge db-conn (:id o) (:charge auth-charge-result)))
+              (when (and charge-authorized? (not (zero? (:total_price o))))
+                (stamp-with-charge db-conn (:id o) (:charge auth-charge-result)))
 
-                ;; fraud detection
-                (when (not (zero? (:total_price o)))
-                  (let [c (:charge auth-charge-result)]
-                    (sift/charge-authorization
-                     o user
-                     (if charge-authorized?
-                       {:stripe-charge-id (:id c)
-                        :successful? true
-                        :card-last4 (:last4 (:card c))
-                        :stripe-cvc-check (:cvc_check (:card c))
-                        :stripe-funding (:funding (:card c))
-                        :stripe-brand (:brand (:card c))
-                        :stripe-customer-id (:customer c)}
-                       {:stripe-charge-id (:charge (:error c))
-                        :successful? false
-                        :decline-reason-code (:decline_code (:error c))}))))
-                
-                (only-prod
-                 (let [order-text-info (new-order-text db-conn o charge-authorized?)]
-                   (client/post "https://hooks.slack.com/services/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"
-                                {:throw-exceptions false
-                                 :content-type :json
-                                 :form-params {:text (str order-text-info
-                                                          ;; TODO
-                                                          ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
-                                                          )
-                                               :icon_emoji ":fuelpump:"
-                                               :username "New Order"}})))
-                
-                (segment/track segment-client (:user_id o) "Request Order"
-                               (assoc (segment-props o)
-                                      :charge-authorized charge-authorized?))
-                ;; used by mailchimp
-                (segment/identify segment-client (:user_id o)
-                                  {:email (:email user) ;; required every time
-                                   :HASORDERED 1})))
+              ;; fraud detection
+              (when (not (zero? (:total_price o)))
+                (let [c (:charge auth-charge-result)]
+                  (sift/charge-authorization
+                   o user
+                   (if charge-authorized?
+                     {:stripe-charge-id (:id c)
+                      :successful? true
+                      :card-last4 (:last4 (:card c))
+                      :stripe-cvc-check (:cvc_check (:card c))
+                      :stripe-funding (:funding (:card c))
+                      :stripe-brand (:brand (:card c))
+                      :stripe-customer-id (:customer c)}
+                     {:stripe-charge-id (:charge (:error c))
+                      :successful? false
+                      :decline-reason-code (:decline_code (:error c))}))))
+              
+              (only-prod
+               (let [order-text-info (new-order-text db-conn o charge-authorized?)]
+                 (client/post "https://hooks.slack.com/services/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"
+                              {:throw-exceptions false
+                               :content-type :json
+                               :form-params {:text (str order-text-info
+                                                        ;; TODO
+                                                        ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
+                                                        )
+                                             :icon_emoji ":fuelpump:"
+                                             :username "New Order"}})))
+              
+              (segment/track segment-client (:user_id o) "Request Order"
+                             (assoc (segment-props o)
+                                    :charge-authorized charge-authorized?))
+              ;; used by mailchimp
+              (segment/identify segment-client (:user_id o)
+                                {:email (:email user) ;; required every time
+                                 :HASORDERED 1}))
             {:success true
              :message (str "Your order has been accepted, and a courier will be "
                            "on the way soon! Please ensure that the fueling door "
@@ -480,6 +481,11 @@ and their id matches the order's courier_id"
 
 (defn rate
   [db-conn user-id order-id rating]
-  (do (update-rating
-       db-conn order-id (:number_rating rating) (:text_rating rating))
+  (do (update-rating db-conn
+                     order-id
+                     (:number_rating rating)
+                     (:text_rating rating))
+      (segment/track segment-client user-id "Rate Order"
+                     {:order_id order-id
+                      :number_rating (:number_rating rating)})
       (details db-conn user-id)))

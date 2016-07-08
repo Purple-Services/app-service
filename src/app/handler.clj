@@ -1,17 +1,18 @@
 (ns app.handler
-  (:require [clojure.walk :refer [keywordize-keys]]
-            [app.users :as users]
-            [app.couriers :as couriers]
-            [app.orders :as orders]
-            [app.dispatch :as dispatch]
-            [app.coupons :as coupons]
-            [app.pages :as pages]
-            [common.util :refer [unless-p ver< coerce-double]]
+  (:require [common.util :refer [! unless-p ver< coerce-double]]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
             [common.orders :refer [cancel]]
             [common.users :refer [details send-feedback valid-session?]]
+            [app.users :as users]
+            [app.couriers :as couriers]
+            [app.orders :as orders]
+            [app.dispatch :as dispatch]
+            [app.periodic :as periodic]
+            [app.coupons :as coupons]
+            [app.pages :as pages]
+            [clojure.walk :refer [keywordize-keys]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
@@ -269,12 +270,9 @@
               ;; Courier app periodically updates web service with their status
               (POST "/ping" {body :body}
                     (response
-                     (let [b (keywordize-keys body)
-                           db-conn (conn)]
+                     (let [b (keywordize-keys body) db-conn (conn)]
                        (demand-user-auth
-                        db-conn
-                        (:user_id b)
-                        (:token b)
+                        db-conn (:user_id b) (:token b)
                         (couriers/ping db-conn
                                        (:user_id b)
                                        (:version b)
@@ -282,7 +280,33 @@
                                        (coerce-double (:lng b))
                                        (coerce-double (:87 (:gallons b)))
                                        (coerce-double (:91 (:gallons b)))
-                                       (:set_on_duty b)))))))))
+                                       (:set_on_duty b))))))
+              (context "/gas-stations" []
+                       (defroutes gas-stations-routes
+                         (POST "/find" {body :body}
+                               (response
+                                (let [b (keywordize-keys body) db-conn (conn)]
+                                  (demand-user-auth
+                                   db-conn (:user_id b) (:token b)
+                                   (couriers/get-stations
+                                    db-conn
+                                    (coerce-double (:lat b))
+                                    (coerce-double (:lng b))
+                                    (if (nil? (:dest_lat b))
+                                      nil
+                                      (coerce-double (:dest_lat b)))
+                                    (if (nil? (:dest_lng b))
+                                      nil
+                                      (coerce-double (:dest_lng b))))))))
+                         (POST "/blacklist" {body :body}
+                               (response
+                                (let [b (keywordize-keys body) db-conn (conn)]
+                                  (demand-user-auth
+                                   db-conn (:user_id b) (:token b)
+                                   (couriers/blacklist-station db-conn
+                                                               (:user_id b)
+                                                               (:station_id b)
+                                                               (:reason b)))))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes
@@ -349,3 +373,5 @@
                  :access-control-allow-methods [:get :put :post :delete])
       (middleware/wrap-json-body)
       (middleware/wrap-json-response)))
+
+(! (periodic/init))
