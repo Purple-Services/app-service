@@ -82,7 +82,9 @@
        (->> (!select db-conn "vehicles" [:gas_type] {:id (:vehicle_id order)})
             first
             :gas_type)
-       " Octane)\n" "Where: " (:address_street order)
+       " Octane)"
+       (when (:tire_pressure_check order) "\n+ Tire Pressure Fill-up")
+       "\nWhere: " (:address_street order)
        "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000))))
 
 (defn auth-charge-order
