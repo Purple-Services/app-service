@@ -180,6 +180,15 @@
                         :else
                         (str "Sorry, this ZIP code is currently closed."))))
 
+                (= 9 open-minute close-minute)
+                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                   {:address_zip (five-digit-zip-code zip-code)
+                                    :reason "manual-closure-scheduled-only"})
+                    (str "On-demand service is not available at this location. "
+                         "If you would like to arrange for Scheduled Delivery, "
+                         "please contact: orders@purpleapp.com to coordinate "
+                         "your service."))
+
                 (not good-time?)
                 (do (segment/track segment-client user-id "Availability Check Said Unavailable"
                                    {:address_zip (five-digit-zip-code zip-code)
