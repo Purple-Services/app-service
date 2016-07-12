@@ -359,6 +359,16 @@
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
+  (GET "/app-link" {headers :headers}
+       (if (re-find #"Android|iPhone|iPad|iPod"
+                    (str (get headers "user-agent")))
+         (redirect "purpleapp://")
+         (redirect "http://purpleapp.com")))
+  (GET "/app-link/:path" [path :as {headers :headers}]
+       (if (re-find #"Android|iPhone|iPad|iPod"
+                    (str (get headers "user-agent")))
+         (redirect (str "purpleapp://" path))
+         (redirect "http://purpleapp.com")))
   (GET "/courierapp" []
        (redirect "https://build.phonegap.com/apps/1205677/install/kP_AVprocspwUdewxfht"))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
