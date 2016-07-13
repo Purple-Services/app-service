@@ -146,7 +146,10 @@
                                  (:discount_one_hour sub)]
                             180 [(:num_free_three_hour sub)
                                  (:num_free_three_hour_used sub)
-                                 (:discount_three_hour sub)])]
+                                 (:discount_three_hour sub)]
+                            300 [(:num_free_five_hour sub)
+                                 (:num_free_five_hour_used sub)
+                                 (:discount_five_hour sub)])]
                       (if (pos? (- num-free num-free-used))
                         0
                         (max 0 (+ service-fee sub-discount))))
