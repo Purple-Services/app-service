@@ -561,16 +561,22 @@
                  "users"
                  {:reset_key reset-key}
                  {:id (:id user)})
-        (send-email {:to platform-id
-                     :subject "Purple Account - Reset Password"
-                     :body (str "Hello " (:name user) ","
-                                "\n\nPlease click the link below to reset "
-                                "your password:"
-                                "\n\n"
-                                config/base-url
-                                "user/reset-password/" reset-key
-                                "\n\nThanks,"
-                                "\nPurple")})
+        (send-template-email
+         platform-id
+         "Forgot Password?"
+         (str "<h2 style=\"margin: 17px 0px 20px 0px; font-size: 2.5em; "
+              "line-height: 1.1em; font-weight: 300; text-align: center; "
+              "font-family: 'HelveticaNeue-Light','Helvetica Neue Light',"
+              "Helvetica,Arial,sans-serif;\">"
+              "Forgot Password?"
+              "</h2>"
+              "Hi " (:name user) ","
+              "<br />"
+              "<br />" "Please click the link below to change your password:"
+              "<br />" config/base-url "user/reset-password/" reset-key
+              "<br />"
+              "<br />" "Thanks,"
+              "<br />" "Purple"))
         {:success true
          :message (str "An email has been sent to "
                        platform-id
