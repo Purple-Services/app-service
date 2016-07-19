@@ -236,11 +236,15 @@
   (let [expired-couriers (->> (couriers/get-all-expired db-conn)
                               (users/include-user-data db-conn))]
     (when-not (empty? expired-couriers)
-      (only-prod (run!
+      (only-prod (run! ;; notify all courier that got disconnected but are 'on_duty'
                   #(send-sms
                     (:phone_number %)
-                    "You have just disconnected from the Purple Courier App.")
-                  expired-couriers))
+                    (str "You've been disconnected from the Purple Courier app. "
+                         "This can happen if you are in an area with a poor "
+                         "internet connection. You may need to close the app and "
+                         "re-open it. If the problem persists, please contact a "
+                         "Purple dispatch manager."))
+                  (filter :on_duty expired-couriers)))
       (sql/with-connection db-conn
         (sql/update-values
          "couriers"
