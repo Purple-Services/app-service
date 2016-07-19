@@ -584,8 +584,8 @@
                        ". Please click the link included in "
                        "that message to reset your password.")})
       {:success false
-       :message (str "Sorry, that email address does not have an account on "
-                     "Purple.")})))
+       :message (str "Sorry, we don't recognize that email address. Are you "
+                     "sure you didn't use Facebook or Google to log in?")})))
 
 (defn change-password
   "Only for native accounts."
