@@ -7,6 +7,7 @@
                                  user-first-name user-last-name
                                  log-error]]
             [common.db :refer [!select !insert !update]]
+            [common.sendgrid :refer [send-template-email]]
             [common.couriers :refer [get-by-courier]]
             [common.payment :as payment]
             [common.subscriptions :as subscriptions]
@@ -564,7 +565,7 @@
         (send-template-email
          platform-id
          "Forgot Password?"
-         (str "<h2 style=\"margin: 17px 0px 20px 0px; font-size: 2.5em; "
+         (str "<h2 style=\"margin: 17px 0px 25px 0px; font-size: 2.5em; "
               "line-height: 1.1em; font-weight: 300; text-align: center; "
               "font-family: 'HelveticaNeue-Light','Helvetica Neue Light',"
               "Helvetica,Arial,sans-serif;\">"
@@ -597,7 +598,7 @@
                 :reset_key ""}
                {:reset_key reset-key})
       {:success false
-       :message "Password must be at least 7 characters and contain a number."})
+       :message "Password must be at least 6 characters."})
     {:success false
      :message "Error: Reset Key is blank."}))
 
