@@ -20,7 +20,8 @@
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :as middleware]
             [ring.util.response :refer [header response redirect]]
-            [ring.middleware.ssl :refer [wrap-ssl-redirect]]))
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]
+            [clojure.string :as s]))
 
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
@@ -288,7 +289,9 @@
                                             (:user_id b)
                                             (:vin b)
                                             (:license_plate b)
-                                            (coerce-double (:gallons b))
+                                            (if (s/blank? (:gallons b))
+                                              0
+                                              (coerce-double (:gallons b)))
                                             (:gas_type b)
                                             (:is_top_tier b)))))))))
   (context "/courier" []
