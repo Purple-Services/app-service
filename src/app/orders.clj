@@ -383,13 +383,7 @@
                                                         ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
                                                         )
                                              :icon_emoji ":fuelpump:"
-                                             :username "New Order"}})
-                 (when (< 1469268000 (now-unix) 1469440800) ; on this specific weekend
-                  (run! #(send-sms % order-text-info)
-                        ["3103109961" ; Joe
-                         "3235782263" ; Bruno
-                         "4083388336" ; Jackson 
-                         ]))))
+                                             :username "New Order"}})))
               
               (segment/track segment-client (:user_id o) "Request Order"
                              (assoc (segment-props o)
