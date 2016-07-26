@@ -76,16 +76,17 @@
     (filter (comp (partial = market-id-of-o) order->market-id) os)))
 
 (defn gen-charge-description
+  "Generate a description of the order (e.g., for including on a receipt)."
   [db-conn order]
-  (str "Reliability service for up to "
-       (gallons->display-str (:gallons order)) " Gallons of Gasoline ("
-       (->> (!select db-conn "vehicles" [:gas_type] {:id (:vehicle_id order)})
-            first
-            :gas_type)
-       " Octane)"
-       (when (:tire_pressure_check order) "\n+ Tire Pressure Fill-up")
-       "\nWhere: " (:address_street order)
-       "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000))))
+  (let [vehicle (first (!select db-conn "vehicles" ["*"] {:id (:vehicle_id order)}))]
+    (str "Reliability service for up to "
+         (gallons->display-str (:gallons order)) " Gallons of Fuel"
+         " (" (:gas_type vehicle) " Octane)" ; assumes you're calling this when order is place (i.e., it could change)
+         (when (:tire_pressure_check order) "\n+ Tire Pressure Fill-up")
+         "\nVehicle: " (:year vehicle) " " (:make vehicle) " " (:model vehicle)
+         " (" (:license_plate order) ")"
+         "\nWhere: " (:address_street order)
+         "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000)))))
 
 (defn auth-charge-order
   [db-conn order]
