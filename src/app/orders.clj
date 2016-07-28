@@ -384,7 +384,10 @@
                                                         ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
                                                         )
                                              :icon_emoji ":fuelpump:"
-                                             :username "New Order"}})))
+                                             :username "New Order"}})
+                 (run! #(send-sms % order-text-info)
+                       ["4083388336" ; Jackson 
+                        ])))
               
               (segment/track segment-client (:user_id o) "Request Order"
                              (assoc (segment-props o)
