@@ -315,18 +315,42 @@
   [db-conn]
   (let [os (get-all-current db-conn)
         cs (couriers/get-all-on-duty db-conn)]
-    (!insert
-     db-conn
-     "state_log"
-     {:data
-      (str {:current-orders (map #(select-keys % [:id :status :courier_id]) os)
-            :on-duty-couriers (map #(select-keys % [:id :active :on_duty
-                                                    :connected :busy :zones
-                                                    :gallons_87 :gallons_91
-                                                    :lat :lng :last_ping]) cs)})
-      })
+    (!insert db-conn
+             "state_log"
+             {:data (str {:current-orders
+                          (map #(select-keys % [:id :status :courier_id]) os)
+                          :on-duty-couriers
+                          (map #(select-keys % [:id :active :on_duty
+                                                :connected :busy :zones
+                                                :gallons_87 :gallons_91
+                                                :lat :lng :last_ping]) cs)})})
     (when (diff-state? os cs)
       (run! #(orders/assign db-conn (key %) (:courier_id (val %))
                             :no-reassigns true)
             (new-assignments os cs)))))
 
+
+
+
+(clojure.pprint/pprint
+ (let [db-conn (common.db/conn)
+       os (get-all-current db-conn)
+       cs (couriers/get-all-on-duty db-conn)]
+   (fmap (comp keywordize-keys (partial into {}))
+         (compute-suggestion
+          {"orders" (->> os
+                         (map #(assoc %
+                                      :status_times
+                                      (-> (:event_log %)
+                                          (s/split #"\||\s")
+                                          (->> (remove s/blank?)
+                                               (apply hash-map)
+                                               (fmap read-string)))
+                                      :zone (order->zone-id %)))
+                         (map (juxt :id stringify-keys))
+                         (into {}))
+           "couriers" (->> cs
+                           (map #(assoc % :zones (apply list (:zones %))))
+                           (map (juxt :id stringify-keys))
+                           (into {}))
+           }))))

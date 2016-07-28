@@ -122,3 +122,18 @@
       {:success false
        :message "That station does not exist."
        :message_title "Error"})))
+
+
+
+(let [[curr-lat curr-lng] [34.077155, -118.195875]
+      ;; [dest-lat dest-lng] [34.033391, -118.504972]
+      [dest-lat dest-lng] [nil nil]
+      ]
+  (println (str "https://maps.google.com?saddr="
+                curr-lat "," curr-lng
+                "&daddr="
+                (->> (get-stations (common.db/conn)
+                                   curr-lat curr-lng
+                                   dest-lat dest-lng)
+                     ((juxt :lat (fn [x] ",") :lng))
+                     (apply str)))))
