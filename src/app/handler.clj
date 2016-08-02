@@ -9,6 +9,7 @@
             [app.couriers :as couriers]
             [app.orders :as orders]
             [app.dispatch :as dispatch]
+            [app.fleet :as fleet]
             [app.periodic :as periodic]
             [app.coupons :as coupons]
             [app.pages :as pages]
@@ -19,7 +20,8 @@
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :as middleware]
             [ring.util.response :refer [header response redirect]]
-            [ring.middleware.ssl :refer [wrap-ssl-redirect]]))
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]
+            [clojure.string :as s]))
 
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
@@ -264,6 +266,34 @@
                         (dispatch/availability db-conn
                                                (:zip_code b)
                                                (:user_id b)))))))))
+  (context "/fleet" [] ; B2B orders
+           (wrap-force-ssl
+            (defroutes fleet-routes
+              (POST "/get-accounts" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/get-accounts
+                         db-conn
+                         (:user_id b)
+                         (coerce-double (:lat b))
+                         (coerce-double (:lng b)))))))
+              (POST "/add-delivery" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/add-delivery db-conn
+                                            (:account_id b)
+                                            (:user_id b)
+                                            (:vin b)
+                                            (:license_plate b)
+                                            (if (s/blank? (:gallons b))
+                                              0
+                                              (coerce-double (:gallons b)))
+                                            (:gas_type b)
+                                            (:is_top_tier b)))))))))
   (context "/courier" []
            (wrap-force-ssl
             (defroutes courier-routes
