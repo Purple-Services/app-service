@@ -37,6 +37,7 @@
               :gallons gallons
               :gas_type gas-type
               :is_top_tier (or is-top-tier false)
+              ;; for reference, record gas price at this point in space-time
               :gas_price (-> (get-account-by-id db-conn account-id)
                              :address_zip
                              get-fuel-prices
