@@ -1,7 +1,7 @@
 (ns app.fleet
   (:require [common.config :as config]
             [common.db :refer [!select !insert !update mysql-escape-str]]
-            [common.util :refer [rand-str-alpha-num]]
+            [common.util :refer [rand-str-alpha-num coerce-double]]
             [common.zones :refer [get-fuel-prices]]
             [clojure.string :as s]))
 
@@ -43,3 +43,16 @@
                              get-fuel-prices
                              (get (keyword gas-type)))})))
 
+(defn add-deliveries
+  [db-conn
+   courier-id ; i.e., the auth'd user-id
+   deliveries]
+  (run! #(add-delivery db-conn
+                       (:account_id %)
+                       courier-id
+                       (:vin %)
+                       (:license_plate %)
+                       (:gallons %)
+                       (:gas_type %)
+                       (:is_top_tier %))
+        deliveries))

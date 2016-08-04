@@ -293,7 +293,16 @@
                                               0
                                               (coerce-double (:gallons b)))
                                             (:gas_type b)
-                                            (:is_top_tier b)))))))))
+                                            (:is_top_tier b))))))
+              ;; for saved deliveries that couldn't be sent earlier
+              (POST "/add-deliveries" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/add-deliveries db-conn
+                                              (:user_id b)
+                                              (:deliveries b)))))))))
   (context "/courier" []
            (wrap-force-ssl
             (defroutes courier-routes
