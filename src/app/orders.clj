@@ -9,7 +9,7 @@
                                  unless-p only-prod now-unix
                                  unix->fuller unix->full unix->minute-of-day]]
             [common.users :refer [details get-user-by-id include-user-data
-                                  charge-user]]
+                                  is-managed-account? charge-user]]
             [common.orders :refer [accept assign begin-route complete get-by-id
                                    next-status segment-props service
                                    unpaid-balance]]
@@ -313,7 +313,8 @@
                            " today."))})
       
       :else
-      (let [auth-charge-result (if (zero? (:total_price o))
+      (let [auth-charge-result (if (or (zero? (:total_price o)) ; nothing to charge
+                                       (is-managed-account? user)) ; managed account (will be charged later)
                                  {:success true}
                                  (auth-charge-order db-conn o))
             charge-authorized? (:success auth-charge-result)]
