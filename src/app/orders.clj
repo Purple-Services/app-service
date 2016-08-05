@@ -14,7 +14,6 @@
                                    next-status segment-props service
                                    unpaid-balance]]
             [common.coupons :refer [format-coupon-code
-                                    get-license-plate-by-vehicle-id
                                     mark-code-as-used
                                     mark-gallons-as-used]]
             [common.subscriptions :as subscriptions]
@@ -248,8 +247,7 @@
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id order & {:keys [bypass-zip-code-check]}]
   (let [time-limit (Integer. (:time order))
-        license-plate (get-license-plate-by-vehicle-id db-conn
-                                                       (:vehicle_id order))
+        vehicle (first (!select db-conn "vehicles" ["*"] {:id (:vehicle_id order)}))
         user (get-user-by-id db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         curr-time-secs (quot (System/currentTimeMillis) 1000)
@@ -268,9 +266,10 @@
                              (:gas_type order)
                              (infer-gas-type-by-price (:gas_price order)
                                                       (:address_zip order)))
+                 :is_top_tier (:only_top_tier vehicle)
                  :lat (coerce-double (:lat order))
                  :lng (coerce-double (:lng order))
-                 :license_plate license-plate
+                 :license_plate (:license_plate vehicle)
                  ;; we'll use as many referral gallons as available
                  :referral_gallons_used (min (coerce-double (:gallons order))
                                              referral-gallons-available)
@@ -338,7 +337,7 @@
             (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
                                                       :status :target_time_start
                                                       :target_time_end
-                                                      :gallons :gas_type
+                                                      :gallons :gas_type :is_top_tier
                                                       :special_instructions
                                                       :lat :lng :address_street
                                                       :address_city :address_state
