@@ -1,5 +1,5 @@
 (ns app.handler
-  (:require [common.util :refer [! unless-p ver< coerce-double]]
+  (:require [common.util :refer [! unless-p ver< coerce-double log-error]]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
