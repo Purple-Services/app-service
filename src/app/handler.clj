@@ -86,7 +86,8 @@
                                     ;; give the email address in the JS object
                                     :email-override (:email_override b)
                                     :client-ip (or (get headers "x-forwarded-for")
-                                                   remote-addr)))))
+                                                   remote-addr)
+                                    :app-version (or (:version b) "0")))))
               ;; Only for native users
               (POST "/register" {body :body
                                  headers :headers

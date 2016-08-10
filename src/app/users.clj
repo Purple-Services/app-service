@@ -4,7 +4,7 @@
             [common.util :refer [make-call new-auth-token only-prod
                                  rand-str-alpha-num segment-client send-email
                                  send-sms sns-client sns-create-endpoint
-                                 user-first-name user-last-name
+                                 user-first-name user-last-name ver<
                                  log-error]]
             [common.db :refer [!select !insert !update]]
             [common.sendgrid :refer [send-template-email]]
@@ -13,7 +13,8 @@
             [common.subscriptions :as subscriptions]
             [common.users :refer [auth-native? details get-by-user
                                   get-user-by-id get-user safe-authd-user-keys
-                                  valid-email? valid-password?]]
+                                  valid-email? valid-password?
+                                  is-managed-account?]]
             [app.coupons :refer [create-referral-coupon]]
             [app.sift :as sift]
             [ardoq.analytics-clj :as segment]
@@ -183,18 +184,23 @@
 
 (defn login
   "Logs in user depending on 'type' of user."
-  [db-conn type platform-id auth-key auth-key-is-token-id? & {:keys [email-override client-ip]}]
+  [db-conn type platform-id auth-key auth-key-is-token-id?
+   & {:keys [email-override client-ip app-version]}]
   (let [user (get-user-by-platform-id db-conn type platform-id)]
     (try
-      (if user
+      (if user ; this is an existing user
         (if (case (:type user)
               "native" (auth-native? user auth-key)
               "facebook" (auth-facebook? user auth-key)
               "google" (auth-google? user auth-key auth-key-is-token-id?)
               nil false
               (throw (Exception. "Unknown user type!")))
-          (init-session db-conn user :client-ip client-ip)
+          (if (or (not (is-managed-account? user))
+                  (not (ver< (or app-version "0") "1.5.0")))
+            (init-session db-conn user :client-ip client-ip)
+            (throw (Exception. "Update app to 1.5.0.")))
           (throw (Exception. "Invalid login.")))
+        ;; need to add them as a new user
         (do (add db-conn
                  (case type
                    "facebook" (let [fb-user (get-user-from-fb auth-key)]
@@ -240,6 +246,9 @@
                            "Invalid login."
                            {:success false
                             :message "Incorrect email / password combination."}
+                           "Update app to 1.5.0."
+                           {:success false
+                            :message "Please update your Purple app to at least version 1.5.0."}
                            "No email."
                            {:success false
                             :message (str "You must provide access to your "
