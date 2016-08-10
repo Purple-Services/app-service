@@ -66,17 +66,29 @@
 
 (defn get-user-from-google
   "Get the Google user data from Google Plus based on given token."
-  [auth-key]
-  (call (atom {:token auth-key})
-        google-plus-service
-        "plus.people/get"
-        {"userId" "me"}))
+  [auth-key auth-key-is-token-id?]
+  (if (not auth-key-is-token-id?)
+    (call (atom {:token auth-key})
+          google-plus-service
+          "plus.people/get"
+          {"userId" "me"})
+    (let [g (clojure.set/rename-keys
+             (:body (clj-http.client/get
+                     (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" auth-key)
+                     {:as :json
+                      :content-type :json
+                      :coerce :always
+                      :throw-exceptions false}))
+             {:name :displayName
+              :sub :id})]
+      (assoc g :emails [{:value (:email g)}]))))
 
 (defn auth-google?
   "Is this auth-key associated with the Google user ID'd in this user map?"
-  [user auth-key]
-  (= (:id user)
-     (str "g" (:id (get-user-from-google auth-key)))))
+  [user auth-key auth-key-is-token-id?]
+  (let [guser (get-user-from-google auth-key auth-key-is-token-id?)]
+    (= (:id user)
+       (str "g" (:id guser)))))
 
 (def required-data
   "These keys cannot be empty for an account to be considered complete."
@@ -160,14 +172,14 @@
 
 (defn login
   "Logs in user depending on 'type' of user."
-  [db-conn type platform-id auth-key & {:keys [email-override client-ip]}]
+  [db-conn type platform-id auth-key auth-key-is-token-id? & {:keys [email-override client-ip]}]
   (let [user (get-user-by-platform-id db-conn type platform-id)]
     (try
       (if user
         (if (case (:type user)
               "native" (auth-native? user auth-key)
               "facebook" (auth-facebook? user auth-key)
-              "google" (auth-google? user auth-key)
+              "google" (auth-google? user auth-key auth-key-is-token-id?)
               nil false
               (throw (Exception. "Unknown user type!")))
           (init-session db-conn user :client-ip client-ip)

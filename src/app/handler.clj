@@ -1,5 +1,6 @@
 (ns app.handler
-  (:require [common.util :refer [! unless-p ver< coerce-double log-error]]
+  (:require [common.util :refer [! unless-p ver< coerce-double segment-client
+                                 log-error]]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
@@ -13,6 +14,7 @@
             [app.periodic :as periodic]
             [app.coupons :as coupons]
             [app.pages :as pages]
+            [ardoq.analytics-clj :as segment]
             [clojure.walk :refer [keywordize-keys]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
@@ -72,6 +74,9 @@
                                     ;; and Google users, this will be their
                                     ;; auth token from that platform.
                                     (:auth_key b)
+                                    ;; auth-key-is-token-id? (newer google login on android)
+                                    (and (= "android" (s/lower-case (or (:os b) "")))
+                                         (not (ver< (or (:version b) "0") "1.5.0")))
                                     ;; email-override isn't checked for
                                     ;; security; could be spoofed.
                                     ;; but, currently, it's the only way we can
@@ -328,6 +333,9 @@
                                 (let [b (keywordize-keys body) db-conn (conn)]
                                   (demand-user-auth
                                    db-conn (:user_id b) (:token b)
+                                   (segment/track segment-client
+                                                  (:user_id b)
+                                                  "Get Gas Station Recommendation")
                                    (couriers/get-stations
                                     db-conn
                                     (coerce-double (:lat b))
