@@ -87,7 +87,9 @@
       ;; ensure correct Web Client ID was used
       (if (= (:aud api-result) config/google-oauth-web-client-id)
         ;; format the map the same as iOS Google Auth (above)
-        (assoc api-result :emails [{:value (:email api-result)}])
+        (assoc api-result
+               :emails [{:value (:email api-result)}]
+               :gender "")
         ;; is someone trying to hack?
         (do (log-error (str "Attempt to Google Login w/ wrong client ID!\n"
                             api-result))
@@ -210,12 +212,13 @@
                                                     "provide email: "
                                                     (str "fb" (:id fb-user)))}))
                                       (throw (Exception. "No email.")))))
-                   "google" (let [google-user (get-user-from-google auth-key)
+                   "google" (let [google-user (get-user-from-google
+                                               auth-key
+                                               auth-key-is-token-id?)
                                   authd-email (-> (:emails google-user)
                                                   first
                                                   :value)
-                                  email (or authd-email
-                                            email-override)]
+                                  email (or authd-email email-override)]
                               (if email
                                 {:id (str "g" (:id google-user))
                                  :email email
@@ -227,13 +230,12 @@
                                       {:to "chris@purpledelivery.com"
                                        :subject "Purple - Error"
                                        :body (str "Google user didn't provide "
-                                                  "email: "
-                                                  (str "g"
-                                                       (:id google-user)))}))
+                                                  "email: g"
+                                                  (:id google-user))}))
                                     (throw (Exception. "No email.")))))
                    (throw (Exception. "Invalid login.")))
                  :client-ip client-ip)
-            (login db-conn type platform-id auth-key :client-ip client-ip)))
+            (login db-conn type platform-id auth-key auth-key-is-token-id? :client-ip client-ip)))
       (catch Exception e (case (.getMessage e)
                            "Invalid login."
                            {:success false
@@ -281,7 +283,7 @@
                 :type "native"}
                :password auth-key
                :client-ip client-ip)
-          (login db-conn "native" platform-id auth-key :client-ip client-ip))
+          (login db-conn "native" platform-id auth-key false :client-ip client-ip))
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false
