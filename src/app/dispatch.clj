@@ -4,7 +4,7 @@
             [common.util :refer [! cents->dollars-str five-digit-zip-code
                                  get-event-time in? minute-of-day->hmma now-unix
                                  only-prod segment-client send-sms
-                                 split-on-comma unix->minute-of-day]]
+                                 split-on-comma unix->minute-of-day log-error catch-notify]]
             [common.orders :as orders]
             [common.users :as users]
             [common.zones :refer [get-fuel-prices get-service-fees
@@ -334,18 +334,19 @@
 
 (defn auto-assign
   [db-conn]
-  (let [os (get-all-current db-conn)
-        cs (couriers/get-all-on-duty db-conn)]
-    (!insert db-conn
-             "state_log"
-             {:data (str {:current-orders
-                          (map #(select-keys % [:id :status :courier_id]) os)
-                          :on-duty-couriers
-                          (map #(select-keys % [:id :active :on_duty
-                                                :connected :busy :zones
-                                                :gallons_87 :gallons_91
-                                                :lat :lng :last_ping]) cs)})})
-    (when (diff-state? os cs)
-      (run! #(orders/assign db-conn (key %) (:courier_id (val %))
-                            :no-reassigns true)
-            (new-assignments os cs)))))
+  (catch-notify
+   (let [os (get-all-current db-conn)
+         cs (couriers/get-all-on-duty db-conn)]
+     (!insert db-conn
+              "state_log"
+              {:data (str {:current-orders
+                           (map #(select-keys % [:id :status :courier_id]) os)
+                           :on-duty-couriers
+                           (map #(select-keys % [:id :active :on_duty
+                                                 :connected :busy :zones
+                                                 :gallons_87 :gallons_91
+                                                 :lat :lng :last_ping]) cs)})})
+     (when (diff-state? os cs)
+       (run! #(orders/assign db-conn (key %) (:courier_id (val %))
+                             :no-reassigns true)
+             (new-assignments os cs))))))
