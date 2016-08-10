@@ -68,27 +68,36 @@
   "Get the Google user data from Google Plus based on given token."
   [auth-key auth-key-is-token-id?]
   (if (not auth-key-is-token-id?)
+    ;; iOS Google Auth (and old Android app versions <1.5.0)
     (call (atom {:token auth-key})
           google-plus-service
           "plus.people/get"
           {"userId" "me"})
-    (let [g (clojure.set/rename-keys
-             (:body (clj-http.client/get
-                     (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" auth-key)
-                     {:as :json
-                      :content-type :json
-                      :coerce :always
-                      :throw-exceptions false}))
-             {:name :displayName
-              :sub :id})]
-      (assoc g :emails [{:value (:email g)}]))))
+    ;; Android
+    (let [api-result (clojure.set/rename-keys
+                      (:body (clj-http.client/get
+                              (str "https://www.googleapis.com/oauth2/v3/"
+                                   "tokeninfo?id_token=" auth-key)
+                              {:as :json
+                               :content-type :json
+                               :coerce :always
+                               :throw-exceptions false}))
+                      {:name :displayName
+                       :sub :id})]
+      ;; ensure correct Web Client ID was used
+      (if (= (:aud api-result) config/google-oauth-web-client-id)
+        ;; format the map the same as iOS Google Auth (above)
+        (assoc api-result :emails [{:value (:email api-result)}])
+        ;; is someone trying to hack?
+        (do (log-error (str "Attempt to Google Login w/ wrong client ID!\n"
+                            api-result))
+            {})))))
 
 (defn auth-google?
   "Is this auth-key associated with the Google user ID'd in this user map?"
   [user auth-key auth-key-is-token-id?]
-  (let [guser (get-user-from-google auth-key auth-key-is-token-id?)]
-    (= (:id user)
-       (str "g" (:id guser)))))
+  (= (:id user)
+     (str "g" (:id (get-user-from-google auth-key auth-key-is-token-id?)))))
 
 (def required-data
   "These keys cannot be empty for an account to be considered complete."
