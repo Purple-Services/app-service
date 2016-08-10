@@ -102,7 +102,14 @@
 (defn available
   [user good-time? zip-code subscription enough-couriers-delay octane]
   {:octane octane
-   :gallon_choices config/gallon-choices
+   :gallon_choices (if (users/is-managed-account? user)
+                     {:0 7.5
+                      :1 10
+                      :2 15
+                      :3 20
+                      :4 25
+                      :5 30}
+                     config/gallon-choices)
    :default_gallon_choice config/default-gallon-choice
    :price_per_gallon (get (get-fuel-prices zip-code) (keyword octane))
    :times (->> (get-service-fees zip-code)
