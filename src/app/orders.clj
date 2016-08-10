@@ -53,6 +53,20 @@
            {:status "unassigned"}
            :append "ORDER BY target_time_start DESC"))
 
+(defn get-all-pre-servicing
+  "All orders in a status chronologically before the Servicing status."
+  [db-conn]
+  (!select db-conn
+           "orders"
+           ["*"]
+           {}
+           :append (str "AND status IN ("
+                        "'unassigned',"
+                        "'assigned',"
+                        "'accepted',"
+                        "'enroute'"
+                        ") ORDER BY target_time_start DESC")))
+
 (defn get-all-current
   "Unassigned or in process."
   [db-conn]
@@ -198,7 +212,7 @@
          (let [zone-id (order->zone-id o)]
            ;; Less one-hour orders in this zone (unassigned or current)
            ;; than connected couriers who are assigned to this zone?
-           (< (->> (get-all-current db-conn)
+           (< (->> (get-all-pre-servicing db-conn)
                    (orders-in-same-market o)
                    (filter #(= (* 60 60) ;; only one-hour orders
                                (- (:target_time_end %)
