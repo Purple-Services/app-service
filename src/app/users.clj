@@ -157,7 +157,7 @@
 
 (defn add
   "Adds new user. Will fail if user_id is already being used."
-  [db-conn user & {:keys [password client-ip]}]
+  [db-conn user & {:keys [password client-ip is-managed-account]}]
   (let [referral-code (create-referral-coupon db-conn (:id user))
         result (!insert db-conn
                         "users"
@@ -175,6 +175,9 @@
                           {:email (:email user)
                            :referral_code referral-code
                            :HASORDERED 0 ;; used by mailchimp
+                           :ISMANAGED (if is-managed-account
+                                        1
+                                        0) ;; used by mailchimp
                            ;; todo fix this
                            ;; :createdAt (time-coerce/from-sql-time
                            ;;             (:timestamp_created %))
@@ -282,22 +285,60 @@
 
 (defn register
   "Only for native users."
-  [db-conn platform-id auth-key & {:keys [client-ip]}]
+  [db-conn platform-id auth-key
+   & {:keys [client-ip account-manager-id prepop-reset-key
+             subscription]}]
   (if (and (valid-email? platform-id)
            (email-available? db-conn platform-id))
     (if (valid-password? auth-key)
-      (do (add db-conn
-               {:id (rand-str-alpha-num 20) ;; keep it 20!
-                :email platform-id
-                :type "native"}
-               :password auth-key
-               :client-ip client-ip)
-          (login db-conn "native" platform-id auth-key false :client-ip client-ip))
+      (let [new-user-id (rand-str-alpha-num 20)] ;; keep it 20!
+        (add db-conn
+             {:id new-user-id
+              :email platform-id
+              :type "native"
+              :account_manager_id (or account-manager-id "")
+              :reset_key (if prepop-reset-key
+                           (rand-str-alpha-num 22)
+                           "")
+              :subscription_id (:id subscription)
+              :subscription_period_start_time (:period-start-time subscription)
+              :subscription_expiration_time (:expiration-time subscription)
+              :subscription_auto_renew (:auto-renew subscription)}
+             :password auth-key
+             :client-ip client-ip
+             :is-managed-account account-manager-id)
+        (if (not account-manager-id)
+          ;; this is a user creating their own account; log them in now...
+          (login db-conn "native" platform-id auth-key false :client-ip client-ip)
+          ;; for automation purposes
+          new-user-id))
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false
      :message (str "Email Address is incorrectly formatted or is already "
                    "associated with an account.")}))
+
+;; tool to add managed account from repl
+
+;; (register (common.db/conn)
+;;           "bcharif@yahoo.com"
+;;           "hhjjkkll"
+;;           :account-manager-id "BmFyvnvXpDaVcGvOrsau"
+;;           :prepop-reset-key true
+;;           :subscription {:id 5
+;;                          :period-start-time 1466196364
+;;                          :expiration-time 2147483647
+;;                          :auto-renew false})
+
+;; (add-vehicle (common.db/conn)
+;;              "thBwQqvUB0kJCvECKe7R"
+;;              {:year "2004"
+;;               :make "Honda"
+;;               :model "Civic"
+;;               :color "Black"
+;;               :gas_type "87"
+;;               :license_plate "GH888JK"
+;;               :only_top_tier false})
 
 (defn update-user
   "The user-id given is assumed to have been auth'd already."
@@ -373,6 +414,11 @@
                                    ;; and the license plate is blank or missing
                                    license-plate-blank?)]
     (cond
+      (is-managed-account? (get-user-by-id db-conn user-id))
+      {:success false
+       :message (str "Sorry, this account does not have permission to add new"
+                     " vehicles.")}
+      
       ;; the only required field that is missing is
       ;; the license pate
       only-license-plate-blank?
