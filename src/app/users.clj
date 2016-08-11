@@ -310,9 +310,7 @@
              :is-managed-account account-manager-id)
         (if (not account-manager-id)
           ;; this is a user creating their own account; log them in now...
-          (login db-conn "native" platform-id auth-key false
-                 :client-ip client-ip
-                 :app-version "1.5.0")
+          (login db-conn "native" platform-id auth-key false :client-ip client-ip)
           ;; for automation purposes
           new-user-id))
       {:success false
