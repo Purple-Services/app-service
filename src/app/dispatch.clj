@@ -57,9 +57,7 @@
   (merge {}
          ;; hide 5-hour option if using 1-hour or 3-hour subscription
          (when (and (not (pos? (or (:num_free_three_hour sub) 0)))
-                    (not (pos? (or (:num_free_one_hour sub) 0)))
-                    (users/is-managed-account? user) ; temp: only managed accounts see 5 hours
-                    )
+                    (not (pos? (or (:num_free_one_hour sub) 0))))
            {300 (merge {:order 0}
                        (delivery-time-map "within 5 hours"
                                           (:300 service-fees)
