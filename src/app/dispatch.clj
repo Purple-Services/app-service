@@ -54,30 +54,31 @@
 (defn delivery-times-map
   "Given subscription usage map and service fee, create the delivery-times map."
   [user sub service-fees]
-  (merge {}
-         ;; hide 5-hour option if using 1-hour or 3-hour subscription
-         (when (and (not (pos? (or (:num_free_three_hour sub) 0)))
-                    (not (pos? (or (:num_free_one_hour sub) 0))))
-           {300 (merge {:order 0}
-                       (delivery-time-map "within 5 hours"
-                                          (:300 service-fees)
-                                          (:num_free_five_hour sub)
-                                          (:num_free_five_hour_used sub)
-                                          (:discount_five_hour sub)))})
-         ;; hide 3-hour option if using 1-hour subscription
-         (when (not (pos? (or (:num_free_one_hour sub) 0)))
-           {180 (merge {:order 1}
-                       (delivery-time-map "within 3 hours"
-                                          (:180 service-fees)
-                                          (:num_free_three_hour sub)
-                                          (:num_free_three_hour_used sub)
-                                          (:discount_three_hour sub)))})
-         {60 (merge {:order 2}
-                    (delivery-time-map "within 1 hour"
-                                       (:60 service-fees)
-                                       (:num_free_one_hour sub)
-                                       (:num_free_one_hour_used sub)
-                                       (:discount_one_hour sub)))}))
+  (let [has-free-three-hour? (pos? (or (:num_free_three_hour sub) 0))
+        has-free-one-hour? (pos? (or (:num_free_one_hour sub) 0))]
+    (merge {}
+           ;; hide 5-hour option if using 1-hour or 3-hour subscription
+           (when-not (or has-free-three-hour? has-free-one-hour?)
+             {300 (assoc (delivery-time-map "within 5 hours"
+                                            (:300 service-fees)
+                                            (:num_free_five_hour sub)
+                                            (:num_free_five_hour_used sub)
+                                            (:discount_five_hour sub))
+                         :order 2)})
+           ;; hide 3-hour option if using 1-hour subscription
+           (when-not has-free-one-hour?
+             {180 (assoc (delivery-time-map "within 3 hours"
+                                            (:180 service-fees)
+                                            (:num_free_three_hour sub)
+                                            (:num_free_three_hour_used sub)
+                                            (:discount_three_hour sub))
+                         :order (if has-free-three-hour? 0 1))})
+           {60 (assoc (delivery-time-map "within 1 hour"
+                                         (:60 service-fees)
+                                         (:num_free_one_hour sub)
+                                         (:num_free_one_hour_used sub)
+                                         (:discount_one_hour sub))
+                      :order (if has-free-three-hour? 1 0))})))
 
 (defn num-couriers-connected-in-market
   "How many couriers are currently connected and on duty in the market that this
