@@ -418,8 +418,15 @@
                     (str (get headers "user-agent")))
          (redirect (str "purpleapp://" path))
          (redirect "http://purpleapp.com")))
-  (GET "/courierapp" []
-       (redirect "https://build.phonegap.com/apps/1205677/install/kP_AVprocspwUdewxfht"))
+  (GET "/courierapp" {headers :headers}
+       (if (re-find #"Android|iPhone|iPad|iPod" (str (get headers "user-agent")))
+         (redirect (if (.contains (str (get headers "user-agent")) "Android")
+                     ;; Android
+                     config/courier-app-download-url-android
+                     ;; iPhone
+                     config/courier-app-download-url-iphone))
+         ;; Desktop
+         (wrap-page (response "Please visit this page using either your Android or iPhone to download the Purple Courier App."))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (redirect "http://purpleapp.com"))
