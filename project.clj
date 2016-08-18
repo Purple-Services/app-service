@@ -28,7 +28,7 @@
                  [com.twilio.sdk/twilio-java-sdk "4.2.0"]
                  [analytics-clj "0.3.0"]
                  [org.clojure/algo.generic "0.1.2"]
-                 [common "1.1.2-SNAPSHOT"]
+                 [common "1.1.3-SNAPSHOT"]
                  [opt "1.0.5-SNAPSHOT"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
