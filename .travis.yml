@@ -12,3 +12,5 @@ before_install:
   - lein install
   - cd ../
   - cd app-service
+script:
+  - lein test app.test.handler
