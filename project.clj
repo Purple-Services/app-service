@@ -37,7 +37,8 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
-  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]]}}
+  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
+                                  [ring/ring-mock "0.3.0"]]}}
   :aws {:beanstalk {:app-name "purple"
                     :environments [{:name "prod"}
                                    {:name "purple-dev-env"}]
