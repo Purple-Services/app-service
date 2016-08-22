@@ -7,4 +7,8 @@ before_install:
   - cd common
   - lein install
   - cd ../
+  - git clone git@github.com:Purple-Services/opt.git
+  - cd opt
+  - lein install
+  - cd ../
   - cd app-service
