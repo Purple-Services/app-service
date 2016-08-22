@@ -44,10 +44,10 @@
 (defn register-user
   "Register a native user in the database"
   [db-config platform-id password]
-  (is (true? (register db-config
+  (is (true? (:success (register db-config
                                  platform-id
                                  password
-                                 :client-ip "127.0.0.1"))))
+                                 :client-ip "127.0.0.1")))))
 
 (defn edit-user
   "Edit a users information in the database"
@@ -64,17 +64,17 @@ route /user/register.")
   (let [password "secret"]
     ;; email with trailing whitespace can not be registered
     (is (false? (:success (register ebdb-test-config
-                                    "foo@bar.com   "
+                                    "blah@bar.com   "
                                     password
                                     :client-ip "127.0.0.1"))))
     ;; email with leading whitespace can not be registered
     (is (false? (:success (register ebdb-test-config
-                                    "   foo@bar.com"
+                                    "   bbdn@bar.com"
                                     password
                                     :client-ip "127.0.0.1"))))
     ;; email with leading and trailing whitespace can not be registered
     (is (false? (:success (register ebdb-test-config
-                                    "   foo@bar.com  "
+                                    "   fojjshso@bar.com  "
                                     password
                                     :client-ip "127.0.0.1"))))))
 
