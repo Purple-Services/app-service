@@ -44,10 +44,10 @@
 (defn register-user
   "Register a native user in the database"
   [db-config platform-id password]
-  (is (true? (:success (register db-config
+  (is (true? (register db-config
                                  platform-id
                                  password
-                                 :client-ip "127.0.0.1")))))
+                                 :client-ip "127.0.0.1"))))
 
 (defn edit-user
   "Edit a users information in the database"
