@@ -11,7 +11,7 @@
                  [com.draines/postal "1.11.3"]
                  ;; Google API
                  [gapi "1.0.1"]
-                  ;; templating
+                 ;; templating
                  [enlive "1.1.5"]
                  ;; scheduled jobs with exception handling
                  [silasdavis/at-at "1.2.0"]
@@ -37,6 +37,7 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
+  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]]}}
   :aws {:beanstalk {:app-name "purple"
                     :environments [{:name "prod"}
                                    {:name "purple-dev-env"}]
