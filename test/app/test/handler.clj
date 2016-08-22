@@ -25,7 +25,7 @@
   
   (let [post-data {:type "native"
                    :platform_id "foo@bar.com"
-                   :auth_key "secret"}
+                   :auth_key "qwerty123"}
         response (app (-> (mock/request :post "/user/login"
                                         (generate-string post-data))
                           (mock/content-type "application/json")))
