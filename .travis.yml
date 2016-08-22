@@ -2,7 +2,9 @@ language: clojure
 services:
   - mysql
 before_install:
+  - cd ../../
   - git clone git@github.com:Purple-Services/common.git
-  - cd ../common
+  - cd Purple-Services/common
   - lein install
-  - cd ../app-service
+  - cd ../../
+  - cd Purple-Services/app-service
