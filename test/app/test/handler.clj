@@ -24,8 +24,8 @@
 (deftest test-user-interactions
   
   (let [post-data {:type "native"
-                   :platform_id "test@test.com"
-                   :auth_key "qwerty123"}
+                   :platform_id "foo@bar.com"
+                   :auth_key "secret"}
         response (app (-> (mock/request :post "/user/login"
                                         (generate-string post-data))
                           (mock/content-type "application/json")))
