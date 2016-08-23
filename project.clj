@@ -32,7 +32,8 @@
                  [opt "1.0.5-SNAPSHOT"]]
   ;; :pedantic? :warn
   :plugins [[lein-ring "0.8.13"]
-            [lein-beanstalk "0.2.7"]]
+            [lein-beanstalk "0.2.7"]
+            [lein-exec "0.3.5"]]
   :ring {:handler app.handler/app
          :auto-reload? true
          :auto-refresh? true
