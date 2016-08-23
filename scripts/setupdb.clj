@@ -79,8 +79,9 @@
 (do
   (swap! root-ebdb-config
          assoc
-         :password
-         (get-value-of-command-line-option *command-line-args* "root_password"))
+         :password ""
+         ;; (get-value-of-command-line-option *command-line-args* "root_password")
+         )
   (println "Creating ebdb database and granting permissions to purplemaster")
   (create-ebdb-database)
   (println "Creatings tables and populating them in ebdb as user purplemaster")
