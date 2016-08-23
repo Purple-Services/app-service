@@ -17,4 +17,4 @@ before_install:
   - mysql -e "create database if not exists ebdb;" -uroot
   - mysql -e "create database if not exists ebdb_test;" -uroot
 script:
-  - lein do test app.test.users, test app.test.handler
+  - sudo lein do test app.test.users, test app.test.handler
