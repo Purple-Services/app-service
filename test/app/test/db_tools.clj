@@ -76,7 +76,7 @@
 ;; PERMISSIONS TO purplemaster FOR ebdb_test, OTHERWISE TESTS WILL FAIL!
 ;;
 ;; YOU SHOULD RUN THE FOLLOWING SCRIPT DESCRIBED IN README.md FIRST!
-;; $ lein exec -p resources/scripts/setupdb.clj root_password=<mysql_root_pwd>
+;; $ lein exec -p scripts/setupdb.clj root_password=<mysql_root_pwd>
 ;;
 ;; see: resources/database/ebdb_setup.sql for proper permissions
 (defn database-fixture
