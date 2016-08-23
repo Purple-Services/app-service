@@ -44,8 +44,8 @@
 (defn register-user
   "Register a native user in the database"
   [db-config platform-id password]
-  (with-redefs [app.users.segment/identify (constantly nil)
-                app.users.segment/track (constantly nil)]
+  (with-redefs [app.users/segment/identify (constantly nil)
+                app.users/segment/track (constantly nil)]
     (is (true? (:success (register db-config
                                    platform-id
                                    password
@@ -54,8 +54,8 @@
 (defn edit-user
   "Edit a users information in the database"
   [db-config user-id body]
-  (with-redefs [app.users.segment/identify (constantly nil)
-                app.users.segment/track (constantly nil)]
+  (with-redefs [app.users/segment/identify (constantly nil)
+                app.users/segment/track (constantly nil)]
     (is (true? (:success (edit
                           db-config
                           user-id
@@ -108,8 +108,8 @@ removed"
       (test-trim ebdb-test-config email "    foo bar    "))))
 
 (deftest add-vehicle-test
-  (with-redefs [app.users.segment/identify (constantly nil)
-                app.users.segment/track (constantly nil)]
+  (with-redefs [app.users/segment/identify (constantly nil)
+                app.users/segment/track (constantly nil)]
     (let [email "foo@bar.com"
           password "qwerty123"
           year "2015"
