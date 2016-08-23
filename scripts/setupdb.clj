@@ -4,10 +4,10 @@
 
 (def db-config 
   {;; the user name for the ebdb table, in src/purple/config.clj
-   :db-user "purplemaster"
+   :db-user "root"
    ;; the password for local development, in src/purple/config.clj
    ;; also in resources/database/ebdb_setup.sql
-   :db-password "localpurpledevelopment2015"
+   :db-password ""
    ;; sql for creating ebdb database and allowing access to purplemaster
    :ebdb-setup-sql "database/ebdb_setup.sql"
    ;; sql for creating tables and populating them in the ebdb database
@@ -20,7 +20,7 @@
                              :subname "//localhost:3306"
                              :user "root"
                              ;; use root_password=<your_password> with script
-                             :password "secret"
+                             :password ""
                              :delimiters "`"}))
 
 (def purplemaster-ebdb-config {:classname "com.mysql.jdbc.Driver"
