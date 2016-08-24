@@ -44,10 +44,12 @@
   [db-config platform-id password]
   (with-redefs [ardoq.analytics-clj/identify (constantly nil)
                 ardoq.analytics-clj/track (constantly nil)]
-    (is (true? (:success (register db-config
-                                   platform-id
-                                   password
-                                   :client-ip "127.0.0.1"))))))
+    (let [result (register db-config
+                           platform-id
+                           password
+                           :client-ip "127.0.0.1")]
+      (println result)
+      (is (true? (:success result))))))
 
 (defn edit-user
   "Edit a users information in the database"
@@ -95,7 +97,7 @@ route /user/register.")
   (testing "A users name is edited with extraneous whitespace automatically
 removed"
     ;; register a new user
-    (let [email   "foo@bar.com"
+    (let [email   "bdjshcnjeudb@test.com"
           password "qwerty123"]
       (register-user ebdb-test-config email password)
       ;; name with trailing whitespace is trimmed
@@ -108,7 +110,7 @@ removed"
 (deftest add-vehicle-test
   (with-redefs [ardoq.analytics-clj/identify (constantly nil)
                 ardoq.analytics-clj/track (constantly nil)]
-    (let [email "foo@bar.com"
+    (let [email "fojshnvjdo@test.com"
           password "qwerty123"
           year "2015"
           make "honda"
