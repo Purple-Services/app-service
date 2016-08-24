@@ -11,7 +11,7 @@
             [app.test.db-tools :refer [database-fixture ebdb-test-config db-config]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-time.core :as time]
-            [app.test.util :as util]
+            [common.test.util :as util]
             [common.util :refer [time-zone]]
             [app.couriers :as couriers]))
 
