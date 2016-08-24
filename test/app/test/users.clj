@@ -48,7 +48,6 @@
                            platform-id
                            password
                            :client-ip "127.0.0.1")]
-      (println result)
       (is (true? (:success result))))))
 
 (defn edit-user
