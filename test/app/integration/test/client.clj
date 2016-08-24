@@ -1,4 +1,6 @@
-(ns app.integration.test.client
+(_
+
+ (ns app.integration.test.client
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
             [app.integration.test.dashboard :refer
@@ -346,3 +348,5 @@ around Sencha's dom mirroring"
   (delete-card-by-last-four-digits "4242")
   (delete-vehicle-with-license-plate db-config "FOOBAR")
   (delete-user-with-email db-config "foo@bar.com"))
+
+)

@@ -1,4 +1,6 @@
-(ns app.integration.test.dashboard
+(_
+
+ (ns app.integration.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
             [app.handler :refer [app]]
             [common.db :refer [!select]]
@@ -319,3 +321,5 @@ both are cycled and the busy status of the courier is checked"
   (modify-zone-service-fee)
   (modify-zone-time-bracket)
   (courier-phone-number-present))
+
+)
