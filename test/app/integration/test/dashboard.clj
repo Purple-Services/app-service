@@ -1,4 +1,4 @@
-(ns app.functional.test.dashboard
+(ns app.integration.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
             [app.handler :refer [app]]
             [common.db :refer [!select]]
@@ -309,7 +309,7 @@ both are cycled and the busy status of the courier is checked"
                             "']/../"
                             "td[@class='courier_phone_number']")})))))))
 
-(deftest test-dashboard
+(deftest ^:integration test-dashboard
   (dashboard-greeting)
   (add-order-and-cancel-it)
   (add-order-assign-and-cancel)

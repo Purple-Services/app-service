@@ -1,7 +1,7 @@
-(ns app.functional.test.client
+(ns app.integration.test.client
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
-            [app.functional.test.dashboard :refer
+            [app.integration.test.dashboard :refer
              [sleep wait-until-alert-text
               start-server stop-server]]
             [common.users :refer [get-user-by-id get-user]]
@@ -307,7 +307,7 @@ around Sencha's dom mirroring"
 
 ;; test that a user can be created, a vehicle added, a card added and an order
 ;; placed in beverly hills, ca
-(deftest client-user-test
+(deftest ^:integration client-user-test
   (let [email          "foo@bar.com"
         password       "password"
         full-name      "Foo Bar"
