@@ -60,7 +60,7 @@
                           user-id
                           body))))))
 
-(deftest ^:custom-test user-with-extraneous-whitespace-in-email-not-registered
+(deftest user-with-extraneous-whitespace-in-email-not-registered
   (testing "A native user with extraneous whitespace in email
 is not able to be registerd. Note: Client trims whitespace when accessing
 route /user/register.")
