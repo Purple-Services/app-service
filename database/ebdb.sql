@@ -4359,16 +4359,16 @@ CREATE TABLE IF NOT EXISTS `users` (
   `subscription_period_start_time` int(11) DEFAULT NULL COMMENT 'not necessarily equal to subscription_expiration_time - [the subscription''s period]',
   `subscription_expiration_time` int(11) DEFAULT NULL,
   `subscription_auto_renew` tinyint(1) NOT NULL DEFAULT '0',
-  `subscription_payment_log` text NOT NULL,
+  `subscription_payment_log` text NOT NULL DEFAULT '',
   `stripe_customer_id` varchar(255) DEFAULT '',
-  `stripe_cards` text NOT NULL,
+  `stripe_cards` text NOT NULL DEFAULT '',
   `stripe_default_card` varchar(255) DEFAULT NULL,
   `apns_token` varchar(255) NOT NULL DEFAULT '',
   `arn_endpoint` varchar(255) NOT NULL DEFAULT '',
   `os` varchar(255) DEFAULT '',
   `app_version` varchar(50) DEFAULT '',
   `sift_score` int(11) DEFAULT NULL COMMENT 'most recent sift score to determine if fraudulent user',
-  `admin_event_log` text NOT NULL,
+  `admin_event_log` text NOT NULL DEFAULT '',
   `timestamp_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
