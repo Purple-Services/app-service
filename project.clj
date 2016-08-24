@@ -39,7 +39,8 @@
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                  [ring/ring-mock "0.3.0"]]}}
+                                  [ring/ring-mock "0.3.0"]
+                                  [clj-webdriver "0.7.2"]]}}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"
