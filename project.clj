@@ -41,8 +41,7 @@
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring/ring-mock "0.3.0"]]}}
   :test-selectors {:default (complement :integration)
-                   :integration :integration
-                   :custom-test :custom-test}
+                   :integration :integration}
   :aws {:beanstalk {:app-name "purple"
                     :environments [{:name "prod"}
                                    {:name "purple-dev-env"}]

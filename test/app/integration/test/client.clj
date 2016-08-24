@@ -1,13 +1,11 @@
-(_
-
- (ns app.integration.test.client
+(ns app.integration.test.client
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
             [app.integration.test.dashboard :refer
              [sleep wait-until-alert-text
               start-server stop-server]]
             [common.users :refer [get-user-by-id get-user]]
-            [app.test.db :refer [db-config]]
+            [app.test.db-tools :refer [db-config]]
             [clojure.java.jdbc :as jdbc]
             [clojure.test :refer [use-fixtures deftest is test-ns testing
                                   run-tests]]
@@ -22,6 +20,7 @@
   []
   (let [options      (ChromeOptions. )
         capabilities (DesiredCapabilities. )]
+    (println "hey")
     (.addArguments options (into-array ["--disable-web-security"]))
     (.setCapability capabilities "locationContextEnabled" true)
     (.setCapability capabilities ChromeOptions/CAPABILITY options)
@@ -45,8 +44,13 @@
     (t)
     (stop-server server)))
 
+;; Only use one (deftest) in this namespace please. Have to use :each rather
+;; than :once because we don't want it to attempt to start up the chromedriver
+;; on a 'lein test' command (which should be excludig :integration tests)
+;; e.g., Travis CI will fail because no chromedriver
+(use-fixtures :each with-browser with-server)
 
-(use-fixtures :once with-browser with-server)
+
 ;; keeping this in place as proof it doesn't work
 ;; should work, in "theory", the science,however, is that it does not
 ;; see: http://goo.gl/mNEGZ7
@@ -161,7 +165,7 @@
 
 (defn find-visible
   "Given a query, return the first visible webelement. This is used to get
-around Sencha's dom mirroring"
+  around Sencha's dom mirroring"
   [q]
   (->> q
        find-elements
@@ -324,6 +328,7 @@ around Sencha's dom mirroring"
         exp-year       "2017"
         cvc            "123"
         gas-location   "Beverly Hills"]
+    (println "yo yo yo")
     ;; add the user foobar
     (create-account email password full-name phone-number)
     ;; make sure the account name and number are correct
@@ -348,5 +353,3 @@ around Sencha's dom mirroring"
   (delete-card-by-last-four-digits "4242")
   (delete-vehicle-with-license-plate db-config "FOOBAR")
   (delete-user-with-email db-config "foo@bar.com"))
-
-)

@@ -1,13 +1,11 @@
-(_
-
- (ns app.integration.test.dashboard
+(ns app.integration.test.dashboard
   (:require [ring.adapter.jetty :refer [run-jetty]]
             [app.handler :refer [app]]
             [common.db :refer [!select]]
             [common.zones :refer [get-fuel-prices get-service-fees
                                   get-service-time-bracket]]
             [app.dispatch :as dispatch]
-            [app.test.db :refer [ebdb-test-config
+            [app.test.db-tools :refer [ebdb-test-config
                                  setup-ebdb-test-pool!
                                  clear-test-database
                                  db-config]]
@@ -58,7 +56,11 @@
   (t)
   (stop-browser))
 
-(use-fixtures :once with-browser with-server)
+;; Only use one (deftest) in this namespace please. Have to use :each rather
+;; than :once because we don't want it to attempt to start up the chromedriver
+;; on a 'lein test' command (which should be excludig :integration tests)
+;; e.g., Travis CI will fail because no chromedriver
+(use-fixtures :each with-browser with-server)
 
 ;; this function is used to slow down clojure so the browser has time to catch
 ;; up. If you are having problems with tests passing, particuarly if they appear
@@ -321,5 +323,3 @@ both are cycled and the busy status of the courier is checked"
   (modify-zone-service-fee)
   (modify-zone-time-bracket)
   (courier-phone-number-present))
-
-)
