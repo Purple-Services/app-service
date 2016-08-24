@@ -52,6 +52,7 @@
   "Create tables and load test data for the ebdb database"
   []
   (let [ebdb-sql (process-sql (:ebdb-create-sql db-config))
+        ;; temp removing zcta-sql because it's too big for travis ci (i'm sure there's a fix for that though)
         ;; zcta-sql (process-sql (-> (:ebdb-zcta-sql db-config)
         ;;                           io/input-stream
         ;;                           GZIPInputStream.))

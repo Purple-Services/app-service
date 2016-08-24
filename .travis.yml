@@ -18,4 +18,4 @@ before_install:
   - mysql -e "create database if not exists ebdb_test;" -uroot
 script:
   - lein exec -p scripts/setupdb.clj root_password=
-  - lein do test app.test.users
+  - lein test :only app.test.users/phone-number-validator
