@@ -18,4 +18,4 @@ before_install:
   - mysql -e "create database if not exists ebdb_test;" -uroot
 script:
   - lein exec -p scripts/setupdb.clj root_password=
-  - lein test :no-int
+  - lein test :custom-test
