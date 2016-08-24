@@ -30,8 +30,6 @@
                  [org.clojure/algo.generic "0.1.2"]
                  [common "1.1.3-SNAPSHOT"]
                  [opt "1.0.5-SNAPSHOT"]]
-  ;; :pedantic? :warn
-  :pedantic? false
   :plugins [[lein-ring "0.8.13"]
             [lein-beanstalk "0.2.7"]
             [lein-exec "0.3.5"]]
@@ -42,6 +40,7 @@
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring/ring-mock "0.3.0"]]}}
   :test-selectors {:default (complement :integration)
+                   :no-int (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"
                     :environments [{:name "prod"}
