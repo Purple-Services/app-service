@@ -52,15 +52,15 @@
   "Create tables and load test data for the ebdb database"
   []
   (let [ebdb-sql (process-sql (:ebdb-create-sql db-config))
-        zcta-sql (process-sql (-> (:ebdb-zcta-sql db-config)
-                                  io/input-stream
-                                  GZIPInputStream.))
+        ;; zcta-sql (process-sql (-> (:ebdb-zcta-sql db-config)
+        ;;                           io/input-stream
+        ;;                           GZIPInputStream.))
         ]
     (do
       (with-connection purplemaster-ebdb-config
         (apply do-commands ebdb-sql))
-      (with-connection purplemaster-ebdb-config
-        (apply do-commands zcta-sql))
+      ;; (with-connection purplemaster-ebdb-config
+      ;;   (apply do-commands zcta-sql))
       )))
 
 
