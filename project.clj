@@ -41,7 +41,8 @@
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [ring/ring-mock "0.3.0"]
                                   [org.seleniumhq.selenium/selenium-java "2.47.1"]
-                                  [clj-webdriver "0.7.2"]]}}
+                                  [clj-webdriver "0.7.2"]
+                                  [ring/ring-jetty-adapter "1.6.0-beta5"]]}}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"
