@@ -11,7 +11,7 @@
             [app.test.db-tools :refer [database-fixture ebdb-test-config db-config]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-time.core :as time]
-            [common.test.util :as util]
+            [clj-time.coerce :as time-coerce]
             [common.util :refer [time-zone]]
             [app.couriers :as couriers]))
 
@@ -113,8 +113,8 @@
 
 (defn within-time-bracket-test
   "Test that date-time falls within time-bracket in zip-code. time-zone
-corresponds to the one being used on the server. db-config must correspond
-to the same one being used by the fixture."
+  corresponds to the one being used on the server. db-config must correspond
+  to the same one being used by the fixture."
   [date-time time-bracket zip-code time-zone db-config]
   (let [zone-id  (get-zone-by-zip-code zip-code)]
     ;; change the database configuration
@@ -126,14 +126,14 @@ to the same one being used by the fixture."
     (is (true? (orders/within-time-bracket?
                 {:address_zip zip-code
                  :target_time_start
-                 (util/date-time-to-time-zone-long
-                  date-time
-                  time-zone)})))))
+                 (-> (time/from-time-zone date-time time-zone)
+                     (time-coerce/to-long)
+                     (quot 1000))})))))
 
 (defn outside-time-bracket-test
   "Test that date-time falls outside time-bracket in zip-code. time-zone
-corresponds to the one being used on the server. db-config must correspond
-to the same one being used by the fixture."
+  corresponds to the one being used on the server. db-config must correspond
+  to the same one being used by the fixture."
   [date-time time-bracket zip-code time-zone db-config]
   (let [zone-id  (get-zone-by-zip-code zip-code)]
     ;; change the database configuration
@@ -143,11 +143,11 @@ to the same one being used by the fixture."
              {:id zone-id})
     ;; update the zone atom
     (is (false? (orders/within-time-bracket?
-                {:address_zip zip-code
-                 :target_time_start
-                 (util/date-time-to-time-zone-long
-                  date-time
-                  time-zone)})))))
+                 {:address_zip zip-code
+                  :target_time_start
+                  (-> (time/from-time-zone date-time time-zone)
+                      (time-coerce/to-long)
+                      (quot 1000))})))))
 
 (deftest test-within-time-bracket
   ;; the following dates fall within daylight saving time
@@ -165,16 +165,16 @@ to the same one being used by the fixture."
                               ebdb-test-config))
   (testing "10:41pm is outside the time bracket of [450 1350]"
     (outside-time-bracket-test (time/date-time 2015 10 5 22 41)
-                              "[450 1350]"
-                              "90210"
-                              time-zone
-                              ebdb-test-config))
+                               "[450 1350]"
+                               "90210"
+                               time-zone
+                               ebdb-test-config))
   (testing "7:29am is outside the time bracket of [450 1350]"
     (outside-time-bracket-test (time/date-time 2015 10 5 7 29)
-                              "[450 1350]"
-                              "90210"
-                              time-zone
-                              ebdb-test-config)))
+                               "[450 1350]"
+                               "90210"
+                               time-zone
+                               ebdb-test-config)))
 
 (deftest get-connected-couriers-zone
   (testing "Only the couriers within a zone that are not busy are selected"
@@ -190,7 +190,7 @@ to the same one being used by the fixture."
           ]
       ;; set all couriers as connected, not busy and in zone 1
       (!update db-config "couriers" {:connected 1 :busy 0 :zones "1"} {})
-       ;; only Test Courier1 is assigned to zone 3
+      ;; only Test Courier1 is assigned to zone 3
       (!update db-config "couriers"
                {:zones (str "1," zone-id)}
                {:id courier-id})
