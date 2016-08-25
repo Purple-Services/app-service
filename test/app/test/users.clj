@@ -96,7 +96,7 @@ route /user/register.")
   (testing "A users name is edited with extraneous whitespace automatically
 removed"
     ;; register a new user
-    (let [email   "bdjshcnjeudb@test.com"
+    (let [email   "jsnchhsj@bar.com"
           password "qwerty123"]
       (register-user ebdb-test-config email password)
       ;; name with trailing whitespace is trimmed
