@@ -58,7 +58,7 @@
         ;;                           GZIPInputStream.))
         ]
     (do
-      (with-connection purplemaster-ebdb-config
+      (with-connection @root-ebdb-config
         (apply do-commands ebdb-sql))
       ;; (with-connection purplemaster-ebdb-config
       ;;   (apply do-commands zcta-sql))
@@ -85,5 +85,5 @@
          )
   (println "Creating ebdb database and granting permissions to purplemaster")
   (create-ebdb-database)
-  (println "Creatings tables and populating them in ebdb as user purplemaster")
+  (println "Creatings tables and populating them in ebdb as user root")
   (create-tables-and-populate-ebdb-database))
