@@ -43,8 +43,6 @@
                body)))
 
     (testing "A user can update their number with a good 10 digit phone number"
-      (with-redefs [ardoq.analytics-clj/identify (constantly nil)
-                    ardoq.analytics-clj/track (constantly nil)]
         (let [post-data {:user_id user-id
                        :token token
                        :version "1.5.0"
@@ -54,7 +52,7 @@
                                              (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (:success body)))))
+        (is (:success body))))
     
     (testing "A bad phone number of user is updated"
       (let [post-data {:user_id user-id
