@@ -25,9 +25,9 @@
 
 (deftest test-user-interactions
   
-  (let [_ (register-user ebdb-test-config "foo@bar.com" "qwerty123")
+  (let [_ (register-user ebdb-test-config "fooaaa@bar.com" "qwerty123")
         post-data {:type "native"
-                   :platform_id "foo@bar.com"
+                   :platform_id "fooaaa@bar.com"
                    :auth_key "qwerty123"}
         ;; NOTE this depends on the 
         response (app (-> (mock/request :post "/user/login"
