@@ -43,22 +43,24 @@
                body)))
 
     (testing "A user can update their number with a good 10 digit phone number"
-      (let [post-data {:user_id user-id
+      (with-redefs [ardoq.analytics-clj/identify (constantly nil)
+                    ardoq.analytics-clj/track (constantly nil)]
+        (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
+                       :version "1.5.0"
                        :user {:phone_number "800-555-1212"
                               :name "Test User"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
                                (mock/content-type "application/json")))
             body (parse-string (:body response) true)]
-        (is (:success body))))
+        (is (:success body)))))
     
-    (testing "A phone number of user is updated with only 7 digit number"
+    (testing "A bad phone number of user is updated"
       (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
-                       :user {:phone_number "555-1212"
+                       :version "1.5.0"
+                       :user {:phone_number "555bbdd-1212"
                               :name "Test User"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
@@ -69,7 +71,7 @@
     (testing "A name of the user can be updated with a valid name"
       (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
+                       :version "1.5.0"
                        :user {:name "Test User"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
@@ -80,7 +82,7 @@
     (testing "A name and number of the user can be updated with a valid name and phone number"
       (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
+                       :version "1.5.0"
                        :user {:name "Test User" :phone_number "800-555-1212"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
@@ -91,7 +93,7 @@
     (testing "A name and number of the user is given with a valid name and invalid phone number"
       (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
+                       :version "1.5.0"
                        :user {:name "Test User" :phone_number "555-1212"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
@@ -102,7 +104,7 @@
     (testing "A name and number of the user can be updated with an invalid name and valid phone number"
       (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
+                       :version "1.5.0"
                        :user {:name "TestUser" :phone_number "800-555-1212"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
@@ -113,7 +115,7 @@
     (testing "A name and number of the user can be updated with an invalid name and valid phone number"
       (let [post-data {:user_id user-id
                        :token token
-                       :version "1.0.7"
+                       :version "1.5.0"
                        :user {:name "TestUser" :phone_number "800-555-1212"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
