@@ -2,7 +2,9 @@
   (:use cheshire.core)
   (:require [clojure.test :refer :all]
             [app.handler :refer :all]
-            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]
+            [app.test.users :refer [register-user]]
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture
+                                       ebdb-test-config]]
             [ring.mock.request :as mock]))
 
 
@@ -16,16 +18,18 @@
     (let [response (app (mock/request :get "/i-n-v-a-l-i-d"))]
       (is (= (:status response) 404))))
 
-  (testing "root route"
+  (testing "root route redirects to marketing homepage"
     (let [response (app (mock/request :get "/"))]
-      (is (= (:status response) 200))
+      (is (= (:status response) 302))
       )))
 
 (deftest test-user-interactions
   
-  (let [post-data {:type "native"
+  (let [_ (register-user ebdb-test-config "foo@bar.com" "qwerty123")
+        post-data {:type "native"
                    :platform_id "foo@bar.com"
                    :auth_key "qwerty123"}
+        ;; NOTE this depends on the 
         response (app (-> (mock/request :post "/user/login"
                                         (generate-string post-data))
                           (mock/content-type "application/json")))
