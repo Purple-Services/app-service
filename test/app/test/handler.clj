@@ -37,9 +37,10 @@
         token (:token body)
         user-id (:id (:user body))
         ]
-    (is (= (:status response) 200)
-        (str "Failed to login. response body: "
-             body))
+    (testing "A user can log in."
+      (is (= (:status response) 200)
+          (str "Failed to login. response body: "
+               body)))
 
     (testing "A user can update their number with a good 10 digit phone number"
       (let [post-data {:user_id user-id
