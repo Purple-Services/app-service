@@ -1,5 +1,7 @@
 # Purple App Service
 
+[![Build Status](https://travis-ci.com/Purple-Services/app-service.svg?token=qtYcDv5JYzqmyunRnB93&branch=dev)](https://travis-ci.com/Purple-Services/app-service)
+
 The RESTful web service that the Purple mobile app uses
 
 ## Running Locally

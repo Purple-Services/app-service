@@ -21,7 +21,8 @@
 (def ebdb-test-config
   "Configuration map for connecting to the local test database."
   (let [db-host "localhost"
-        db-port "3306"
+        ;; 3306 for travis ci
+        db-port "3306" ;; use 3307 for celwell local
         db-name "ebdb_test"
         db-password ""
         db-user "root"
