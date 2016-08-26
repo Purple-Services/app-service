@@ -38,7 +38,7 @@
         user-id (:id (:user body))
         ]
     (testing "A user can log in."
-      (is (= (:status response) 200)
+      (is (:success body)
           (str "Failed to login. response body: "
                body)))
 
