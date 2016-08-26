@@ -131,7 +131,11 @@
              {:user_id (:id user)
               :token token
               :ip (or client-ip "")})
-    (segment/track segment-client (:id user) "Login")
+
+    ;; is this what's breaking travis?
+    ;; (segment/track segment-client (:id user) "Login")
+
+    
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -189,8 +193,7 @@
   "Logs in user depending on 'type' of user."
   [db-conn type platform-id auth-key auth-key-is-token-id?
    & {:keys [email-override client-ip app-version]}]
-  (let [user (get-user-by-platform-id db-conn type platform-id)
-        _ (println platform-id auth-key user)]
+  (let [user (get-user-by-platform-id db-conn type platform-id)]
     (try
       (if user ; this is an existing user
         (if (case (:type user)
