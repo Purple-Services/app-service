@@ -127,8 +127,9 @@
   (let [user (users/get-user-by-id db-conn user-id)
         subscription (when (subscriptions/valid-subscription? user)
                        (subscriptions/get-with-usage db-conn user))]
-    (segment/track segment-client user-id "Availability Check"
-                   {:address_zip (five-digit-zip-code zip-code)})
+    (only-prod-or-dev
+     (segment/track segment-client user-id "Availability Check"
+                    {:address_zip (five-digit-zip-code zip-code)}))
     (merge
      {:success true
       :user (merge (select-keys user users/safe-authd-user-keys)
@@ -155,31 +156,35 @@
                                ["87" "91"])
           :unavailable-reason ;; iff unavailable (client determines from :availabilities)
           (cond (= 5 open-minute close-minute) ;; special case for closing zone
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-no-couriers"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "manual-closure-no-couriers"}))
                     (str "We are busy. There are no couriers available. Please "
                          "try again later."))
 
                 (= 6 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-holiday"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "manual-closure-holiday"}))
                     (str "We are closed for the holiday. We will be back soon. "
                          "Please enjoy your holiday!"))
 
                 (= 7 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-inclement-weather"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "manual-closure-inclement-weather"}))
                     (str "We want everyone to stay safe and are closed due to "
                          "inclement weather. We will be back shortly!"))
 
                 ;; This one should only be used for the weekend.
                 (= 8 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-custom"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "manual-closure-custom"}))
                     (let [zone-id (:id (get-zone-by-zip-code zip-code))]
                       (cond
                         (= 1 (quot zone-id 50)) ;; san diego
@@ -201,18 +206,20 @@
                         (str "Sorry, this ZIP code is currently closed."))))
 
                 (= 9 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-scheduled-only"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "manual-closure-scheduled-only"}))
                     (str "On-demand service is not available at this location. "
                          "If you would like to arrange for Scheduled Delivery, "
                          "please contact: orders@purpleapp.com to coordinate "
                          "your service."))
 
                 (not good-time?)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "outside-service-hours"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "outside-service-hours"}))
                     (let [zone-id (:id (get-zone-by-zip-code zip-code))]
                       (cond
                         (in? [1 2 3] (quot zone-id 50))
@@ -230,9 +237,10 @@
                              " every day."))))
 
                 (not @enough-couriers-delay)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "no-couriers-available"})
+                (do (only-prod-or-dev
+                     (segment/track segment-client user-id "Availability Check Said Unavailable"
+                                    {:address_zip (five-digit-zip-code zip-code)
+                                     :reason "no-couriers-available"}))
                     (str "We are busy. There are no couriers available. Please "
                          "try again later."))
 
@@ -242,9 +250,10 @@
        {:availabilities [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
                          {:octane "91" :gallons 15 :times {} :price_per_gallon 0}]
         :unavailable-reason
-        (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                           {:address_zip (five-digit-zip-code zip-code)
-                            :reason "outside-service-area"})
+        (do (only-prod-or-dev
+             (segment/track segment-client user-id "Availability Check Said Unavailable"
+                            {:address_zip (five-digit-zip-code zip-code)
+                             :reason "outside-service-area"}))
             (str "Sorry, we are unable to deliver gas to your "
                  "location. We are rapidly expanding our service "
                  "area and hope to offer service to your "
