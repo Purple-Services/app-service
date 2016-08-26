@@ -2,9 +2,10 @@
   (:require [common.db :refer [conn !select !insert !update]]
             [common.config :as config]
             [common.util :refer [! cents->dollars-str five-digit-zip-code
-                                 get-event-time in? minute-of-day->hmma now-unix
-                                 only-prod segment-client send-sms
-                                 split-on-comma unix->minute-of-day log-error catch-notify]]
+                                 get-event-time in? minute-of-day->hmma
+                                 now-unix only-prod only-prod-or-dev
+                                 segment-client send-sms split-on-comma
+                                 unix->minute-of-day log-error catch-notify]]
             [common.orders :as orders]
             [common.users :as users]
             [common.zones :refer [get-fuel-prices get-service-fees

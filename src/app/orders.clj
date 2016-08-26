@@ -6,7 +6,7 @@
                                  minute-of-day->hmma
                                  rand-str-alpha-num coerce-double
                                  segment-client send-email send-sms
-                                 unless-p only-prod now-unix
+                                 unless-p only-prod only-prod-or-dev now-unix
                                  unix->fuller unix->full unix->minute-of-day]]
             [common.users :refer [details get-user-by-id include-user-data
                                   is-managed-account? charge-user]]
