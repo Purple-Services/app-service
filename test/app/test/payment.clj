@@ -33,7 +33,9 @@
 ;; note: all of the following tests have been disabled as they no longer work
 (deftest test-charge-stripe-customer
   (let [db-conn (conn)]
-    (let [u (get-user db-conn "native" "test@test.com")
+    (let [__ (println "DEBUG: in here...")
+          u (get-user db-conn "native" "test@test.com")
+          _ (println u)
           customer-id (:stripe_customer_id u)]
       (testing "The test@test.com user with cc 4242424242424242 will succeed
  as paid"
@@ -45,7 +47,7 @@
               resp (stripe-req "post"
                                "charges"
                                stripe-params)]
-          #_ (is (:paid resp))))
+          (is (:paid resp))))
       (let [idempotency-key  (str (java.util.UUID/randomUUID))]
         (testing "The test@test.com user with cc 4242424242424242 will only
  charge once "

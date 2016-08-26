@@ -92,7 +92,7 @@
       (let [post-data {:user_id user-id
                        :token token
                        :version "1.5.0"
-                       :user {:name "Test User" :phone_number "555-1212"}}
+                       :user {:name "Test User" :phone_number "555-1212awesome"}}
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
                                (mock/content-type "application/json")))
