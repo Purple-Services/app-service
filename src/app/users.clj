@@ -189,7 +189,8 @@
   "Logs in user depending on 'type' of user."
   [db-conn type platform-id auth-key auth-key-is-token-id?
    & {:keys [email-override client-ip app-version]}]
-  (let [user (get-user-by-platform-id db-conn type platform-id)]
+  (let [user (get-user-by-platform-id db-conn type platform-id)
+        _ (println platform-id auth-key user)]
     (try
       (if user ; this is an existing user
         (if (case (:type user)
