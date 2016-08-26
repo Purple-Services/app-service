@@ -43,15 +43,17 @@
                body)))
 
     (testing "A user can update their number with a good 10 digit phone number"
-        (let [post-data {:user_id user-id
+      (let [post-data {:user_id user-id
                        :token token
                        :version "1.5.0"
                        :user {:phone_number "800-555-1212"
                               :name "Test User"}}
+            ____ (println post-data)
             response (app (->  (mock/request :post "/user/edit"
                                              (generate-string post-data))
                                (mock/content-type "application/json")))
-            body (parse-string (:body response) true)]
+            body (parse-string (:body response) true)
+            _____ (println body)]
         (is (:success body))))
     
     (testing "A bad phone number of user is updated"
