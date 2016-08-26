@@ -14,7 +14,7 @@
   "Test that the phone number validator works"
   ;; The following tests should pass
   (is (valid-phone-number? "888-555-1212"))
-  (is (valid-phone-number? "888 555 1212"))
+  (is (valid-phone-number? "888 555 1112"))
   (is (valid-phone-number? "(888) 555-1212"))
   (is (valid-phone-number? "(888)-555-1212"))
   (is (valid-phone-number? "8885551212"))
