@@ -2,7 +2,8 @@
   (:require [cheshire.core :refer [generate-string parse-string]]
             [common.config :as config]
             [common.util :refer [make-call new-auth-token only-prod
-                                 rand-str-alpha-num segment-client send-email
+                                 only-prod-or-dev rand-str-alpha-num
+                                 segment-client send-email
                                  send-sms sns-client sns-create-endpoint
                                  user-first-name user-last-name ver<
                                  log-error]]
