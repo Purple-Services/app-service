@@ -334,9 +334,10 @@
                                 (let [b (keywordize-keys body) db-conn (conn)]
                                   (demand-user-auth
                                    db-conn (:user_id b) (:token b)
-                                   (segment/track segment-client
-                                                  (:user_id b)
-                                                  "Get Gas Station Recommendation")
+                                   (only-prod-or-dev
+                                    (segment/track segment-client
+                                                   (:user_id b)
+                                                   "Get Gas Station Recommendation"))
                                    (couriers/get-stations
                                     db-conn
                                     (coerce-double (:lat b))

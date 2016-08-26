@@ -295,9 +295,10 @@
 
     (cond
       (not (valid-price? db-conn user o :bypass-zip-code-check bypass-zip-code-check))
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "price-changed-during-review"))
+      (do (only-prod-or-dev
+           (segment/track segment-client (:user_id o) "Request Order Failed"
+                          (assoc (segment-props o)
+                                 :reason "price-changed-during-review")))
           {:success false
            :message (str "The price changed while you were creating your "
                          "order. Please press the back button TWICE to go back "
@@ -305,9 +306,10 @@
            :message_title "Sorry"})
 
       (not (valid-time-limit? db-conn o))
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "high-demand"))
+      (do (only-prod-or-dev
+           (segment/track segment-client (:user_id o) "Request Order Failed"
+                          (assoc (segment-props o)
+                                 :reason "high-demand")))
           {:success false
            :message (str "We currently are experiencing high demand and "
                          "can't promise a delivery within that time limit. Please "
@@ -315,9 +317,10 @@
            :message_title "Sorry"})
 
       (not (within-time-bracket? o))
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "outside-service-hours"))
+      (do (only-prod-or-dev
+           (segment/track segment-client (:user_id o) "Request Order Failed"
+                          (assoc (segment-props o)
+                                 :reason "outside-service-hours")))
           {:success false
            :message (let [service-time-bracket
                           (get-service-time-bracket
@@ -336,10 +339,11 @@
             charge-authorized? (:success auth-charge-result)]
         (if (not charge-authorized?)
           (do ;; payment failed, do not allow order to be placed
-            (segment/track segment-client (:user_id o) "Request Order Failed"
-                           (assoc (segment-props o)
-                                  :charge-authorized charge-authorized? ;; false
-                                  :reason "failed-charge"))
+            (only-prod-or-dev
+             (segment/track segment-client (:user_id o) "Request Order Failed"
+                            (assoc (segment-props o)
+                                   :charge-authorized charge-authorized? ;; false
+                                   :reason "failed-charge")))
             ;; TODO send notification to us? (async?)
             {:success false
              :message (str "Sorry, we were unable to charge your credit card. "
@@ -406,13 +410,14 @@
                        ["4083388336" ; Jackson 
                         ])))
               
-              (segment/track segment-client (:user_id o) "Request Order"
-                             (assoc (segment-props o)
-                                    :charge-authorized charge-authorized?))
-              ;; used by mailchimp
-              (segment/identify segment-client (:user_id o)
-                                {:email (:email user) ;; required every time
-                                 :HASORDERED 1}))
+              (only-prod-or-dev
+               (segment/track segment-client (:user_id o) "Request Order"
+                              (assoc (segment-props o)
+                                     :charge-authorized charge-authorized?))
+               ;; used by mailchimp
+               (segment/identify segment-client (:user_id o)
+                                 {:email (:email user) ;; required every time
+                                  :HASORDERED 1})))
             {:success true
              :message (str "Your order has been accepted, and a courier will be "
                            "on the way soon! Please ensure that the fueling door "
@@ -508,7 +513,8 @@ and their id matches the order's courier_id"
                      order-id
                      (:number_rating rating)
                      (:text_rating rating))
-      (segment/track segment-client user-id "Rate Order"
-                     {:order_id order-id
-                      :number_rating (:number_rating rating)})
+      (only-prod-or-dev
+       (segment/track segment-client user-id "Rate Order"
+                      {:order_id order-id
+                       :number_rating (:number_rating rating)}))
       (details db-conn user-id)))

@@ -131,11 +131,8 @@
              {:user_id (:id user)
               :token token
               :ip (or client-ip "")})
-
-    ;; is this what's breaking travis?
-    ;; (segment/track segment-client (:id user) "Login")
-
-    
+    (only-prod-or-dev
+     (segment/track segment-client (:id user) "Login"))
     {:success true
      :token token
      :user (assoc (select-keys user safe-authd-user-keys)
@@ -173,20 +170,21 @@
                                :referral_code referral-code))]
     (when (:success result)
       (future
-        (sift/create-account (select-keys user [:id :email :type]))
-        ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
-        (segment/identify segment-client (:id user)
-                          {:email (:email user)
-                           :referral_code referral-code
-                           :HASORDERED 0 ;; used by mailchimp
-                           :ISMANAGED (if is-managed-account
-                                        1
-                                        0) ;; used by mailchimp
-                           ;; todo fix this
-                           ;; :createdAt (time-coerce/from-sql-time
-                           ;;             (:timestamp_created %))
-                           })
-        (segment/track segment-client (:id user) "Sign Up")))
+        (only-prod-or-dev
+         (sift/create-account (select-keys user [:id :email :type]))
+         ;; (.put segment/context "ip" (or "209.60.99.254" client-ip ""))
+         (segment/identify segment-client (:id user)
+                           {:email (:email user)
+                            :referral_code referral-code
+                            :HASORDERED 0 ;; used by mailchimp
+                            :ISMANAGED (if is-managed-account
+                                         1
+                                         0) ;; used by mailchimp
+                            ;; todo fix this
+                            ;; :createdAt (time-coerce/from-sql-time
+                            ;;             (:timestamp_created %))
+                            })
+         (segment/track segment-client (:id user) "Sign Up"))))
     result))
 
 (defn login
@@ -332,16 +330,17 @@
                  (select-keys record-map [:name :phone_number :gender :email])
                  {:id user-id})
         (let [user (get-user-by-id db-conn user-id)]
-          (segment/identify segment-client user-id
-                            {:email (:email user)
-                             :name (:name user)
-                             :phone (:phone_number user)
-                             :gender (:gender user)
-                             :firstName (user-first-name (:name user))
-                             :lastName (user-last-name (:name user))})
-          (sift/update-account
-           (assoc (select-keys user [:name :phone_number :gender :email])
-                  :id user-id)))
+          (only-prod-or-dev
+           (segment/identify segment-client user-id
+                             {:email (:email user)
+                              :name (:name user)
+                              :phone (:phone_number user)
+                              :gender (:gender user)
+                              :firstName (user-first-name (:name user))
+                              :lastName (user-last-name (:name user))})
+           (sift/update-account
+            (assoc (select-keys user [:name :phone_number :gender :email])
+                   :id user-id))))
         {:success true})
     {:success false
      :message "Required fields cannot be empty."}))
@@ -421,11 +420,12 @@
                                        (:license_plate record-map))
                        :active 1)
             (#(!insert db-conn "vehicles" %))
-            (#(segment/track segment-client user-id "Add Vehicle"
-                             (assoc (select-keys % [:year :make :model
-                                                    :color :gas_type
-                                                    :license_plate])
-                                    :vehicle_id (:id %)))))
+            (#(only-prod-or-dev
+               (segment/track segment-client user-id "Add Vehicle"
+                              (assoc (select-keys % [:year :make :model
+                                                     :color :gas_type
+                                                     :license_plate])
+                                     :vehicle_id (:id %))))))
           {:success true})
       ;; license_plate is invalid
       (not (valid-license-plate? (:license_plate record-map)))
@@ -505,9 +505,11 @@
                                                (-> card-resp :resp :id))
               card-resp)))]
     (if (:success customer-resp)
-      (do (segment/track segment-client user-id "Add Credit Card")
+      (do (only-prod-or-dev
+           (segment/track segment-client user-id "Add Credit Card"))
           (update-user-stripe-fields db-conn user-id (:resp customer-resp)))
-      (do (segment/track segment-client user-id "Failed to Add Credit Card")
+      (do (only-prod-or-dev
+           (segment/track segment-client user-id "Failed to Add Credit Card"))
           {:success false
            :message (-> customer-resp :resp :error :message)}))))
 
@@ -705,7 +707,8 @@
   [db-conn user-id subscription-auto-renew]
   (let [result (subscriptions/set-auto-renew db-conn user-id subscription-auto-renew)]
     (if (:success result)
-      (do (segment/track segment-client user-id "Set Subscription Auto Renew"
-                         {:auto_renew_value subscription-auto-renew})
+      (do (only-prod-or-dev
+           (segment/track segment-client user-id "Set Subscription Auto Renew"
+                          {:auto_renew_value subscription-auto-renew}))
           (details db-conn user-id))
       result)))
