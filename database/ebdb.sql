@@ -633,17 +633,7 @@ CREATE TABLE IF NOT EXISTS `couriers` (
   `timestamp_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
---
--- Dumping data for table `couriers`
---
 
-INSERT INTO `couriers` (`id`, `active`, `on_duty`, `connected`, `busy`, `zones`, `gallons_87`, `gallons_91`, `lat`, `lng`, `last_ping`, `timestamp_created`) VALUES
-('AmFyvnvWpDaVcGvOrsrp', 1, 0, 0, 0, '', 0, 0, 0, 0, 0, '2016-07-11 23:17:50'),
-('hJVGIOprFn6ro0Jfayu4', 1, 0, 0, 0, '', 0, 0, 42.1900249, -87.9084039, 1470934352, '2016-07-11 23:17:30'),
-('lGYvXf9qcRdJHzhAAIbH', 1, 0, 0, 0, '1,4,150,100,3,2,5', 0, 0, 34.05066430000001, -118.437288, 1470268590, '2015-06-21 00:34:21'),
-('U0z5erfQDb6WeplG4ukK', 1, 0, 0, 0, '1,2,3,4,5,6,50,51', 0, 0, 34.050589599999995, -118.4371985, 1469729216, '2015-12-09 21:44:12'),
-('vIBMV7lpCytIBJmsJaIx', 1, 0, 0, 1, '1,4,3,2', 0, 0, 34.05079750347328, -118.4381078371019, 1471476435, '2015-07-18 00:36:44'),
-('zA0WXhPpcS3fpYpCbhBa', 1, 1, 1, 1, '1,2,3,4,5,6,7,50,51,52,150,151,152,153', 0, 0, 34.0507649, -118.43751139999998, 1959881690, '2015-07-19 06:43:07');
 
 -- --------------------------------------------------------
 
