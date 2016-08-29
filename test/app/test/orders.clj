@@ -21,7 +21,9 @@
 (defn add-test-courier
   [courier-id-atom]
   (let [courier-user (users/register ebdb-test-config
-                                     "testcouriertests@test.com"
+                                     (str "testcourier"
+                                          (rand-str-alpha-num 10)
+                                          "@test.com")
                                      "qwerty123"
                                      :client-ip "127.0.0.1")
         courier-id (:id (:user courier-user))]
@@ -32,7 +34,7 @@
               :on_duty 0
               :connected 0
               :busy 0
-              :zones "1,2,3,4,5,6,7,8,50,51,52,150,151,152,153"
+              :zones ""
               :gallons_87 0
               :gallons_91 0
               :lat 0
@@ -107,8 +109,6 @@
     ;; test that the zone id is correct
     (is (= zone-id (:id (get-zone-by-zip-code zone-zip))))
     ;; add an order to zone 3
-    (println order)
-    (println (add-order order db-config))
     ;; Test Courier 1 should not be able to see the unassigned order
     ;; this assumes there are no unassigned orders in the couriers zone!
     (is (= 0 (count (get-by-courier
@@ -117,7 +117,7 @@
         "Test Courier 1 should not be able to see the unassigned order")
     ;; change Test Courier 1's zones to include zone 3
     (!update db-config "couriers" {:zones "6,3"} {:id courier-id})
-    ; (app.orders/assign db-config  (:courier_id (val %)))
+                                        ; (app.orders/assign db-config  (:courier_id (val %)))
     ;; (println courier-id)
     ;; (is (= 1 (count (get-by-courier
     ;;                  db-config
@@ -215,14 +215,21 @@
           courier-id-2 @test-courier-id-2
           ]
       ;; set all couriers as connected, not busy and in zone 6
-      (!update db-config "couriers" {:connected 1 :busy 0 :zones "6"} {} :custom-where "1")
+      (!update db-config
+               "couriers"
+               {:connected 1
+                :busy 0
+                :on_duty true
+                :zones "6"}
+               {})
+      (println (!select db-config "couriers" ["*"] {}))
       ;; only Test Courier1 is assigned to zone 3
       (!update db-config "couriers"
                {:zones (str "6," zone-id)}
                {:id courier-id})
-      ;; test that there are three connected couriers
-      (is (= 3 (count (couriers/get-all-connected ebdb-test-config))))
-      ;; test that only one courier is connected and assigned zone 3
+      ;; test that there are two connected couriers
+      (is (= 2 (count (couriers/get-all-connected ebdb-test-config))))
+      ;; test that only one courier is connected and assigned zone 6
       (is (= 1
              (count (->> (couriers/get-all-connected ebdb-test-config)
                          (remove :busy)
