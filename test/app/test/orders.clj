@@ -41,9 +41,9 @@
               :lng 0})
     (reset! courier-id-atom courier-id)))
 
-(use-fixtures :once database-fixture #((do (add-test-courier test-courier-id)
-                                           (add-test-courier test-courier-id-2))
-                                       (%)))
+(use-fixtures :once
+  database-fixture  
+  #((run! add-test-courier [test-courier-id test-courier-id-2]) (%)))
 
 (defn test-order
   "Create a test order."
