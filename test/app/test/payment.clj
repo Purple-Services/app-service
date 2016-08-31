@@ -12,24 +12,6 @@
 
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
 
-(deftest confirm-stripe-req-merge-with
-  "Confirm the proper form of merge-with merge used in purple.payment/stripe-req"
-  (let [common-opts {:as :json :coerce :always}
-        opts (->> common-opts
-                  (merge-with merge {:form-params {:foo "bar"}})
-                  (merge-with merge {:headers {"baz" "qux"}})
-                  )]
-    ;; confirm that the opts map can be built up
-    (is (= opts {:as :json :coerce :always :form-params {:foo "bar"} :headers
-                 {"baz" "qux"}}))
-    (let [add-opts (->> opts
-                        (merge-with merge {:form-params {:quux "corge"}})
-                        (merge-with merge {:headers {"grault" "garply"}}))]
-      ;; confirm that the add-opts map is merged opts map
-      (is (= add-opts {:as :json :coerce :always :form-params {:foo "bar" :quux
-                                                               "corge"}
-                       :headers {"baz" "qux" "grault" "garply"}})))))
-
 ;; note: all of the following tests have been disabled as they no longer work
 (deftest test-charge-stripe-customer
   (let [db-conn (conn)]
