@@ -34,7 +34,7 @@
 (deftest availability-check
   "Create a test order."
   []
-  (let [test-user (first (!select $ "users" ["*"] {:email "test@test.com"}))
+  (let [test-user (first (!select ebdb-test-config "users" ["*"] {:email "test@test.com"}))
         user-id   (:id test-user)]
     (mock-time
      1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
