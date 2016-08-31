@@ -43,7 +43,7 @@
 
 (use-fixtures :once
   database-fixture  
-  #((run! add-test-courier [test-courier-id test-courier-id-2]) (%)))
+  #(do (run! add-test-courier [test-courier-id test-courier-id-2]) (%)))
 
 (defn test-order
   "Create a test order."
@@ -222,7 +222,6 @@
                 :on_duty true
                 :zones "6"}
                {})
-      (println (!select db-config "couriers" ["*"] {}))
       ;; only Test Courier1 is assigned to zone 3
       (!update db-config "couriers"
                {:zones (str "6," zone-id)}
