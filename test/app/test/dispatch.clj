@@ -37,20 +37,23 @@
   (let [$ ebdb-test-config
         test-user (first (!select $ "users" ["*"] {:email "test@test.com"}))
         user-id   (:id test-user)]
+    (isnt (is-available?
+           (:availabilities (dispatch/availability $ "85000" user-id)))
+          "85000 should not be available at 1472682311.")
     #_(
        (mock-time
-     1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
-     (is (is-available?
-          (:availabilities (dispatch/availability $ "90210" user-id)))
-         "90210 should be available at 1472682311.")
-     (isnt (is-available?
-            (:availabilities (dispatch/availability $ "85000" user-id)))
-           "85000 should not be available at 1472682311."))
-    (mock-time
-     1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
-     (isnt (is-available?
-            (:availabilities (dispatch/availability $ "90210" user-id)))
-           "90210 should not be available at 1472712952.")
-     (isnt (is-available?
-            (:availabilities (dispatch/availability $ "85000" user-id)))
-           "85000 should not be available at 1472712952.")))))
+        1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
+        (is (is-available?
+             (:availabilities (dispatch/availability $ "90210" user-id)))
+            "90210 should be available at 1472682311.")
+        (isnt (is-available?
+               (:availabilities (dispatch/availability $ "85000" user-id)))
+              "85000 should not be available at 1472682311."))
+       (mock-time
+        1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
+        (isnt (is-available?
+               (:availabilities (dispatch/availability $ "90210" user-id)))
+              "90210 should not be available at 1472712952.")
+        (isnt (is-available?
+               (:availabilities (dispatch/availability $ "85000" user-id)))
+              "85000 should not be available at 1472712952.")))))
