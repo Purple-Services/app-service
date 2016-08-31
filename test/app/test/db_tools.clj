@@ -22,7 +22,7 @@
   "Configuration map for connecting to the local test database."
   (let [db-host "localhost"
         ;; 3306 for travis ci
-        db-port "3307" ;; use 3307 for celwell local
+        db-port "3306" ;; use 3307 for celwell local
         db-name "ebdb_test"
         db-password ""
         db-user "root"
