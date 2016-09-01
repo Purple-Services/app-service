@@ -1,7 +1,8 @@
 (ns app.test.dispatch
   (:require [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [common.util :refer [time-zone rand-str-alpha-num]]
-            [common.db :refer [!select conn !update !insert]]
+            [common.db :refer [!select conn !update !insert
+                               set-pooled-db!]]
             [common.couriers :refer [get-by-courier]]
             [common.orders :refer [cancel]]
             [common.zones :refer [get-service-fees get-zones
@@ -15,7 +16,10 @@
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]))
 
-(use-fixtures :once database-fixture)
+(use-fixtures :once
+  database-fixture
+  #(do (set-pooled-db! ebdb-test-config)
+       (%)))
 
 (defmacro isnt
   [test-case & body]
@@ -34,26 +38,22 @@
 (deftest availability-check
   "Create a test order."
   []
-  (let [$ ebdb-test-config
-        test-user (first (!select $ "users" ["*"] {:email "test@test.com"}))
+  (let [db-conn (conn)
+        test-user (first (!select db-conn "users" ["*"] {:email "test@test.com"}))
         user-id   (:id test-user)]
-    (is (is-available?
-             (:availabilities (dispatch/availability $ "90210" user-id)))
-            "90210 should be available at 1472682311.")
-    #_(
-       (mock-time
-        1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
-        (is (is-available?
-             (:availabilities (dispatch/availability $ "90210" user-id)))
-            "90210 should be available at 1472682311.")
-        (isnt (is-available?
-               (:availabilities (dispatch/availability $ "85000" user-id)))
-              "85000 should not be available at 1472682311."))
-       (mock-time
-        1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
-        (isnt (is-available?
-               (:availabilities (dispatch/availability $ "90210" user-id)))
-              "90210 should not be available at 1472712952.")
-        (isnt (is-available?
-               (:availabilities (dispatch/availability $ "85000" user-id)))
-              "85000 should not be available at 1472712952.")))))
+    (mock-time
+     1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
+     (is (is-available?
+          (:availabilities (dispatch/availability db-conn "90210" user-id)))
+         "90210 should be available at 1472682311.")
+     (isnt (is-available?
+            (:availabilities (dispatch/availability db-conn "85000" user-id)))
+           "85000 should not be available at 1472682311."))
+    (mock-time
+     1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
+     (isnt (is-available?
+            (:availabilities (dispatch/availability db-conn "90210" user-id)))
+           "90210 should not be available at 1472712952.")
+     (isnt (is-available?
+            (:availabilities (dispatch/availability db-conn "85000" user-id)))
+           "85000 should not be available at 1472712952."))))
