@@ -12,14 +12,11 @@
             [app.users :as users]
             [app.dispatch :as dispatch]
             [app.couriers :as couriers]
-            [app.test.db-tools :refer [database-fixture ebdb-test-config]]
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]))
 
-(use-fixtures :once
-  database-fixture
-  #(do (set-pooled-db! ebdb-test-config)
-       (%)))
+(use-fixtures :once setup-ebdb-test-for-conn-fixture)
 
 (defmacro isnt
   [test-case & body]
