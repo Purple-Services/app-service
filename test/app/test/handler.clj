@@ -1,6 +1,7 @@
 (ns app.test.handler
   (:use cheshire.core)
   (:require [clojure.test :refer :all]
+            [common.db :refer [conn]]
             [app.handler :refer :all]
             [app.test.users :refer [register-user]]
             [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture
@@ -25,7 +26,7 @@
 
 (deftest test-user-interactions
   
-  (let [_ (register-user ebdb-test-config "fooaaa@bar.com" "qwerty123")
+  (let [_ (register-user (conn) "fooaaa@bar.com" "qwerty123")
         post-data {:type "native"
                    :platform_id "fooaaa@bar.com"
                    :auth_key "qwerty123"}

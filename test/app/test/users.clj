@@ -1,14 +1,15 @@
 (ns app.test.users
-  (:require [app.users :refer [valid-phone-number? valid-name? add register
-                               edit add-vehicle]]
-            [common.users :refer [get-user]]
-            [clojure.test :refer [deftest is test-ns use-fixtures
+  (:require [clojure.test :refer [deftest is test-ns use-fixtures
                                   test-ns testing]]
-            [app.test.db-tools :refer [database-fixture ebdb-test-config]]
             [common.util :refer [rand-str-alpha-num]]
+            [common.db :refer [conn]]
+            [common.users :refer [get-user]]
+            [app.users :refer [valid-phone-number? valid-name? add register
+                               edit add-vehicle]]
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]
             [clojure.string :as string]))
 
-(use-fixtures :each database-fixture)
+(use-fixtures :each setup-ebdb-test-for-conn-fixture)
 
 (deftest phone-number-validator
   "Test that the phone number validator works"
@@ -60,19 +61,20 @@
   (testing "A native user with extraneous whitespace in email
 is not able to be registerd. Note: Client trims whitespace when accessing
 route /user/register.")
-  (let [password "secret"]
+  (let [db-conn (conn)
+        password "secret"]
     ;; email with trailing whitespace can not be registered
-    (is (false? (:success (register ebdb-test-config
+    (is (false? (:success (register db-conn
                                     "blah@bar.com   "
                                     password
                                     :client-ip "127.0.0.1"))))
     ;; email with leading whitespace can not be registered
-    (is (false? (:success (register ebdb-test-config
+    (is (false? (:success (register db-conn
                                     "   bbdn@bar.com"
                                     password
                                     :client-ip "127.0.0.1"))))
     ;; email with leading and trailing whitespace can not be registered
-    (is (false? (:success (register ebdb-test-config
+    (is (false? (:success (register db-conn
                                     "   fojjshso@bar.com  "
                                     password
                                     :client-ip "127.0.0.1"))))))
@@ -92,18 +94,20 @@ route /user/register.")
   (testing "A users name is edited with extraneous whitespace automatically
 removed"
     ;; register a new user
-    (let [email   "jsnchhsj@bar.com"
+    (let [db-conn (conn)
+          email   "jsnchhsj@bar.com"
           password "qwerty123"]
-      (register-user ebdb-test-config email password)
+      (register-user db-conn email password)
       ;; name with trailing whitespace is trimmed
-      (test-trim ebdb-test-config email "foo bar    ")
+      (test-trim db-conn email "foo bar    ")
       ;; name with leading whitespace is trimmed
-      (test-trim ebdb-test-config email "   foo bar")
+      (test-trim db-conn email "   foo bar")
       ;; name with leading and trailing whitespace is trimmed
-      (test-trim ebdb-test-config email "    foo bar    "))))
+      (test-trim db-conn email "    foo bar    "))))
 
 (deftest add-vehicle-test
-  (let [email "fojshnvjdo@test.com"
+  (let [db-conn (conn)
+        email "fojshnvjdo@test.com"
         password "qwerty123"
         year "2015"
         make "honda"
@@ -117,12 +121,12 @@ removed"
                     :gas_type gas-type
                     :photo ""
                     :id "new"}]
-    (register-user ebdb-test-config email password)
-    (let [user-id (:id (get-user ebdb-test-config
+    (register-user db-conn email password)
+    (let [user-id (:id (get-user db-conn
                                  "native" email))]
       ;; some of the required fields are missing from record-map
       (is (= "Required fields cannot be empty."
-             (:message (add-vehicle ebdb-test-config user-id
+             (:message (add-vehicle db-conn user-id
                                     (dissoc record-map
                                             :year
                                             :make
@@ -130,7 +134,7 @@ removed"
                                             :color)))))
       ;; remove all of the fields
       (is (= "Required fields cannot be empty."
-             (:message (add-vehicle ebdb-test-config user-id
+             (:message (add-vehicle db-conn user-id
                                     (dissoc record-map
                                             :year
                                             :make
@@ -139,11 +143,11 @@ removed"
                                             :gas_type)))))
       ;; Try to add a vehicle with a nil record map
       (is (= "Required fields cannot be empty."
-             (:message (add-vehicle ebdb-test-config user-id nil))))
+             (:message (add-vehicle db-conn user-id nil))))
       ;; Try to add a vehicle that has the equivalent json request
       ;; of all blank fields on the server
       (is (= "Required fields cannot be empty."
-             (:message (add-vehicle ebdb-test-config user-id
+             (:message (add-vehicle db-conn user-id
                                     (assoc record-map
                                            :year nil
                                            :make nil
@@ -157,22 +161,22 @@ removed"
       (is (= (str "License Plate is a required field. If this is a new vehicle"
                   " without plates, write: NOPLATES. Vehicles without license"
                   " plates are ineligible for coupon codes.")
-             (:message (add-vehicle ebdb-test-config user-id record-map))))
+             (:message (add-vehicle db-conn user-id record-map))))
       ;; Try to add a vehicle with a blank :license_plate key
       (is (= (str "License Plate is a required field. If this is a new vehicle"
                   " without plates, write: NOPLATES. Vehicles without license"
                   " plates are ineligible for coupon codes.")
-             (:message (add-vehicle ebdb-test-config user-id
+             (:message (add-vehicle db-conn user-id
                                     (assoc record-map
                                            :photo ""
                                            :license_plate "")))))
       ;; Try to add a vechile with a NOPLATES designation
       (is (true?
-           (:success (add-vehicle ebdb-test-config user-id
+           (:success (add-vehicle db-conn user-id
                                   (assoc record-map
                                          :license_plate "NOPLATES")))))
       ;; add an invalid license plate and receive an error message
       (is (= "Please enter a valid license plate."
-             (:message (add-vehicle ebdb-test-config user-id
+             (:message (add-vehicle db-conn user-id
                                     (assoc record-map
                                            :license_plate "FA$T"))))))))

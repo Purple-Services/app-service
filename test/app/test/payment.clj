@@ -8,13 +8,13 @@
             [common.payment :refer [stripe-req]]
             [app.users :as users]
             [app.handler :refer :all]
-            [app.test.db-tools :refer [database-fixture ebdb-test-config]]))
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]))
 
 (def test-user-id (atom ""))
 
 (defn add-test-user
   [user-id-atom]
-  (let [user (users/register ebdb-test-config
+  (let [user (users/register (conn)
                              (str "paytest"
                                   (rand-str-alpha-num 10)
                                   "@test.com")
@@ -24,7 +24,7 @@
     (reset! user-id-atom user-id)))
 
 (use-fixtures :once
-  database-fixture
+  setup-ebdb-test-for-conn-fixture
   #(do (run! add-test-user [test-user-id]) (%)))
 
 ;; TODO - test:

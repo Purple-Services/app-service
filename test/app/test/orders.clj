@@ -11,7 +11,7 @@
             [app.users :as users]
             [app.dispatch :as dispatch]
             [app.couriers :as couriers]
-            [app.test.db-tools :refer [database-fixture ebdb-test-config]]
+            [app.test.db-tools :refer [setup-ebdb-test-for-conn-fixture]]
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]))
 
@@ -20,14 +20,15 @@
 
 (defn add-test-courier
   [courier-id-atom]
-  (let [courier-user (users/register ebdb-test-config
+  (let [db-conn (conn)
+        courier-user (users/register db-conn
                                      (str "testcourier"
                                           (rand-str-alpha-num 10)
                                           "@test.com")
                                      "qwerty123"
                                      :client-ip "127.0.0.1")
         courier-id (:id (:user courier-user))]
-    (!insert ebdb-test-config
+    (!insert db-conn
              "couriers"
              {:id courier-id
               :active 1
@@ -42,7 +43,7 @@
     (reset! courier-id-atom courier-id)))
 
 (use-fixtures :once
-  database-fixture  
+  setup-ebdb-test-for-conn-fixture
   #(do (run! add-test-courier [test-courier-id test-courier-id-2]) (%)))
 
 (defn test-order
@@ -89,7 +90,7 @@
 (defn unassigned-orders
   "Can the courier only see unassigned orders in their assigned zone?"
   []
-  (let [db-config ebdb-test-config
+  (let [db-config (conn)
         zone-id 3
         zone-zip (-> (filter #(= (:id %) 3)
                              (get-zones db-config))
@@ -144,7 +145,7 @@
   [date-time time-bracket zip-code time-zone db-config]
   (let [zone-id  (get-zone-by-zip-code zip-code)]
     ;; change the database configuration
-    (!update ebdb-test-config "zones"
+    (!update db-config "zones"
              {:service-time-bracket
               time-bracket}
              {:id zone-id})
@@ -163,7 +164,7 @@
   [date-time time-bracket zip-code time-zone db-config]
   (let [zone-id  (get-zone-by-zip-code zip-code)]
     ;; change the database configuration
-    (!update ebdb-test-config "zones"
+    (!update db-config "zones"
              {:service-time-bracket
               time-bracket}
              {:id zone-id})
@@ -182,40 +183,40 @@
                               "[450 1350]"
                               "90210"
                               time-zone
-                              ebdb-test-config))
+                              (conn)))
   (testing "10:30pm is within the time bracket of [450 1350]"
     (within-time-bracket-test (time/date-time 2015 10 5 22 30)
                               "[450 1350]"
                               "90210"
                               time-zone
-                              ebdb-test-config))
+                              (conn)))
   (testing "10:41pm is outside the time bracket of [450 1350]"
     (outside-time-bracket-test (time/date-time 2015 10 5 22 41)
                                "[450 1350]"
                                "90210"
                                time-zone
-                               ebdb-test-config))
+                               (conn)))
   (testing "7:29am is outside the time bracket of [450 1350]"
     (outside-time-bracket-test (time/date-time 2015 10 5 7 29)
                                "[450 1350]"
                                "90210"
                                time-zone
-                               ebdb-test-config)))
+                               (conn))))
 
 (deftest get-connected-couriers-zone
   (testing "Only the couriers within a zone that are not busy are selected"
-    (let [db-config ebdb-test-config
+    (let [db-conn (conn)
           zone-id 3
-          zone-zip (-> (filter #(= (:id %) zone-id) (get-zones db-config))
+          zone-zip (-> (filter #(= (:id %) zone-id) (get-zones db-conn))
                        first
                        :zip_codes
                        first)
-          order     (assoc (test-order db-config) :address_zip zone-zip)
+          order     (assoc (test-order db-conn) :address_zip zone-zip)
           courier-id @test-courier-id 
           courier-id-2 @test-courier-id-2
           ]
       ;; set all couriers as connected, not busy and in zone 6
-      (!update db-config
+      (!update db-conn
                "couriers"
                {:connected 1
                 :busy 0
@@ -223,36 +224,36 @@
                 :zones "6"}
                {})
       ;; only Test Courier1 is assigned to zone 3
-      (!update db-config "couriers"
+      (!update db-conn "couriers"
                {:zones (str "6," zone-id)}
                {:id courier-id})
       ;; test that there are two connected couriers
-      (is (= 2 (count (couriers/get-all-connected ebdb-test-config))))
+      (is (= 2 (count (couriers/get-all-connected db-conn))))
       ;; test that only one courier is connected and assigned zone 6
       (is (= 1
-             (count (->> (couriers/get-all-connected ebdb-test-config)
+             (count (->> (couriers/get-all-connected db-conn)
                          (remove :busy)
                          (filter
                           #(contains?
                             (:zones %)
                             (order->zone-id order)))))))
       ;; assign courier 2 to zone 3
-      (!update db-config "couriers"
+      (!update db-conn "couriers"
                {:zones (str "6," zone-id)}
                {:id courier-id-2})
       ;; test that two couriers are connected and assigned zone 3
       (is (= 2
-             (count (->> (couriers/get-all-connected ebdb-test-config)
+             (count (->> (couriers/get-all-connected db-conn)
                          (remove :busy)
                          (filter
                           #(contains?
                             (:zones %)
                             (order->zone-id order)))))))
       ;; set courier 1 as busy
-      (!update db-config "couriers" {:busy 1} {:id courier-id})
+      (!update db-conn "couriers" {:busy 1} {:id courier-id})
       ;; test that only one courier is connected, not busy and assigned zone 3
       (is (= 1
-             (count (->> (couriers/get-all-connected ebdb-test-config)
+             (count (->> (couriers/get-all-connected db-conn)
                          (remove :busy)
                          (filter
                           #(contains?
