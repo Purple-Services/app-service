@@ -1,35 +1,22 @@
 (ns app.test.db-tools
   (:require [common.db :as db]
+            [environ.core :refer [env]]
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
-(def db-config
-  "Configuration map for connecting to local database."
-  (let [db-host "localhost"
-        db-port "3306"
-        db-name "ebdb"
-        db-password ""
-        db-user "root"]
+(def ebdb-test-config
+  "Configuration map for connecting to the local test database."
+  (let [db-host (env :test-db-host)
+        db-port (env :test-db-port)
+        db-name (env :test-db-name)
+        db-password (env :test-db-password)
+        db-user (env :test-db-user)
+        db-sql "database/ebdb.sql"]
     {:classname "com.mysql.jdbc.Driver"
      :subprotocol "mysql"
      :subname (str "//" db-host ":" db-port "/" db-name
                    "?useLegacyDatetimeCode=false"
                    "&serverTimezone=UTC")
-     :user db-user
-     :password db-password}))
-
-(def ebdb-test-config
-  "Configuration map for connecting to the local test database."
-  (let [db-host "localhost"
-        ;; 3306 for travis ci
-        db-port "3306" ;; use 3307 for celwell local
-        db-name "ebdb_test"
-        db-password ""
-        db-user "root"
-        db-sql "database/ebdb.sql"]
-    {:classname "com.mysql.jdbc.Driver"
-     :subprotocol "mysql"
-     :subname (str "//" db-host ":" db-port "/" db-name)
      :user db-user
      :password db-password
      :sql db-sql}))

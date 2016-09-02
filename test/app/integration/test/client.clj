@@ -4,8 +4,8 @@
             [app.integration.test.dashboard :refer
              [sleep wait-until-alert-text
               start-server stop-server]]
+            [common.db :refer [conn]]
             [common.users :refer [get-user-by-id get-user]]
-            [app.test.db-tools :refer [db-config]]
             [clojure.java.jdbc :as jdbc]
             [clojure.test :refer [use-fixtures deftest is test-ns testing
                                   run-tests]]
@@ -202,7 +202,7 @@
 (defn delete-user-with-email
   "delete the user with email"
   [db-conn email]
-  (jdbc/with-connection db-config
+  (jdbc/with-connection (conn)
     (jdbc/delete-rows :users ["email = ?" email])))
 
 (defn add-vehicle
@@ -244,7 +244,7 @@
 
 (defn delete-vehicle-with-license-plate
   [db-conn license-plate]
-  (jdbc/with-connection db-config
+  (jdbc/with-connection (conn)
     (jdbc/delete-rows :vehicles ["license_plate = ?" license-plate])))
 
 
@@ -344,12 +344,12 @@
     ;; delete the credit card
     (delete-card-by-last-four-digits "4242")
     ;; delete the vehicle
-    (delete-vehicle-with-license-plate db-config license-plate)
+    (delete-vehicle-with-license-plate (conn) license-plate)
     ;; delete the user
-    (delete-user-with-email db-config email)))
+    (delete-user-with-email (conn) email)))
 
 (defn quick-delete
   []
   (delete-card-by-last-four-digits "4242")
-  (delete-vehicle-with-license-plate db-config "FOOBAR")
-  (delete-user-with-email db-config "foo@bar.com"))
+  (delete-vehicle-with-license-plate (conn) "FOOBAR")
+  (delete-user-with-email (conn) "foo@bar.com"))

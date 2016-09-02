@@ -6,9 +6,8 @@
                                   get-service-time-bracket]]
             [app.dispatch :as dispatch]
             [app.test.db-tools :refer [ebdb-test-config
-                                 setup-ebdb-test-pool!
-                                 clear-test-database
-                                 db-config]]
+                                       setup-ebdb-test-pool!
+                                       clear-test-database]]
             [app.test.orders :as orders]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]
             [clj-webdriver.taxi :refer :all]
