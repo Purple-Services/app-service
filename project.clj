@@ -38,7 +38,8 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
-  :profiles {:dev [{:dependencies [[javax.servlet/servlet-api "2.5"]
+  :profiles {:profiles/dev nil
+             :dev [{:dependencies [[javax.servlet/servlet-api "2.5"]
                                    [ring/ring-mock "0.3.0"]
                                    [org.seleniumhq.selenium/selenium-java "2.47.1"]
                                    [clj-webdriver "0.7.2"]
