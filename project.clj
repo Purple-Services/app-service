@@ -54,7 +54,8 @@
                             :test-db-name "ebdb_test"
                             :test-db-port "3306"
                             :test-db-user "root"
-                            :test-db-password ""}}}
+                            :test-db-password ""}
+                      :injections [(println "injections.....")]}}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"
