@@ -1,6 +1,4 @@
 language: clojure
-services:
-  - mysql
 before_install:
   - cd ../
   - git clone git@github.com:Purple-Services/common.git
