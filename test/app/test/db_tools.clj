@@ -4,6 +4,8 @@
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
+(println env)
+
 (println {:db-host (env :test-db-host)
           :db-port (env :test-db-port)
           :db-name (env :test-db-name)
