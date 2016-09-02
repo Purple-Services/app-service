@@ -48,8 +48,7 @@
                     :injections
                     [(require 'pjstadig.humane-test-output)
                      (pjstadig.humane-test-output/activate!)]}
-                   ;; :profiles/dev
-                   ]
+                   :profiles/dev]
              ;; This profile is merged in over dev for Travis CI tests.
              :travis {:env {:test-db-host "localhost"
                             :test-db-name "ebdb_test"
