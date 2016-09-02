@@ -38,15 +38,16 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
-  :profiles {:profiles/dev nil
-             :dev [{:dependencies [[javax.servlet/servlet-api "2.5"]
-                                   [ring/ring-mock "0.3.0"]
-                                   [org.seleniumhq.selenium/selenium-java "2.47.1"]
-                                   [clj-webdriver "0.7.2"]
-                                   [ring "1.5.0"]
-                                   [pjstadig/humane-test-output "0.6.0"]]
-                    :injections [(require 'pjstadig.humane-test-output)
-                                 (pjstadig.humane-test-output/activate!)]}
+  :profiles {:dev [{:dependencies
+                    [[javax.servlet/servlet-api "2.5"]
+                     [ring/ring-mock "0.3.0"]
+                     [org.seleniumhq.selenium/selenium-java "2.47.1"]
+                     [clj-webdriver "0.7.2"]
+                     [ring "1.5.0"]
+                     [pjstadig/humane-test-output "0.6.0"]]
+                    :injections
+                    [(require 'pjstadig.humane-test-output)
+                     (pjstadig.humane-test-output/activate!)]}
                    :profiles/dev]
              ;; This profile is merged in over dev for Travis CI tests.
              :travis {:env {:test-db-host "localhost"
