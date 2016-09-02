@@ -49,11 +49,14 @@
                     [(require 'pjstadig.humane-test-output)
                      (pjstadig.humane-test-output/activate!)]}
                    :profiles/dev
-                   :travis ;; force it to add?
+                   {:env {:test-db-host "localhost"
+                          :test-db-name "ebdb_test"
+                          :test-db-port "3306"
+                          :test-db-user "root"
+                          :test-db-password ""}}
                    ]
              ;; This profile is merged in over dev for Travis CI tests.
-             :travis {:env {:env "travis"
-                            :test-db-host "localhost"
+             :travis {:env {:test-db-host "localhost"
                             :test-db-name "ebdb_test"
                             :test-db-port "3306"
                             :test-db-user "root"
