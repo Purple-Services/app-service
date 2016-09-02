@@ -4,6 +4,13 @@
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
+(println {:db-host (env :test-db-host)
+          :db-port (env :test-db-port)
+          :db-name (env :test-db-name)
+          :db-password (env :test-db-password)
+          :db-user (env :test-db-user)
+          :db-sql "database/ebdb.sql"})
+
 (def ebdb-test-config
   "Configuration map for connecting to the local test database."
   (let [db-host (env :test-db-host)
