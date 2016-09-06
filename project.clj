@@ -48,14 +48,7 @@
                     :injections
                     [(require 'pjstadig.humane-test-output)
                      (pjstadig.humane-test-output/activate!)]}
-                   :profiles/dev]
-             ;; This profile is merged in over dev for Travis CI tests.
-             :travis [:dev
-                      {:env {:test-db-host "localhost"
-                             :test-db-name "ebdb_test"
-                             :test-db-port "3306"
-                             :test-db-user "root"
-                             :test-db-password ""}}]}
+                   :profiles/dev]}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"

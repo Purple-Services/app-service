@@ -15,11 +15,16 @@
 
 (def ebdb-test-config
   "Configuration map for connecting to the local test database."
-  (let [db-host (env :test-db-host)
-        db-port (env :test-db-port)
-        db-name (env :test-db-name)
-        db-password (env :test-db-password)
-        db-user (env :test-db-user)
+  (let [db-host (or (env :test-db-host)
+                    "localhost")
+        db-port (or (env :test-db-port)
+                    "3306")
+        db-name (or (env :test-db-name)
+                    "ebdb_test")
+        db-user (or (env :test-db-user)
+                    "root")
+        db-password (or (env :test-db-password)
+                        "")
         db-sql "database/ebdb.sql"]
     {:classname "com.mysql.jdbc.Driver"
      :subprotocol "mysql"
