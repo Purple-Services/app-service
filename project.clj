@@ -38,8 +38,7 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
-  :profiles {:profiles/dev {}
-             :dev [{:dependencies
+  :profiles {:dev [{:dependencies
                     [[javax.servlet/servlet-api "2.5"]
                      [ring/ring-mock "0.3.0"]
                      [org.seleniumhq.selenium/selenium-java "2.47.1"]
@@ -51,11 +50,12 @@
                      (pjstadig.humane-test-output/activate!)]}
                    :profiles/dev]
              ;; This profile is merged in over dev for Travis CI tests.
-             :travis {:env {:test-db-host "localhost"
-                            :test-db-name "ebdb_test"
-                            :test-db-port "3306"
-                            :test-db-user "root"
-                            :test-db-password ""}}}
+             :travis [:dev
+                      {:env {:test-db-host "localhost"
+                             :test-db-name "ebdb_test"
+                             :test-db-port "3306"
+                             :test-db-user "root"
+                             :test-db-password ""}}]}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"
