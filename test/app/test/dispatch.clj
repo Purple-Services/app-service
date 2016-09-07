@@ -32,6 +32,11 @@
   [availabilities]
   (boolean (seq (reduce (fn [a b] (merge a (:times b))) {} availabilities))))
 
+(defn =submap
+  "Is subm is part of m?"
+  [m subm]
+  (nil? (second (clojure.data/diff m subm))))
+
 (deftest availability-check
   "Create a test order."
   []
@@ -45,7 +50,53 @@
          "90210 should be available at 1472682311.")
      (isnt (is-available?
             (:availabilities (dispatch/availability db-conn "85000" user-id)))
-           "85000 should not be available at 1472682311."))
+           "85000 should not be available at 1472682311.")
+     (is (=
+          (:availabilities (dispatch/availability db-conn "90210" user-id))
+          [{:octane "87",
+            :gallon_choices {:0 7.5, :1 10, :2 15},
+            :default_gallon_choice :2,
+            :price_per_gallon 309,
+            :times
+            {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
+             180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
+             60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :tire_pressure_check_price 700,
+            :gallons 15}
+           {:octane "91",
+            :gallon_choices {:0 7.5, :1 10, :2 15},
+            :default_gallon_choice :2,
+            :price_per_gallon 329,
+            :times
+            {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
+             180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
+             60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :tire_pressure_check_price 700,
+            :gallons 15}])
+         "Availability map differed from expected.")
+     (is (=
+          (:availabilities (dispatch/availability db-conn "90025" user-id))
+          [{:octane "87",
+            :gallon_choices {:0 7.5, :1 10, :2 15},
+            :default_gallon_choice :2,
+            :price_per_gallon 305,
+            :times
+            {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
+             180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
+             60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :tire_pressure_check_price 700,
+            :gallons 15}
+           {:octane "91",
+            :gallon_choices {:0 7.5, :1 10, :2 15},
+            :default_gallon_choice :2,
+            :price_per_gallon 329,
+            :times
+            {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
+             180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
+             60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :tire_pressure_check_price 700,
+            :gallons 15}])
+         "Availability map differed from expected."))
     (mock-time
      1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
      (isnt (is-available?
