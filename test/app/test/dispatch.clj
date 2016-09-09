@@ -38,7 +38,7 @@
   (nil? (second (clojure.data/diff m subm))))
 
 (deftest availability-check
-  "Create a test order."
+  "Test if availability to order is correctly determined."
   []
   (let [db-conn (conn)
         test-user (first (!select db-conn "users" ["*"] {:email "test@test.com"}))
@@ -202,3 +202,33 @@
      (isnt (is-available?
             (:availabilities (dispatch/availability db-conn "85000" user-id)))
            "85000 should not be available at 1472712952."))))
+
+(deftest hours-check
+  "Zip code considered open within certain hours brackets?"
+  []
+  (mock-time
+   1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
+   (is (dispatch/is-open-now? {:hours [[450 1350]]
+                               :manually-closed? false})
+       "Within first and only hours bracket 1472682311.")
+   (is (dispatch/is-open-now? {:hours [[200 410]
+                                       [900 1000]]
+                               :manually-closed? false})
+       "Within second time bracket 1472682311.")
+   (isnt (dispatch/is-open-now? {:hours [[200 410]
+                                         [0 5]
+                                         [999 1000]
+                                         [1240 1380]]
+                                 :manually-closed? false})
+         "Not within any of the many time brackets 1472682311.")
+   (isnt (dispatch/is-open-now? {:hours [[450 1350]]
+                                 :manually-closed? true})
+         "Within hours bracket but manually closed 1472682311."))
+  (mock-time
+   1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
+   (isnt (dispatch/is-open-now? {:hours [[450 1350]]
+                                 :manually-closed? false})
+         "Not within any hours bracket 1472712952.")
+   (isnt (dispatch/is-open-now? {:hours [[0 1440]]
+                                 :manually-closed? true})
+         "Within hours bracket but manually closed 1472712952.")))

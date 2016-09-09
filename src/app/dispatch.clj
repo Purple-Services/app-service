@@ -61,7 +61,7 @@
            ;; hide 5-hour option if using 1-hour or 3-hour subscription
            (when-not (or has-free-three-hour? has-free-one-hour?)
              {300 (assoc (delivery-time-map "within 5 hours"
-                                            (:300 service-fees)
+                                            (get service-fees 300)
                                             (:num_free_five_hour sub)
                                             (:num_free_five_hour_used sub)
                                             (:discount_five_hour sub))
@@ -69,13 +69,13 @@
            ;; hide 3-hour option if using 1-hour subscription
            (when-not has-free-one-hour?
              {180 (assoc (delivery-time-map "within 3 hours"
-                                            (:180 service-fees)
+                                            (get service-fees 180)
                                             (:num_free_three_hour sub)
                                             (:num_free_three_hour_used sub)
                                             (:discount_three_hour sub))
                          :order (if has-free-three-hour? 0 1))})
            {60 (assoc (delivery-time-map "within 1 hour"
-                                         (:60 service-fees)
+                                         (get service-fees 60)
                                          (:num_free_one_hour sub)
                                          (:num_free_one_hour_used sub)
                                          (:discount_one_hour sub))
@@ -100,7 +100,7 @@
 
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
-  [user good-time? zip-code subscription enough-couriers-delay octane]
+  [user good-time? zip-def subscription enough-couriers-delay octane]
   {:octane octane
    :gallon_choices (if (users/is-managed-account? user)
                      {:0 7.5
@@ -109,10 +109,10 @@
                       :3 20
                       :4 25
                       :5 30}
-                     config/gallon-choices)
-   :default_gallon_choice config/default-gallon-choice
-   :price_per_gallon (get (get-fuel-prices zip-code) (keyword octane))
-   :times (->> (get-service-fees zip-code)
+                     (:gallon-choices zip-def))
+   :default_gallon_choice (:default-gallon-choice zip-def)
+   :price_per_gallon (get (:gas-price zip-def) octane)
+   :times (->> (:delivery-fee zip-def)
                (delivery-times-map user subscription)
                (filter (fn [[time time-map]]
                          (and good-time?
@@ -125,28 +125,39 @@
 (defn get-market-def-by-zip
   [zip-code]
   (let [markets [{:name "Los Angeles"
+                  :gallon-choices {:0 7.5
+                                   :1 10
+                                   :2 15}
+                  :default-gallon-choice :2
                   :gas-price {"87" 320
                               "91" 339}
+                  :time-choices {:0 60
+                                 :1 180
+                                 :2 300}
+                  :default-time-choice :1
                   :delivery-fee {60 599
                                  180 399
                                  300 349}
                   :tire-pressure-price 700
-                  :gallon-choices [7.5 10 15]
                   :hours [[450 1350]]
                   :closed-message nil
                   :manually-closed? false
-                  :zips {"90024" {:gas-price-diff-percent {"87" 1.5
-                                                           "91" 1.5}
-                                  :gas-price-diff-fixed {"87" 0
-                                                         "91" 0}
+                  :zips {"90024" {:gallon-choices {:0 7.5
+                                                   :1 10
+                                                   :2 15
+                                                   :3 20}
+                                  :default-gallon-choice :3
+                                  :gas-price-diff-percent {"87" 1.5}
+                                  :gas-price-diff-fixed {"87" 2
+                                                         "91" 5}
                                   :delivery-fee-diff-percent {60 0
                                                               180 0
                                                               300 0}
-                                  :delivery-fee-diff-fixed {60 0
-                                                            180 0
+                                  :delivery-fee-diff-fixed {60 25
+                                                            180 25
                                                             300 0}
                                   :manually-closed? false
-                                  :closed-message nil}
+                                  :closed-message "Sorry, closed."}
                          "90025" {:gas-price-diff-percent {"87" 0
                                                            "91" 0}
                                   :gas-price-diff-fixed {"87" 0
@@ -164,21 +175,47 @@
 (defn trans-def
   "Transform a definition. (e.g., market definition with ZIP specific rules)."
   [base trans]
-  {:gas-price
-   (into {} (for [[k v] (:gas-price base)
-                  :let [diff-percent (get (:gas-price-diff-percent trans) k)
-                        diff-fixed (get (:gas-price-diff-fixed trans) k)]]
-              [k (Math/round
-                  (+ (double v)
-                     (* v (/ diff-percent 100))
-                     diff-fixed))]))
-   :delivery-fee (:delivery-fee base)
-   :tire-pressure-price (:tire-pressure-price base)
-   :gallon-choices (:gallon-choices base)
-   :hours (:hours base)
-   :closed-message (:closed-message base)
-   :manually-closed? (or (:manually-closed? base)
-                         (:manually-closed? trans))})
+  {:gallon-choices
+   (or (:gallon-choices trans) (:gallon-choices base))
+   
+   :default-gallon-choice
+   (or (:default-gallon-choice trans) (:default-gallon-choice base))
+   
+   :gas-price
+   (into {}
+         (for [[k v] (:gas-price base)
+               :let [diff-percent (or (get (:gas-price-diff-percent trans) k) 0)
+                     diff-fixed (or (get (:gas-price-diff-fixed trans) k) 0)]]
+           [k (Math/round (+ (double v)
+                             (* v (/ diff-percent 100))
+                             diff-fixed))]))
+   
+   :time-choices
+   (or (:time-choices trans) (:time-choices base))
+   
+   :default-time-choice
+   (or (:default-time-choice trans) (:default-time-choice base))
+   
+   :delivery-fee
+   (into {}
+         (for [[k v] (:delivery-fee base)
+               :let [diff-percent (or (get (:delivery-fee-diff-percent trans) k) 0)
+                     diff-fixed (or (get (:delivery-fee-diff-fixed trans) k) 0)]]
+           [k (Math/round (+ (double v)
+                             (* v (/ diff-percent 100))
+                             diff-fixed))]))
+   
+   :tire-pressure-price
+   (or (:tire-pressure-price trans) (:tire-pressure-price base))
+
+   :hours
+   (or (:hours trans) (:hours base))
+   
+   :closed-message
+   (or (:closed-message trans) (:closed-message base))
+
+   :manually-closed?
+   (or (:manually-closed? base) (:manually-closed? trans))})
 
 (defn get-zip-def
   [zip-code]
@@ -187,7 +224,7 @@
 
 (do (println "-------========-------")
     (clojure.pprint/pprint
-     (get-zip-def "90025"))
+     (get-zip-def "90024"))
     (println "-------========-------"))
 
 (defn is-open-now?
@@ -197,17 +234,15 @@
          (some #(<= (first %) now-minute (second %))
                (:hours zip-def)))))
 
-(is-open-now? (get-zip-def "90025"))
-
 (defn availabilities-map
   [zip-code user subscription]
   (if-let [zip-def (get-zip-def zip-code)] ; do we service this ZIP code at all?
     (let [good-time? (is-open-now? zip-def)
+          [open-minute close-minute] [0 99999]
           enough-couriers-delay (delay (enough-couriers? zip-code subscription))]
       {:availabilities (map (partial available
                                      user
-                                     good-time?
-                                     zip-code
+                                     zip-def
                                      subscription
                                      enough-couriers-delay)
                             ["87" "91"])
@@ -341,10 +376,10 @@
            ;; merge in :availabilities & :unavailable-reason
            (availabilities-map zip-code user subscription))))
 
-(do (println "-------========-------")
-    (clojure.pprint/pprint
-     (:availabilities (availability (common.db/conn) "90025" "9kaU0GW1aJ4wF94tLGVc")))
-    (println "-------========-------"))
+;; (do (println "-------========-------")
+;;     (clojure.pprint/pprint
+;;      (:availabilities (availability (common.db/conn) "90025" "9kaU0GW1aJ4wF94tLGVc")))
+;;     (println "-------========-------"))
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
