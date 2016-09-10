@@ -61,6 +61,7 @@
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
              60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :default_time_choice :2
             :tire_pressure_check_price 700,
             :gallons 15}
            {:octane "91",
@@ -71,6 +72,7 @@
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
              60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :default_time_choice :2
             :tire_pressure_check_price 700,
             :gallons 15}])
          "Availability map differed from expected 90210.")
@@ -84,6 +86,7 @@
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
              60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :default_time_choice :2
             :tire_pressure_check_price 700,
             :gallons 15}
            {:octane "91",
@@ -94,6 +97,7 @@
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
              60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+            :default_time_choice :2
             :tire_pressure_check_price 700,
             :gallons 15}])
          "Availability map differed from expected 90025.")
@@ -180,6 +184,7 @@
              {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
               180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
               60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+             :default_time_choice :2
              :tire_pressure_check_price 700,
              :gallons 15}
             {:octane "91",
@@ -190,6 +195,7 @@
              {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
               180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
               60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
+             :default_time_choice :2
              :tire_pressure_check_price 700,
              :gallons 15}],
            :unavailable-reason ""})
@@ -208,27 +214,87 @@
   []
   (mock-time
    1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
-   (is (dispatch/is-open-now? {:hours [[450 1350]]
+   (is (dispatch/is-open-now? {:hours [[[450 1350]]
+                                       [[450 1350]]
+                                       [[450 1350]]
+                                       [[450 1350]]
+                                       [[450 1350]]
+                                       [[450 1350]]
+                                       [[450 1350]]]
                                :manually-closed? false})
        "Within first and only hours bracket 1472682311.")
-   (is (dispatch/is-open-now? {:hours [[200 410]
-                                       [900 1000]]
+   (is (dispatch/is-open-now? {:hours [[[200 410]
+                                        [900 1000]]
+                                       [[200 410]
+                                        [900 1000]]
+                                       [[200 410]
+                                        [900 1000]]
+                                       [[200 410]
+                                        [900 1000]]
+                                       [[200 410]
+                                        [900 1000]]
+                                       [[200 410]
+                                        [900 1000]]
+                                       [[200 410]
+                                        [900 1000]]]
                                :manually-closed? false})
        "Within second time bracket 1472682311.")
-   (isnt (dispatch/is-open-now? {:hours [[200 410]
-                                         [0 5]
-                                         [999 1000]
-                                         [1240 1380]]
+   (isnt (dispatch/is-open-now? {:hours [[[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]
+                                         [[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]
+                                         [[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]
+                                         [[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]
+                                         [[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]
+                                         [[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]
+                                         [[200 410]
+                                          [0 5]
+                                          [999 1000]
+                                          [1240 1380]]]
                                  :manually-closed? false})
          "Not within any of the many time brackets 1472682311.")
-   (isnt (dispatch/is-open-now? {:hours [[450 1350]]
+   (isnt (dispatch/is-open-now? {:hours [[[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]]
                                  :manually-closed? true})
          "Within hours bracket but manually closed 1472682311."))
   (mock-time
    1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
-   (isnt (dispatch/is-open-now? {:hours [[450 1350]]
+   (isnt (dispatch/is-open-now? {:hours [[[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]
+                                         [[450 1350]]]
                                  :manually-closed? false})
          "Not within any hours bracket 1472712952.")
-   (isnt (dispatch/is-open-now? {:hours [[0 1440]]
+   (isnt (dispatch/is-open-now? {:hours [[[0 1440]]
+                                         [[0 1440]]
+                                         [[0 1440]]
+                                         [[0 1440]]
+                                         [[0 1440]]
+                                         [[0 1440]]
+                                         [[0 1440]]]
                                  :manually-closed? true})
          "Within hours bracket but manually closed 1472712952.")))

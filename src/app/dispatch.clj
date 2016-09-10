@@ -5,7 +5,8 @@
                                  get-event-time in? minute-of-day->hmma
                                  now-unix only-prod only-prod-or-dev
                                  segment-client send-sms split-on-comma
-                                 unix->minute-of-day log-error catch-notify]]
+                                 unix->minute-of-day log-error catch-notify
+                                 unix->day-of-week]]
             [common.orders :as orders]
             [common.users :as users]
             [common.zones :refer [get-fuel-prices get-service-fees
@@ -118,9 +119,15 @@
                          (and good-time?
                               @enough-couriers-delay)))
                (into {}))
-   :tire_pressure_check_price config/tire-pressure-check-price
+   ;; default_time_choice not implemented in app yet
+   :default_time_choice (:default-gallon-choice zip-def)
+   :tire_pressure_check_price (:tire-pressure-price zip-def)
    ;; for legacy app versions (< 1.2.2)
    :gallons 15})
+
+(defn hours-today
+  [hours]
+  (nth hours (dec (unix->day-of-week (now-unix)))))
 
 (defn get-market-def-by-zip
   [zip-code]
@@ -129,20 +136,28 @@
                                    :1 10
                                    :2 15}
                   :default-gallon-choice :2
-                  :gas-price {"87" 320
-                              "91" 339}
+                  :gas-price {"87" 305
+                              "91" 329}
                   :time-choices {:0 60
                                  :1 180
                                  :2 300}
                   :default-time-choice :1
                   :delivery-fee {60 599
                                  180 399
-                                 300 349}
+                                 300 299}
                   :tire-pressure-price 700
-                  :hours [[450 1350]]
+                  :hours [[[450 1350]]
+                          [[450 1350]]
+                          [[450 1350]]
+                          [[450 1350]]
+                          [[450 1350]]
+                          [[450 1350]]
+                          [[450 1350]]]
                   :closed-message nil
                   :manually-closed? false
-                  :zips {"90024" {:gallon-choices {:0 7.5
+                  :zips {"90210" {:gas-price-diff-fixed {"87" 4}}
+                         "90025" {}
+                         "90024" {:gallon-choices {:0 7.5
                                                    :1 10
                                                    :2 15
                                                    :3 20}
@@ -156,9 +171,8 @@
                                   :delivery-fee-diff-fixed {60 25
                                                             180 25
                                                             300 0}
-                                  :manually-closed? false
-                                  :closed-message "Sorry, closed."}
-                         "90025" {:gas-price-diff-percent {"87" 0
+                                  :manually-closed? false}
+                         "90026" {:gas-price-diff-percent {"87" 0
                                                            "91" 0}
                                   :gas-price-diff-fixed {"87" 0
                                                          "91" 0}
@@ -168,54 +182,76 @@
                                   :delivery-fee-diff-fixed {60 0
                                                             180 0
                                                             300 0}
+                                  ;; closed on weekend
+                                  :hours [[[450 1350]]
+                                          [[450 1350]]
+                                          [[450 1350]]
+                                          [[450 1350]]
+                                          [[450 1350]]
+                                          []
+                                          []]
                                   :manually-closed? false
-                                  :closed-message "Sorry, this ZIP closed for no reason."}}}]]
+                                  :closed-message "Sorry, this ZIP closed for no reason."}
+                         "90023" {:manually-closed? true
+                                  :closed-message "On-demand service is not available at this location. If you would like to arrange for Scheduled Delivery, please contact: orders@purpleapp.com to coordinate your service."
+                                  }}}]]
     (first (filter #(contains? (:zips %) zip-code) markets))))
 
 (defn trans-def
   "Transform a definition. (e.g., market definition with ZIP specific rules)."
   [base trans]
-  {:gallon-choices
-   (or (:gallon-choices trans) (:gallon-choices base))
-   
-   :default-gallon-choice
-   (or (:default-gallon-choice trans) (:default-gallon-choice base))
-   
-   :gas-price
-   (into {}
-         (for [[k v] (:gas-price base)
-               :let [diff-percent (or (get (:gas-price-diff-percent trans) k) 0)
-                     diff-fixed (or (get (:gas-price-diff-fixed trans) k) 0)]]
-           [k (Math/round (+ (double v)
-                             (* v (/ diff-percent 100))
-                             diff-fixed))]))
-   
-   :time-choices
-   (or (:time-choices trans) (:time-choices base))
-   
-   :default-time-choice
-   (or (:default-time-choice trans) (:default-time-choice base))
-   
-   :delivery-fee
-   (into {}
-         (for [[k v] (:delivery-fee base)
-               :let [diff-percent (or (get (:delivery-fee-diff-percent trans) k) 0)
-                     diff-fixed (or (get (:delivery-fee-diff-fixed trans) k) 0)]]
-           [k (Math/round (+ (double v)
-                             (* v (/ diff-percent 100))
-                             diff-fixed))]))
-   
-   :tire-pressure-price
-   (or (:tire-pressure-price trans) (:tire-pressure-price base))
+  (let [hours (or (:hours trans) (:hours base))]
+    {:gallon-choices
+     (or (:gallon-choices trans) (:gallon-choices base))
+     
+     :default-gallon-choice
+     (or (:default-gallon-choice trans) (:default-gallon-choice base))
+     
+     :gas-price
+     (into {}
+           (for [[k v] (:gas-price base)
+                 :let [diff-percent (or (get (:gas-price-diff-percent trans) k) 0)
+                       diff-fixed (or (get (:gas-price-diff-fixed trans) k) 0)]]
+             [k (Math/round (+ (double v)
+                               (* v (/ diff-percent 100))
+                               diff-fixed))]))
+     
+     :time-choices
+     (or (:time-choices trans) (:time-choices base))
+     
+     :default-time-choice
+     (or (:default-time-choice trans) (:default-time-choice base))
+     
+     :delivery-fee
+     (into {}
+           (for [[k v] (:delivery-fee base)
+                 :let [diff-percent (or (get (:delivery-fee-diff-percent trans) k) 0)
+                       diff-fixed (or (get (:delivery-fee-diff-fixed trans) k) 0)]]
+             [k (Math/round (+ (double v)
+                               (* v (/ diff-percent 100))
+                               diff-fixed))]))
+     
+     :tire-pressure-price
+     (or (:tire-pressure-price trans) (:tire-pressure-price base))
 
-   :hours
-   (or (:hours trans) (:hours base))
-   
-   :closed-message
-   (or (:closed-message trans) (:closed-message base))
+     :hours hours
+     
+     :closed-message
+     (or (:closed-message trans)
+         (:closed-message base)
+         ;; TODO needs to handle empty hours better. maybe:
+         ;; "Sorry, this ZIP is closed on Saturday and Sunday."
+         (str "Sorry, today's service hours for this ZIP code are "
+              (->> (hours-today hours)
+                   (map #(str (minute-of-day->hmma (first %))
+                              " to "
+                              (minute-of-day->hmma (second %))))
+                   (interpose " and ")
+                   (apply str))
+              ". Thank you for your business."))
 
-   :manually-closed?
-   (or (:manually-closed? base) (:manually-closed? trans))})
+     :manually-closed?
+     (or (:manually-closed? base) (:manually-closed? trans))}))
 
 (defn get-zip-def
   [zip-code]
@@ -232,120 +268,46 @@
   (let [now-minute (unix->minute-of-day (now-unix))]
     (and (not (:manually-closed? zip-def))
          (some #(<= (first %) now-minute (second %))
-               (:hours zip-def)))))
+               (hours-today (:hours zip-def))))))
 
 (defn availabilities-map
   [zip-code user subscription]
   (if-let [zip-def (get-zip-def zip-code)] ; do we service this ZIP code at all?
-    (let [good-time? (is-open-now? zip-def)
-          [open-minute close-minute] [0 99999]
-          enough-couriers-delay (delay (enough-couriers? zip-code subscription))]
+    (let [enough-couriers-delay (delay (enough-couriers? zip-code subscription))]
       {:availabilities (map (partial available
                                      user
+                                     (is-open-now? zip-def)
                                      zip-def
                                      subscription
                                      enough-couriers-delay)
                             ["87" "91"])
-       ;; iff unavailable (client determines from :availabilities)
+       ;; if unavailable (mobile app client will determine from :availabilities)
        :unavailable-reason
-       (cond (= 5 open-minute close-minute) ;; special case for closing zone
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "manual-closure-no-couriers"}))
-                 (str "We are busy. There are no couriers available. Please "
-                      "try again later."))
+       (cond
+         (not (is-open-now? zip-def))
+         (do (only-prod-or-dev
+              (segment/track segment-client (:id user) "Availability Check Said Unavailable"
+                             {:address_zip zip-code
+                              :reason "outside-service-hours-or-closed"}))
+             (:closed-message zip-def))
 
-             (= 6 open-minute close-minute)
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "manual-closure-holiday"}))
-                 (str "We are closed for the holiday. We will be back soon. "
-                      "Please enjoy your holiday!"))
+         (not @enough-couriers-delay)
+         (do (only-prod-or-dev
+              (segment/track segment-client (:id user) "Availability Check Said Unavailable"
+                             {:address_zip zip-code
+                              :reason "no-couriers-available"}))
+             (str "We are busy. There are no couriers available. Please "
+                  "try again later."))
 
-             (= 7 open-minute close-minute)
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "manual-closure-inclement-weather"}))
-                 (str "We want everyone to stay safe and are closed due to "
-                      "inclement weather. We will be back shortly!"))
-
-             ;; This one should only be used for the weekend.
-             (= 8 open-minute close-minute)
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "manual-closure-custom"}))
-                 (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-                   (cond
-                     (= 1 (quot zone-id 50)) ;; san diego
-                     (str "Sorry, the service hours for this ZIP code are "
-                          "7:30am to 8:30pm, Monday to Friday. Thank you "
-                          "for your business.")
-                     
-                     (= 2 (quot zone-id 50)) ;; oc
-                     (str "Sorry, the service hours for this ZIP code are "
-                          "9am to 3:30pm, Monday to Friday. Thank you "
-                          "for your business.")
-
-                     (= 3 (quot zone-id 50)) ;; seattle
-                     (str "Sorry, the service hours for this ZIP code are "
-                          "3pm to 8:30pm, Monday to Friday. Thank you "
-                          "for your business.")
-
-                     :else
-                     (str "Sorry, this ZIP code is currently closed."))))
-
-             (= 9 open-minute close-minute)
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "manual-closure-scheduled-only"}))
-                 (str "On-demand service is not available at this location. "
-                      "If you would like to arrange for Scheduled Delivery, "
-                      "please contact: orders@purpleapp.com to coordinate "
-                      "your service."))
-
-             (not good-time?)
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "outside-service-hours"}))
-                 (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-                   (cond
-                     (in? [1 2 3] (quot zone-id 50))
-                     (str "Sorry, the service hours for this ZIP code are "
-                          (minute-of-day->hmma open-minute)
-                          " to "
-                          (minute-of-day->hmma close-minute)
-                          ", Monday to Friday. Thank you for your business.")
-
-                     :else
-                     (str "Sorry, the service hours for this ZIP code are "
-                          (minute-of-day->hmma open-minute)
-                          " to "
-                          (minute-of-day->hmma close-minute)
-                          " every day."))))
-
-             (not @enough-couriers-delay)
-             (do (only-prod-or-dev
-                  (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                                 {:address_zip (five-digit-zip-code zip-code)
-                                  :reason "no-couriers-available"}))
-                 (str "We are busy. There are no couriers available. Please "
-                      "try again later."))
-
-             ;; it's available, no unavailable-reason needed
-             :else "")})
+         ;; it's available, no unavailable-reason needed
+         :else "")})
     ;; we don't service this ZIP code
     {:availabilities [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
                       {:octane "91" :gallons 15 :times {} :price_per_gallon 0}]
      :unavailable-reason
      (do (only-prod-or-dev
           (segment/track segment-client (:id user) "Availability Check Said Unavailable"
-                         {:address_zip (five-digit-zip-code zip-code)
+                         {:address_zip zip-code
                           :reason "outside-service-area"}))
          (str "Sorry, we are unable to deliver gas to your "
               "location. We are rapidly expanding our service "
@@ -354,7 +316,7 @@
 
 (defn availability
   "Get an availability map to tell client what orders it can offer to user."
-  [db-conn zip-code user-id]
+  [db-conn zip-code-any-length user-id]
   (let [user (users/get-user-by-id db-conn user-id)
         subscription (when (subscriptions/valid-subscription? user)
                        (subscriptions/get-with-usage db-conn user))
@@ -366,10 +328,11 @@
          :referral_referrer_gallons config/referral-referrer-gallons
          :subscriptions
          (into {} (map (juxt :id identity)
-                       (!select db-conn "subscriptions" ["*"] {})))}]
+                       (!select db-conn "subscriptions" ["*"] {})))}
+        zip-code (five-digit-zip-code zip-code-any-length)]
     (only-prod-or-dev
      (segment/track segment-client user-id "Availability Check"
-                    {:address_zip (five-digit-zip-code zip-code)}))
+                    {:address_zip zip-code}))
     (merge {:success true
             :user user-info
             :system system-info}
