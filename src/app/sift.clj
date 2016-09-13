@@ -60,10 +60,8 @@
                              :$name (:name user)
                              :$phone (:phone_number user)}
          :time_limit (:time-limit order)
-         :gas_price (* (:gas_price order) 10000)
-         :service_fee (* (:service_fee order) 10000)
-         :zone_id (try (order->zone-id order)
-                       (catch Exception e nil))))
+         :gas_price (* (:gas_price ornder) 10000)
+         :service_fee (* (:service_fee order) 10000)))
 
 (defn charge-authorization
   [order user {:keys [event-time ;; only needed for backfilling historical data

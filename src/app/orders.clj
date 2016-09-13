@@ -288,7 +288,7 @@
                  :referral_gallons_used (min (coerce-double (:gallons order))
                                              referral-gallons-available)
                  :coupon_code (format-coupon-code (or (:coupon_code order) ""))
-                 :subscription_id (if (subscriptions/valid-subscription? user)
+                 :subscription_id (if (subscriptions/valid? user)
                                     (:subscription_id user)
                                     0)
                  :tire_pressure_check (or (:tire_pressure_check order) false))]
