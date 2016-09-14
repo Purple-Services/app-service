@@ -9,7 +9,7 @@
                                  unix->day-of-week]]
             [common.orders :as orders]
             [common.users :as users]
-            [common.zoning :refer [get-zip-def is-open-now?]]
+            [common.zoning :refer [get-zip-def is-open-now? order->market-id]]
             [common.subscriptions :as subscriptions]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
@@ -67,7 +67,10 @@
                            ;; hide 3-hour option if using 1-hour sub
                            (or has-free-one-hour?)))
                  ;; (:time-choices zip-def) ; still show all three options always
-                 )
+                 ;; temporarily hardcoding this in
+                 {:0 60
+                  :1 180
+                  :2 300})
          (#(for [[k v] %
                  :let [[num-as-word time-str]
                        (case v
@@ -86,21 +89,19 @@
          (into {}))))
 
 (defn num-couriers-connected-in-market
-  "How many couriers are currently connected and on duty in the market that this
-  zone is in?"
-  [zone-id]
+  "How many couriers are currently connected and on duty in this market?"
+  [market-id]
   (->> (couriers/get-all-connected (conn))
-       (couriers/filter-by-market (quot zone-id 50))
+       (couriers/filter-by-market market-id)
        count))
 
 (defn enough-couriers?
   "Does the market that this ZIP is in have enough couriers to offer service?"
-  [zip-code subscription]
-  (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-    (or (in? [0 2 3] (quot zone-id 50)) ;; LA, OC, SEA are exempt from this constraint
-        (and (not (nil? (:id subscription))) ;; subscribers are exempt
-             (not= (:id subscription) 0))
-        (pos? (num-couriers-connected-in-market zone-id)))))
+  [zip-def subscription]
+  (or (in? [0 2 3] (:market-id zip-def)) ;; LA, OC, SEA are exempt from this
+      (and (not (nil? (:id subscription))) ;; subscribers are exempt
+           (not= (:id subscription) 0))
+      (pos? (num-couriers-connected-in-market (:market-id zip-def)))))
 
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
@@ -131,7 +132,7 @@
 (defn availabilities-map
   [zip-code user subscription]
   (if-let [zip-def (get-zip-def zip-code)] ; do we service this ZIP code at all?
-    (let [enough-couriers-delay (delay (enough-couriers? zip-code subscription))]
+    (let [enough-couriers-delay (delay (enough-couriers? zip-def subscription))]
       {:availabilities (map (partial available
                                      user
                                      (is-open-now? zip-def)
@@ -195,10 +196,10 @@
            ;; this will give us :availabilities & :unavailable-reason
            (availabilities-map zip-code user subscription))))
 
-;; (do (println "-------========-------")
-;;     (clojure.pprint/pprint
-;;      (:availabilities (availability (common.db/conn) "90025" "9kaU0GW1aJ4wF94tLGVc")))
-;;     (println "-------========-------"))
+(do (println "-------========-------")
+    (clojure.pprint/pprint
+     (:availabilities (availability (common.db/conn) "90025" "9kaU0GW1aJ4wF94tLGVc")))
+    (println "-------========-------"))
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
@@ -253,11 +254,14 @@
                                             (->> (remove s/blank?)
                                                  (apply hash-map)
                                                  (fmap read-string)))
-                                        :zone (order->zone-id %)))
+                                        ;; TODO should be renamed market
+                                        :zone (order->market-id %)
+                                        ))
                            (map (juxt :id stringify-keys))
                            (into {}))
              "couriers" (->> cs
-                             (map #(assoc % :zones (apply list (:zones %))))
+                             ;; TODO should be renamed market
+                             (map #(assoc % :zones (apply list (:markets %))))
                              (map (juxt :id stringify-keys))
                              (into {}))})))))
 
@@ -273,7 +277,7 @@
   [os cs]
   {:current-orders (map #(select-keys % [:id :status :courier_id]) os)
    :on-duty-couriers (map #(select-keys % [:id :active :on_duty :connected
-                                           :busy :zones]) cs)})
+                                           :busy :markets]) cs)})
 
 (defn diff-state?
   "Has state changed significantly to trigger an auto-assign call?"
@@ -292,7 +296,7 @@
                            (map #(select-keys % [:id :status :courier_id]) os)
                            :on-duty-couriers
                            (map #(select-keys % [:id :active :on_duty
-                                                 :connected :busy :zones
+                                                 :connected :busy :markets
                                                  :gallons_87 :gallons_91
                                                  :lat :lng :last_ping]) cs)})})
      (when (diff-state? os cs)

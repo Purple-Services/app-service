@@ -4,10 +4,6 @@
             [common.db :refer [!select conn !update !insert
                                set-pooled-db!]]
             [common.couriers :refer [get-by-courier]]
-            [common.orders :refer [cancel]]
-            [common.zones :refer [get-service-fees get-zones
-                                  get-zone-by-zip-code
-                                  order->zone-id]]
             [app.orders :as orders]
             [app.users :as users]
             [app.dispatch :as dispatch]
