@@ -17,9 +17,7 @@
                                     mark-code-as-used
                                     mark-gallons-as-used]]
             [common.subscriptions :as subscriptions]
-            [common.zones :refer [get-fuel-prices get-service-fees
-                                  get-service-time-bracket
-                                  get-one-hour-orders-allowed order->zone-id]]
+            [common.zoning :refer [get-zip-def order->market-id]]
             [app.coupons :as coupons]
             [app.couriers :as couriers]
             [app.sift :as sift]
@@ -84,8 +82,7 @@
 
 (defn orders-in-same-market
   [o os]
-  (let [order->market-id #(quot (order->zone-id %) 50)
-        market-id-of-o (order->market-id o)]
+  (let [market-id-of-o (order->market-id o)]
     (filter (comp (partial = market-id-of-o) order->market-id) os)))
 
 (defn gen-charge-description
@@ -141,47 +138,44 @@
    referral-gallons-used ;; Double
    zip-code              ;; String
    & {:keys [bypass-zip-code-check]}]
-  (max 0
-       (int (Math/ceil
-             (+ (* (;; price per gallon
-                    (keyword octane) (get-fuel-prices zip-code))
-                   ;; number of gallons they need to pay for
-                   (- gallons
-                      (min gallons referral-gallons-used)))
-                ;; add service fee (w/ consideration of subscription)
-                (let [sub (subscriptions/get-with-usage db-conn user)
-                      service-fee ((keyword (str time))
-                                   (get-service-fees zip-code))]
-                  (if sub
-                    (let [[num-free num-free-used sub-discount]
-                          (case time
-                            60  [(:num_free_one_hour sub)
-                                 (:num_free_one_hour_used sub)
-                                 (:discount_one_hour sub)]
-                            180 [(:num_free_three_hour sub)
-                                 (:num_free_three_hour_used sub)
-                                 (:discount_three_hour sub)]
-                            300 [(:num_free_five_hour sub)
-                                 (:num_free_five_hour_used sub)
-                                 (:discount_five_hour sub)])]
-                      (if (pos? (- num-free num-free-used))
-                        0
-                        (max 0 (+ service-fee sub-discount))))
-                    service-fee))
-                ;; add cost of tire pressure check if applicable
-                (if tire-pressure-check
-                  config/tire-pressure-check-price
-                  0)
-                ;; apply value of coupon code 
-                (if-not (s/blank? coupon-code)
-                  (:value (coupons/code->value
-                           db-conn
-                           coupon-code
-                           vehicle-id
-                           (:id user)
-                           zip-code
-                           :bypass-zip-code-check bypass-zip-code-check))
-                  0))))))
+  ((comp (partial max 0) int Math/ceil)
+   (+ (* (get (:gas-price (get-zip-def zip-code)) octane) ; cents/gallon
+         ;; number of gallons they need to pay for
+         (- gallons (min gallons referral-gallons-used)))
+      ;; add service fee (w/ consideration of subscription)
+      (let [sub (subscriptions/get-with-usage db-conn user)
+            service-fee ((keyword (str time))
+                         (get-service-fees zip-code))]
+        (if sub
+          (let [[num-free num-free-used sub-discount]
+                (case time
+                  60  [(:num_free_one_hour sub)
+                       (:num_free_one_hour_used sub)
+                       (:discount_one_hour sub)]
+                  180 [(:num_free_three_hour sub)
+                       (:num_free_three_hour_used sub)
+                       (:discount_three_hour sub)]
+                  300 [(:num_free_five_hour sub)
+                       (:num_free_five_hour_used sub)
+                       (:discount_five_hour sub)])]
+            (if (pos? (- num-free num-free-used))
+              0
+              (max 0 (+ service-fee sub-discount))))
+          service-fee))
+      ;; add cost of tire pressure check if applicable
+      (if tire-pressure-check
+        config/tire-pressure-check-price
+        0)
+      ;; apply value of coupon code 
+      (if-not (s/blank? coupon-code)
+        (:value (coupons/code->value
+                 db-conn
+                 coupon-code
+                 vehicle-id
+                 (:id user)
+                 zip-code
+                 :bypass-zip-code-check bypass-zip-code-check))
+        0))))
 
 (defn valid-price?
   "Is the stated 'total_price' accurate?"
@@ -209,18 +203,17 @@
     (and (>= (unix->minute-of-day (:target_time_start o))
              (get-one-hour-orders-allowed
               (:address_zip o)))
-         (let [zone-id (order->zone-id o)]
-           ;; Less one-hour orders in this zone (unassigned or current)
-           ;; than connected couriers who are assigned to this zone?
-           (< (->> (get-all-pre-servicing db-conn)
-                   (orders-in-same-market o)
-                   (filter #(= (* 60 60) ;; only one-hour orders
-                               (- (:target_time_end %)
-                                  (:target_time_start %))))
-                   count)
-              (->> (couriers/get-all-connected db-conn)
-                   (couriers/filter-by-market (quot zone-id 50))
-                   count))))
+         ;; Less one-hour orders in this market (unassigned or current)
+         ;; than connected couriers who are assigned to this zone?
+         (< (->> (get-all-pre-servicing db-conn)
+                 (orders-in-same-market o)
+                 (filter #(= (* 60 60) ;; only one-hour orders
+                             (- (:target_time_end %)
+                                (:target_time_start %))))
+                 count)
+            (->> (couriers/get-all-connected db-conn)
+                 (couriers/filter-by-market (order->market-id o))
+                 count)))
     true)) ;; 3-hour or greater is always available
 
 (defn within-time-bracket?

@@ -1,6 +1,6 @@
 (ns app.couriers
   (:require [common.config :as config]
-            [common.couriers :refer [process-courier get-couriers]]
+            [common.couriers :refer [get-couriers parse-courier-markets]]
             [common.db :refer [!select !insert !update mysql-escape-str]]
             [common.util :refer [in? ver< now-unix]]
             [opt.gas-station-recommendation :as gas-rec]
@@ -30,7 +30,7 @@
 (defn get-all-expired
   "All the 'connected' couriers that haven't pinged recently."
   [db-conn]
-  (map process-courier
+  (map parse-courier-markets
        (!select db-conn "couriers" ["*"] {}
                 :custom-where
                 (str "active = 1 AND connected = 1 AND ("
@@ -38,17 +38,10 @@
                      " - last_ping) > "
                      config/max-courier-abandon-time))))
 
-(defn filter-by-zone
-  "Only couriers that work in this zone."
-  [zone-id couriers]
-  (filter #(in? (:zones %) zone-id) couriers))
-
 (defn filter-by-market
   "Only couriers that work in this market."
   [market-id couriers]
-  (let [zone-id->market-id #(quot % 50)
-        zones->markets (partial map zone-id->market-id)]
-    (filter #(in? (zones->markets (:zones %)) market-id) couriers)))
+  (filter #(in? (:markets %) market-id) couriers))
 
 (defn on-duty?
   "Is this courier on duty?"
