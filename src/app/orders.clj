@@ -228,17 +228,6 @@
         order-time
         time-end)))
 
-(defn infer-gas-type-by-price
-  "This is only for backwards compatiblity."
-  [gas-price zip-code]
-  (let [fuel-prices (get-fuel-prices zip-code)]
-    (if (= gas-price ((keyword "87") fuel-prices))
-      "87"
-      (if (= gas-price ((keyword "91") fuel-prices))
-        "91"
-        "87" ;; if we can't find it then assume 87
-        ))))
-
 (defn new-order-text
   [db-conn o charge-authorized?]
   (str "New order:"
@@ -271,8 +260,7 @@
                  :gallons (coerce-double (:gallons order))
                  :gas_type (if (:gas_type order)
                              (:gas_type order)
-                             (infer-gas-type-by-price (:gas_price order)
-                                                      (:address_zip order)))
+                             (throw (Exception. "Outdated app version.")))
                  :is_top_tier (:only_top_tier vehicle)
                  :lat (coerce-double (:lat order))
                  :lng (coerce-double (:lng order))
