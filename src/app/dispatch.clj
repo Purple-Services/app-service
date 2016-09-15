@@ -98,10 +98,12 @@
 (defn enough-couriers?
   "Does the market that this ZIP is in have enough couriers to offer service?"
   [zip-def subscription]
-  (or (in? [0 2 3] (:market-id zip-def)) ;; LA, OC, SEA are exempt from this
-      (and (not (nil? (:id subscription))) ;; subscribers are exempt
-           (not= (:id subscription) 0))
-      (pos? (num-couriers-connected-in-market (:market-id zip-def)))))
+  true)
+;; This function is being bypassed for now because it's not really helpful
+;; (or (in? [0 2 3] (:market-id zip-def)) ;; LA, OC, SEA are exempt from this
+;;     (and (not (nil? (:id subscription))) ;; subscribers are exempt
+;;          (not= (:id subscription) 0))
+;;     (pos? (num-couriers-connected-in-market (:market-id zip-def))))
 
 ;; TODO this function should consider if a zone is actually "active"
 (defn available
@@ -196,10 +198,10 @@
            ;; this will give us :availabilities & :unavailable-reason
            (availabilities-map zip-code user subscription))))
 
-(do (println "-------========-------")
-    (clojure.pprint/pprint
-     (:availabilities (availability (common.db/conn) "90025" "9kaU0GW1aJ4wF94tLGVc")))
-    (println "-------========-------"))
+;; (do (println "-------========-------")
+;;     (clojure.pprint/pprint
+;;      (:availabilities (availability (common.db/conn) "90210" "9kaU0GW1aJ4wF94tLGVc")))
+;;     (println "-------========-------"))
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
