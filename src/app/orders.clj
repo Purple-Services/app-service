@@ -17,7 +17,7 @@
                                     mark-code-as-used
                                     mark-gallons-as-used]]
             [common.subscriptions :as subscriptions]
-            [common.zoning :refer [get-zip-def order->market-id]]
+            [common.zoning :refer [get-zip-def order->market-id is-open?]]
             [app.coupons :as coupons]
             [app.couriers :as couriers]
             [app.sift :as sift]
@@ -129,6 +129,7 @@
   "Calculate cost of order based on current prices. Returns cost in cents."
   [db-conn               ;; Database Connection
    user                  ;; 'user' map
+   zip-def
    octane                ;; String
    gallons               ;; Double
    time                  ;; Integer, minutes
@@ -138,14 +139,13 @@
    referral-gallons-used ;; Double
    zip-code              ;; String
    & {:keys [bypass-zip-code-check]}]
-  ((comp (partial max 0) int Math/ceil)
-   (+ (* (get (:gas-price (get-zip-def zip-code)) octane) ; cents/gallon
+  ((comp (partial max 0) int #(Math/ceil %))
+   (+ (* (get (:gas-price zip-def) octane) ; cents/gallon
          ;; number of gallons they need to pay for
          (- gallons (min gallons referral-gallons-used)))
-      ;; add service fee (w/ consideration of subscription)
+      ;; add delivery fee (w/ consideration of subscription)
       (let [sub (subscriptions/get-with-usage db-conn user)
-            service-fee ((keyword (str time))
-                         (get-service-fees zip-code))]
+            delivery-fee (get (:delivery-fee zip-def) time)]
         (if sub
           (let [[num-free num-free-used sub-discount]
                 (case time
@@ -160,8 +160,8 @@
                        (:discount_five_hour sub)])]
             (if (pos? (- num-free num-free-used))
               0
-              (max 0 (+ service-fee sub-discount))))
-          service-fee))
+              (max 0 (+ delivery-fee sub-discount))))
+          delivery-fee))
       ;; add cost of tire pressure check if applicable
       (if tire-pressure-check
         config/tire-pressure-check-price
@@ -179,10 +179,11 @@
 
 (defn valid-price?
   "Is the stated 'total_price' accurate?"
-  [db-conn user o & {:keys [bypass-zip-code-check]}]
+  [db-conn user zip-def o & {:keys [bypass-zip-code-check]}]
   (= (:total_price o)
      (calculate-cost db-conn
                      user
+                     zip-def
                      (:gas_type o)
                      (:gallons o)
                      (:time-limit o)
@@ -193,40 +194,27 @@
                      (:address_zip o)
                      :bypass-zip-code-check bypass-zip-code-check)))
 
+;; sugg rename: valid-time-option?
 (defn valid-time-limit?
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
-  [db-conn o]
+  ;; note: passing in zip-def because we will likely need it in future todo
+  [db-conn zip-def o]
   (if (and (< (:time-limit o) 180)
            (not= (:subscription_id o) 2)) ;; special case for premium members
-    ;; if less than 3 hours time limit, check if it is allowed according to:
-    ;; time of day & number of available couriers
-    (and (>= (unix->minute-of-day (:target_time_start o))
-             (get-one-hour-orders-allowed
-              (:address_zip o)))
-         ;; Less one-hour orders in this market (unassigned or current)
-         ;; than connected couriers who are assigned to this zone?
-         (< (->> (get-all-pre-servicing db-conn)
-                 (orders-in-same-market o)
-                 (filter #(= (* 60 60) ;; only one-hour orders
-                             (- (:target_time_end %)
-                                (:target_time_start %))))
-                 count)
-            (->> (couriers/get-all-connected db-conn)
-                 (couriers/filter-by-market (order->market-id o))
-                 count)))
+    ;; if less than 3 hours time limit, check if it is allowed according to
+    ;; the number of available couriers:
+    ;; Less one-hour orders in this market (unassigned or current)
+    ;; than connected couriers who are assigned to this zone?
+    (< (->> (get-all-pre-servicing db-conn)
+            (orders-in-same-market o)
+            (filter #(= (* 60 60) ;; only one-hour orders
+                        (- (:target_time_end %)
+                           (:target_time_start %))))
+            count)
+       (->> (couriers/get-all-connected db-conn)
+            (couriers/filter-by-market (order->market-id o))
+            count))
     true)) ;; 3-hour or greater is always available
-
-(defn within-time-bracket?
-  "Is the order being placed within the time bracket?"
-  [order]
-  (let [order-time (unix->minute-of-day (:target_time_start order))
-        time-bracket (get-service-time-bracket
-                      (:address_zip order))
-        time-start (first time-bracket)
-        time-end   (+ (last time-bracket) 10)]
-    (<= time-start
-        order-time
-        time-end)))
 
 (defn new-order-text
   [db-conn o charge-authorized?]
@@ -247,6 +235,7 @@
         user (get-user-by-id db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         curr-time-secs (quot (System/currentTimeMillis) 1000)
+        zip-def (get-zip-def (:address_zip order))
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -275,7 +264,7 @@
                  :tire_pressure_check (or (:tire_pressure_check order) false))]
 
     (cond
-      (not (valid-price? db-conn user o :bypass-zip-code-check bypass-zip-code-check))
+      (not (valid-price? db-conn user zip-def o :bypass-zip-code-check bypass-zip-code-check))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
                           (assoc (segment-props o)
@@ -286,7 +275,7 @@
                          "to the map and start over.")
            :message_title "Sorry"})
 
-      (not (valid-time-limit? db-conn o))
+      (not (valid-time-limit? db-conn zip-def o))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
                           (assoc (segment-props o)
@@ -297,20 +286,13 @@
                          "go back and choose the \"within 3 hours\" option.")
            :message_title "Sorry"})
 
-      (not (within-time-bracket? o))
+      (not (is-open? zip-def (:target_time_start o)))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
                           (assoc (segment-props o)
                                  :reason "outside-service-hours")))
           {:success false
-           :message (let [service-time-bracket
-                          (get-service-time-bracket
-                           (:address_zip o))]
-                      (str "Sorry, the service hours for this ZIP code are "
-                           (minute-of-day->hmma (first service-time-bracket))
-                           " to "
-                           (minute-of-day->hmma (last service-time-bracket))
-                           " today."))})
+           :message (:closed-message zip-def)})
       
       :else
       (let [auth-charge-result (if (or (zero? (:total_price o)) ; nothing to charge
