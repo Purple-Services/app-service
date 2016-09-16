@@ -295,3 +295,8 @@
                                          [[0 1440]]]
                                  :manually-closed? true})
          "Within hours bracket but manually closed 1472712952.")))
+
+(deftest groups-test
+  "Test if group transformations are correctly applied."
+  []
+  )
