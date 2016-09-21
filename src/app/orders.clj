@@ -17,7 +17,7 @@
                                     mark-code-as-used
                                     mark-gallons-as-used]]
             [common.subscriptions :as subscriptions]
-            [common.zoning :refer [get-zip-def order->market-id is-open?]]
+            [common.zones :refer [get-zip-def order->market-id is-open?]]
             [app.coupons :as coupons]
             [app.couriers :as couriers]
             [app.sift :as sift]

@@ -9,7 +9,7 @@
                                  unix->day-of-week]]
             [common.orders :as orders]
             [common.users :as users]
-            [common.zoning :refer [get-zip-def is-open-now? order->market-id]]
+            [common.zones :refer [get-zip-def is-open-now? order->zones]]
             [common.subscriptions :as subscriptions]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
@@ -88,6 +88,12 @@
                        :order (Integer. (name k)))]))
          (into {}))))
 
+
+;; this function isn't being used at the moment, but it has become broken
+;; because we don't currently have a distinction of 'market' amongst various
+;; zone definitions. you could look at the rank (= 100) or perhaps the zone id
+;; should be hardcoded in somewhere, hmmm... just something to think about if
+;; we need to resume use of this function
 (defn num-couriers-connected-in-market
   "How many couriers are currently connected and on duty in this market?"
   [market-id]
@@ -105,7 +111,6 @@
 ;;          (not= (:id subscription) 0))
 ;;     (pos? (num-couriers-connected-in-market (:market-id zip-def))))
 
-;; TODO this function should consider if a zone is actually "active"
 (defn available
   [user good-time? zip-def subscription enough-couriers-delay octane]
   {:octane octane
@@ -256,14 +261,13 @@
                                             (->> (remove s/blank?)
                                                  (apply hash-map)
                                                  (fmap read-string)))
-                                        ;; TODO should be renamed market
-                                        :zone (order->market-id %)
+                                        ;; TODO auto-assign needs to be updated to expect a list of zone ids for each order, and then is a courier is assigned to any zones that are in that list, then this order is assignable to that courier
+                                        :zone (order->zones %)
                                         ))
                            (map (juxt :id stringify-keys))
                            (into {}))
              "couriers" (->> cs
-                             ;; TODO should be renamed market
-                             (map #(assoc % :zones (apply list (:markets %))))
+                             (map #(assoc % :zones (apply list (:zones %))))
                              (map (juxt :id stringify-keys))
                              (into {}))})))))
 
