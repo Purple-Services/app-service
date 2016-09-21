@@ -38,10 +38,10 @@
                      " - last_ping) > "
                      config/max-courier-abandon-time))))
 
-(defn filter-by-market
-  "Only couriers that work in this market."
-  [market-id couriers]
-  (filter #(in? (:markets %) market-id) couriers))
+(defn filter-by-zone
+  "Only couriers that work in this zone."
+  [zone-id couriers]
+  (filter #(in? (:zones %) zone-id) couriers))
 
 (defn on-duty?
   "Is this courier on duty?"
