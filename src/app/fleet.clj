@@ -2,7 +2,7 @@
   (:require [common.config :as config]
             [common.db :refer [!select !insert !update mysql-escape-str]]
             [common.util :refer [rand-str-alpha-num coerce-double]]
-            [common.zoning :refer [get-zip-def]]
+            [common.zones :refer [get-zip-def]]
             [clojure.string :as s]))
 
 (defn get-account-by-id

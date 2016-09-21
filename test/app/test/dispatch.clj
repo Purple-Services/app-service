@@ -4,7 +4,7 @@
             [common.db :refer [!select conn !update !insert
                                set-pooled-db!]]
             [common.couriers :refer [get-by-courier]]
-            [common.zoning :as zoning]
+            [common.zones :as zoning]
             [app.orders :as orders]
             [app.users :as users]
             [app.dispatch :as dispatch]
@@ -211,7 +211,7 @@
   []
   (mock-time
    1472682311 ;; 8/31/2016, 3:25:11 PM Pacific
-   (is (zoning/is-open-now? {:hours [[[450 1350]]
+   (is (zones/is-open-now? {:hours [[[450 1350]]
                                        [[450 1350]]
                                        [[450 1350]]
                                        [[450 1350]]
@@ -220,7 +220,7 @@
                                        [[450 1350]]]
                                :manually-closed? false})
        "Within first and only hours bracket 1472682311.")
-   (is (zoning/is-open-now? {:hours [[[200 410]
+   (is (zones/is-open-now? {:hours [[[200 410]
                                         [900 1000]]
                                        [[200 410]
                                         [900 1000]]
@@ -236,7 +236,7 @@
                                         [900 1000]]]
                                :manually-closed? false})
        "Within second time bracket 1472682311.")
-   (isnt (zoning/is-open-now? {:hours [[[200 410]
+   (isnt (zones/is-open-now? {:hours [[[200 410]
                                           [0 5]
                                           [999 1000]
                                           [1240 1380]]
@@ -266,7 +266,7 @@
                                           [1240 1380]]]
                                  :manually-closed? false})
          "Not within any of the many time brackets 1472682311.")
-   (isnt (zoning/is-open-now? {:hours [[[450 1350]]
+   (isnt (zones/is-open-now? {:hours [[[450 1350]]
                                          [[450 1350]]
                                          [[450 1350]]
                                          [[450 1350]]
@@ -277,7 +277,7 @@
          "Within hours bracket but manually closed 1472682311."))
   (mock-time
    1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
-   (isnt (zoning/is-open-now? {:hours [[[450 1350]]
+   (isnt (zones/is-open-now? {:hours [[[450 1350]]
                                          [[450 1350]]
                                          [[450 1350]]
                                          [[450 1350]]
@@ -286,7 +286,7 @@
                                          [[450 1350]]]
                                  :manually-closed? false})
          "Not within any hours bracket 1472712952.")
-   (isnt (zoning/is-open-now? {:hours [[[0 1440]]
+   (isnt (zones/is-open-now? {:hours [[[0 1440]]
                                          [[0 1440]]
                                          [[0 1440]]
                                          [[0 1440]]
