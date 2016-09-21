@@ -17,7 +17,7 @@
                                     mark-code-as-used
                                     mark-gallons-as-used]]
             [common.subscriptions :as subscriptions]
-            [common.zones :refer [get-zip-def order->market-id is-open?]]
+            [common.zones :refer [get-zip-def is-open? order->zones]]
             [app.coupons :as coupons]
             [app.couriers :as couriers]
             [app.sift :as sift]
@@ -79,11 +79,6 @@
                         "'enroute',"
                         "'servicing'"
                         ") ORDER BY target_time_start DESC")))
-
-(defn orders-in-same-market
-  [o os]
-  (let [market-id-of-o (order->market-id o)]
-    (filter (comp (partial = market-id-of-o) order->market-id) os)))
 
 (defn gen-charge-description
   "Generate a description of the order (e.g., for including on a receipt)."
@@ -194,6 +189,10 @@
                      (:address_zip o)
                      :bypass-zip-code-check bypass-zip-code-check)))
 
+(defn orders-in-zone
+  [db-conn zone-id os]
+  (filter #(in? (order->zones db-conn %) zone-id) os))
+
 ;; sugg rename: valid-time-option?
 (defn valid-time-limit?
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
@@ -201,19 +200,20 @@
   [db-conn zip-def o]
   (if (and (< (:time-limit o) 180)
            (not= (:subscription_id o) 2)) ;; special case for premium members
-    ;; if less than 3 hours time limit, check if it is allowed according to
-    ;; the number of available couriers:
-    ;; Less one-hour orders in this market (unassigned or current)
-    ;; than connected couriers who are assigned to this zone?
-    (< (->> (get-all-pre-servicing db-conn)
-            (orders-in-same-market o)
-            (filter #(= (* 60 60) ;; only one-hour orders
-                        (- (:target_time_end %)
-                           (:target_time_start %))))
-            count)
-       (->> (couriers/get-all-connected db-conn)
-            (couriers/filter-by-market (order->market-id o))
-            count))
+    (if (:one-hour-constraining-zone-id zip-def)
+      ;; Are there less one-hour orders in this zone
+      ;; than connected couriers who are assigned to this zone?
+      (< (->> (get-all-pre-servicing db-conn)
+              (orders-in-zone db-conn (:one-hour-constraining-zone-id zip-def))
+              (filter #(= (* 60 60) ;; only one-hour orders
+                          (- (:target_time_end %)
+                             (:target_time_start %))))
+              count)
+         (->> (couriers/get-all-connected db-conn)
+              (couriers/filter-by-zone
+               (:one-hour-constraining-zone-id zip-def))
+              count))
+      true) ;; no limit to number of one-hours
     true)) ;; 3-hour or greater is always available
 
 (defn new-order-text

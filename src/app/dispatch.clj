@@ -24,8 +24,8 @@
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
-  [zip-code]
-  (if-let [zip-def (get-zip-def zip-code)] ; do we service this ZIP code at all?
+  [db-conn zip-code]
+  (if-let [zip-def (get-zip-def db-conn zip-code)] ; do we service this ZIP code at all?
     {:success true
      :gas_prices (:gas-price zip-def)}
     {:success false
@@ -94,12 +94,13 @@
 ;; zone definitions. you could look at the rank (= 100) or perhaps the zone id
 ;; should be hardcoded in somewhere, hmmm... just something to think about if
 ;; we need to resume use of this function
-(defn num-couriers-connected-in-market
-  "How many couriers are currently connected and on duty in this market?"
-  [market-id]
-  (->> (couriers/get-all-connected (conn))
-       (couriers/filter-by-market market-id)
-       count))
+;; hmm actually it should be something that is just defined in a zone definition
+;; (defn num-couriers-connected-in-market
+;;   "How many couriers are currently connected and on duty in this market?"
+;;   [market-id]
+;;   (->> (couriers/get-all-connected (conn))
+;;        (couriers/filter-by-market market-id)
+;;        count))
 
 (defn enough-couriers?
   "Does the market that this ZIP is in have enough couriers to offer service?"
@@ -137,8 +138,8 @@
    :gallons 15})
 
 (defn availabilities-map
-  [zip-code user subscription]
-  (if-let [zip-def (get-zip-def zip-code)] ; do we service this ZIP code at all?
+  [db-conn zip-code user subscription]
+  (if-let [zip-def (get-zip-def db-conn zip-code)] ; do we service this ZIP code at all?
     (let [enough-couriers-delay (delay (enough-couriers? zip-def subscription))]
       {:availabilities (map (partial available
                                      user
@@ -201,7 +202,7 @@
                      :referral_referrer_gallons config/referral-referrer-gallons
                      :subscriptions (subscriptions/get-all-mapped-by-id db-conn)}}
            ;; this will give us :availabilities & :unavailable-reason
-           (availabilities-map zip-code user subscription))))
+           (availabilities-map db-conn zip-code user subscription))))
 
 ;; (do (println "-------========-------")
 ;;     (clojure.pprint/pprint
