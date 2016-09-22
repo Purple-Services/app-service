@@ -1,7 +1,6 @@
 (ns app.sift
   (:require [common.config :as config]
             [common.util :refer [not-nil-vec]]
-            [common.zones :refer [order->zone-id]]
             [clj-http.client :as client]
             [clojure.string :as s]))
 
@@ -61,9 +60,7 @@
                              :$phone (:phone_number user)}
          :time_limit (:time-limit order)
          :gas_price (* (:gas_price order) 10000)
-         :service_fee (* (:service_fee order) 10000)
-         :zone_id (try (order->zone-id order)
-                       (catch Exception e nil))))
+         :service_fee (* (:service_fee order) 10000)))
 
 (defn charge-authorization
   [order user {:keys [event-time ;; only needed for backfilling historical data
