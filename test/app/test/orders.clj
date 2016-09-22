@@ -104,60 +104,23 @@
               :notify-customer false
               :suppress-user-details true))))
 
-#_(deftest get-connected-couriers-zone
+(deftest get-connected-couriers-zone
   (testing "Only the couriers within a zone that are not busy are selected"
-    (let [db-conn (conn)
-          zone-id 3
-          zone-zip (-> (filter #(= (:id %) zone-id) (get-zones db-conn))
-                       first
-                       :zip_codes
-                       first)
-          order     (assoc (test-order db-conn) :address_zip zone-zip)
-          courier-id @test-courier-id 
-          courier-id-2 @test-courier-id-2
-          ]
-      ;; set all couriers as connected, not busy and in zone 6
+    (let [db-conn      (conn)
+          courier-id   @test-courier-id 
+          courier-id-2 @test-courier-id-2]
+      ;; set all couriers as connected, not busy and assigned to Earth
       (!update db-conn
                "couriers"
                {:connected 1
                 :busy 0
                 :on_duty true
-                :zones "6"}
+                :zones "0"}
                {})
-      ;; only Test Courier1 is assigned to zone 3
-      (!update db-conn "couriers"
-               {:zones (str "6," zone-id)}
-               {:id courier-id})
       ;; test that there are two connected couriers
       (is (= 2 (count (couriers/get-all-connected db-conn))))
-      ;; test that only one courier is connected and assigned zone 6
-      (is (= 1
-             (count (->> (couriers/get-all-connected db-conn)
-                         (remove :busy)
-                         (filter
-                          #(contains?
-                            (:zones %)
-                            (order->zone-id order)))))))
-      ;; assign courier 2 to zone 3
-      (!update db-conn "couriers"
-               {:zones (str "6," zone-id)}
-               {:id courier-id-2})
-      ;; test that two couriers are connected and assigned zone 3
-      (is (= 2
-             (count (->> (couriers/get-all-connected db-conn)
-                         (remove :busy)
-                         (filter
-                          #(contains?
-                            (:zones %)
-                            (order->zone-id order)))))))
       ;; set courier 1 as busy
       (!update db-conn "couriers" {:busy 1} {:id courier-id})
-      ;; test that only one courier is connected, not busy and assigned zone 3
-      (is (= 1
-             (count (->> (couriers/get-all-connected db-conn)
-                         (remove :busy)
-                         (filter
-                          #(contains?
-                            (:zones %)
-                            (order->zone-id order)))))))
+      ;; test that only one courier is connected, not busy
+      (is (= 1 (count (->> (couriers/get-all-available db-conn)))))
       )))
