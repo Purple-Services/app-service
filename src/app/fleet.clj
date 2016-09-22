@@ -2,7 +2,7 @@
   (:require [common.config :as config]
             [common.db :refer [!select !insert !update mysql-escape-str]]
             [common.util :refer [rand-str-alpha-num coerce-double]]
-            [common.zones :refer [get-fuel-prices]]
+            [common.zones :refer [get-zip-def]]
             [clojure.string :as s]))
 
 (defn get-account-by-id
@@ -40,8 +40,8 @@
               ;; for reference, record gas price at this point in space-time
               :gas_price (-> (get-account-by-id db-conn account-id)
                              :address_zip
-                             get-fuel-prices
-                             (get (keyword gas-type)))})))
+                             get-zip-def
+                             (get gas-type))})))
 
 (defn add-deliveries
   [db-conn

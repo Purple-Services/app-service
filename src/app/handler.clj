@@ -258,8 +258,9 @@
               ;; Get current gas price
               (POST "/gas-prices" {body :body}
                     (response
-                     (let [b (keywordize-keys body)]
-                       (dispatch/get-gas-prices (:zip_code b)))))
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (dispatch/get-gas-prices db-conn (:zip_code b)))))
               ;; Check availability options for given params (location, etc.)
               (POST "/availability" {body :body}
                     (response
