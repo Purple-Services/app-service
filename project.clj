@@ -1,4 +1,4 @@
-(defproject app "1.6.3-SNAPSHOT"
+(defproject app "2.0.0-SNAPSHOT"
   :description "Purple mobile app web service."
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [compojure "1.1.8"]
@@ -28,7 +28,7 @@
                  [com.twilio.sdk/twilio-java-sdk "4.2.0"]
                  [analytics-clj "0.3.0"]
                  [org.clojure/algo.generic "0.1.2"]
-                 [common "1.1.3-SNAPSHOT"]
+                 [common "2.0.0-SNAPSHOT"]
                  [opt "1.0.5-SNAPSHOT"]]
   :pedantic? false
   :plugins [[lein-ring "0.8.13"]
