@@ -1,6 +1,6 @@
 (ns app.couriers
   (:require [common.config :as config]
-            [common.couriers :refer [get-couriers parse-courier-markets]]
+            [common.couriers :refer [get-couriers parse-courier-zones]]
             [common.db :refer [!select !insert !update mysql-escape-str]]
             [common.util :refer [in? ver< now-unix]]
             [opt.gas-station-recommendation :as gas-rec]
@@ -30,7 +30,7 @@
 (defn get-all-expired
   "All the 'connected' couriers that haven't pinged recently."
   [db-conn]
-  (map parse-courier-markets
+  (map parse-courier-zones
        (!select db-conn "couriers" ["*"] {}
                 :custom-where
                 (str "active = 1 AND connected = 1 AND ("
