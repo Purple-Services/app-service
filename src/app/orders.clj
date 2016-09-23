@@ -235,7 +235,7 @@
         user (get-user-by-id db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         curr-time-secs (quot (System/currentTimeMillis) 1000)
-        zip-def (get-zip-def (:address_zip order))
+        zip-def (get-zip-def db-conn (:address_zip order))
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
