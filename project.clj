@@ -17,7 +17,7 @@
                  [silasdavis/at-at "1.2.0"]
                  ;; date/time utilities
                  [clj-time "0.8.0"]
-                 ;; this will be used by clj-aws below instead of its
+                 ;; this will be used by clj-aws down below instead of its
                  ;; default aws version
                  [com.amazonaws/aws-java-sdk "1.9.24"] 
                  [clj-aws "0.0.1-SNAPSHOT"]
