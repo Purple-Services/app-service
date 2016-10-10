@@ -48,7 +48,13 @@
                     :injections
                     [(require 'pjstadig.humane-test-output)
                      (pjstadig.humane-test-output/activate!)]}
-                   :profiles/dev]}
+                   :profiles/dev]
+             :app-integration-test [:dev
+                                    {:db-host "localhost"
+                                     :db-name "ebdb_test"
+                                     :db-port "3306"
+                                     :db-user "root"
+                                     :db-password ""}]}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"
