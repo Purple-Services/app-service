@@ -17,3 +17,10 @@ before_install:
 script:
   - lein exec -p scripts/setupdb.clj root_password=
   - lein test
+notifications:
+  slack:
+    rooms:
+      - purpledelivery:LSIV4jgY6MoQMOWpAr6nnpo7#github
+    on_success: always
+    on_failure: always
+  email: false
