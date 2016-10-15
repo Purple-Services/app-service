@@ -249,7 +249,8 @@
 (defn new-assignments
   [os cs]
   (let [new-and-first #(and (:new_assignment %)
-                            (= 1 (:courier_pos %)))]
+                            (= 1 (:courier_pos %)))
+        db-conn (conn)]
     (filter
      (comp new-and-first val)
      (fmap (comp keywordize-keys (partial into {}))
@@ -262,9 +263,7 @@
                                             (->> (remove s/blank?)
                                                  (apply hash-map)
                                                  (fmap read-string)))
-                                        ;; TODO auto-assign needs to be updated to expect a list of zone ids for each order, and then is a courier is assigned to any zones that are in that list, then this order is assignable to that courier
-                                        :zone (order->zones %)
-                                        ))
+                                        :zones (order->zones db-conn %)))
                            (map (juxt :id stringify-keys))
                            (into {}))
              "couriers" (->> cs
@@ -284,7 +283,7 @@
   [os cs]
   {:current-orders (map #(select-keys % [:id :status :courier_id]) os)
    :on-duty-couriers (map #(select-keys % [:id :active :on_duty :connected
-                                           :busy :markets]) cs)})
+                                           :busy :zones]) cs)})
 
 (defn diff-state?
   "Has state changed significantly to trigger an auto-assign call?"
@@ -303,7 +302,7 @@
                            (map #(select-keys % [:id :status :courier_id]) os)
                            :on-duty-couriers
                            (map #(select-keys % [:id :active :on_duty
-                                                 :connected :busy :markets
+                                                 :connected :busy :zones
                                                  :gallons_87 :gallons_91
                                                  :lat :lng :last_ping]) cs)})})
      (when (diff-state? os cs)

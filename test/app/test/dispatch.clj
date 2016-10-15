@@ -49,11 +49,10 @@
             (:availabilities (dispatch/availability db-conn "85000" user-id)))
            "85000 should not be available at 1472682311.")
      (is (=
-          (:availabilities (dispatch/availability db-conn "90210" user-id))
           [{:octane "87",
             :gallon_choices {:0 7.5, :1 10, :2 15},
             :default_gallon_choice :2,
-            :price_per_gallon 309,
+            :price_per_gallon 299,
             :times
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
@@ -71,10 +70,10 @@
              60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
             :default_time_choice :2
             :tire_pressure_check_price 700,
-            :gallons 15}])
+            :gallons 15}]
+          (:availabilities (dispatch/availability db-conn "90210" user-id)))
          "Availability map differed from expected 90210.")
      (is (=
-          (:availabilities (dispatch/availability db-conn "90025" user-id))
           [{:octane "87",
             :gallon_choices {:0 7.5, :1 10, :2 15},
             :default_gallon_choice :2,
@@ -96,10 +95,10 @@
              60 {:service_fee 599, :text "within 1 hour ($5.99)", :order 0}},
             :default_time_choice :2
             :tire_pressure_check_price 700,
-            :gallons 15}])
+            :gallons 15}]
+          (:availabilities (dispatch/availability db-conn "90025" user-id)))
          "Availability map differed from expected 90025.")
      (is (=
-          (dispatch/availability db-conn "90210" user-id)
           {:success true,
            :user
            {:email "test@test.com",
@@ -195,7 +194,8 @@
              :default_time_choice :2
              :tire_pressure_check_price 700,
              :gallons 15}],
-           :unavailable-reason ""})
+           :unavailable-reason ""}
+          (dispatch/availability db-conn "90210" user-id))
          "Availability map with system and user data included differed from expected, 90210."))
     (mock-time
      1472712952 ;; 8/31/2016, 11:55:52 PM Pacific
