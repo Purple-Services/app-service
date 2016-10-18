@@ -193,31 +193,33 @@
   [db-conn zone-id os]
   (filter #(in? (order->zones db-conn %) zone-id) os))
 
-;; sugg rename: valid-time-option?
-(defn valid-time-limit?
+(defn valid-time-choice?
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
   [db-conn zip-def o]
-  (or (and (= 2 (:subscription_id o)) ; Premium members can bypass
-           (>= (:time-limit o) 60))
-      (and (= 1 (:subscription_id o)) ; Standard members can bypass
-           (>= (:time-limit o) 180))
-      (= 3 (:subscription_id o)) ; Unlimited members can bypass all
-      ;; Otherwise, is it offered?
-      (and (in? (vals (:time-choices zip-def)) (:time-limit o))
-           (or (>= (:time-limit o) 180)
-               (not (:one-hour-constraining-zone-id zip-def))
-               ;; Are there less one-hour orders in this zone
-               ;; than connected couriers who are assigned to this zone?
-               (< (->> (get-all-pre-servicing db-conn)
-                       (orders-in-zone db-conn (:one-hour-constraining-zone-id zip-def))
-                       (filter #(= (* 60 60) ;; only one-hour orders
-                                   (- (:target_time_end %)
-                                      (:target_time_start %))))
-                       count)
-                  (->> (couriers/get-all-connected db-conn)
-                       (couriers/filter-by-zone
-                        (:one-hour-constraining-zone-id zip-def))
-                       count))))))
+  (or
+   ;; "Premium" members can bypass
+   (and (= 2 (:subscription_id o)) 
+        (>= (:time-limit o) 60))
+   ;; "Standard" members can bypass
+   (and (= 1 (:subscription_id o)) (>= (:time-limit o) 180))
+   ;; "Unlimited" members can bypass all
+   (= 3 (:subscription_id o))
+   ;; otherwise, is it offered?
+   (and (in? (vals (:time-choices zip-def)) (:time-limit o))
+        (or (>= (:time-limit o) 180)
+            (not (:one-hour-constraining-zone-id zip-def))
+            ;; Are there less one-hour orders in this zone
+            ;; than connected couriers who are assigned to this zone?
+            (< (->> (get-all-pre-servicing db-conn)
+                    (orders-in-zone db-conn (:one-hour-constraining-zone-id zip-def))
+                    (filter #(= (* 60 60) ;; only one-hour orders
+                                (- (:target_time_end %)
+                                   (:target_time_start %))))
+                    count)
+               (->> (couriers/get-all-connected db-conn)
+                    (couriers/filter-by-zone
+                     (:one-hour-constraining-zone-id zip-def))
+                    count))))))
 
 (defn new-order-text
   [db-conn o charge-authorized?]
@@ -278,7 +280,7 @@
                          "to the map and start over.")
            :message_title "Sorry"})
 
-      (not (valid-time-limit? db-conn zip-def o))
+      (not (valid-time-choice? db-conn zip-def o))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
                           (assoc (segment-props o)
