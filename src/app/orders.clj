@@ -196,25 +196,28 @@
 ;; sugg rename: valid-time-option?
 (defn valid-time-limit?
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
-  ;; note: passing in zip-def because we will likely need it in future todo
   [db-conn zip-def o]
-  (if (and (< (:time-limit o) 180)
-           (not= (:subscription_id o) 2)) ;; special case for premium members
-    (if (:one-hour-constraining-zone-id zip-def)
-      ;; Are there less one-hour orders in this zone
-      ;; than connected couriers who are assigned to this zone?
-      (< (->> (get-all-pre-servicing db-conn)
-              (orders-in-zone db-conn (:one-hour-constraining-zone-id zip-def))
-              (filter #(= (* 60 60) ;; only one-hour orders
-                          (- (:target_time_end %)
-                             (:target_time_start %))))
-              count)
-         (->> (couriers/get-all-connected db-conn)
-              (couriers/filter-by-zone
-               (:one-hour-constraining-zone-id zip-def))
-              count))
-      true) ;; no limit to number of one-hours
-    true)) ;; 3-hour or greater is always available
+  (or (and (= 2 (:subscription_id o)) ; Premium members can bypass
+           (>= (:time-limit o) 60))
+      (and (= 1 (:subscription_id o)) ; Standard members can bypass
+           (>= (:time-limit o) 180))
+      (= 3 (:subscription_id o)) ; Unlimited members can bypass all
+      ;; Otherwise, is it offered?
+      (and (in? (vals (:time-choices zip-def)) (:time-limit o))
+           (or (>= (:time-limit o) 180)
+               (not (:one-hour-constraining-zone-id zip-def))
+               ;; Are there less one-hour orders in this zone
+               ;; than connected couriers who are assigned to this zone?
+               (< (->> (get-all-pre-servicing db-conn)
+                       (orders-in-zone db-conn (:one-hour-constraining-zone-id zip-def))
+                       (filter #(= (* 60 60) ;; only one-hour orders
+                                   (- (:target_time_end %)
+                                      (:target_time_start %))))
+                       count)
+                  (->> (couriers/get-all-connected db-conn)
+                       (couriers/filter-by-zone
+                        (:one-hour-constraining-zone-id zip-def))
+                       count))))))
 
 (defn new-order-text
   [db-conn o charge-authorized?]
@@ -283,7 +286,8 @@
           {:success false
            :message (str "We currently are experiencing high demand and "
                          "can't promise a delivery within that time limit. Please "
-                         "go back and choose the \"within 3 hours\" option.")
+                         "go back and choose the \"within 3 hours\" or "
+                         "\"within 5 hours\" option.")
            :message_title "Sorry"})
 
       (not (is-open? zip-def (:target_time_start o)))
