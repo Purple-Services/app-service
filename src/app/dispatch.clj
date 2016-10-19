@@ -2,15 +2,14 @@
   (:require [common.db :refer [conn !select !insert !update]]
             [common.config :as config]
             [common.util :refer [! cents->dollars-str five-digit-zip-code
-                                 get-event-time in? minute-of-day->hmma now-unix
-                                 only-prod segment-client send-sms
-                                 split-on-comma unix->minute-of-day]]
+                                 get-event-time in? minute-of-day->hmma
+                                 now-unix only-prod only-prod-or-dev
+                                 segment-client send-sms split-on-comma
+                                 unix->minute-of-day log-error catch-notify
+                                 unix->day-of-week]]
             [common.orders :as orders]
             [common.users :as users]
-            [common.zones :refer [get-fuel-prices get-service-fees
-                                  get-service-time-bracket
-                                  get-zone-by-zip-code order->zone-id
-                                  zip-in-zones?]]
+            [common.zones :refer [get-zip-def is-open-now? order->zones]]
             [common.subscriptions :as subscriptions]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
@@ -25,201 +24,190 @@
 
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
-  [zip-code]
-  (if (zip-in-zones? zip-code)
+  [db-conn zip-code]
+  (if-let [zip-def (get-zip-def db-conn zip-code)] ; do we service this ZIP code at all?
     {:success true
-     :gas_prices (get-fuel-prices zip-code)}
+     :gas_prices (:gas-price zip-def)}
     {:success false
      :message "Location Outside Service Area"
-     ;; to make legacy app versions happy
+     ;; to make legacy app versions happy that expect :gas_prices always
      :gas_prices {:87 0 :91 0}}))
 
 (defn delivery-time-map
-  [time-str service-fee num-free num-free-used sub-discount]
+  "Build a map that describes a delivery time option for the mobile app."
+  [time-str      ; e.g., "within 5 hours"
+   delivery-fee  ; fee amount in cents
+   num-free      ; number of free uses that subscription provides
+   num-free-used ; number of free uses already used in this period
+   sub-discount] ; the discount the subscription gives after all free used
   (let [fee-str #(if (= % 0) "free" (str "$" (cents->dollars-str %)))
         gen-text #(str time-str " (" % ")")]
     (if (not (nil? num-free)) ;; using a subscription?
       (let [num-free-left (- num-free num-free-used)]
         (if (pos? num-free-left)
-          {:service_fee 0
-           :text (gen-text (str num-free-left " left"))}
-          (let [after-discount (max 0 (+ service-fee sub-discount))]
+          {:service_fee 0 ; the mobile app calls delivery fee "service_fee"
+           :text (gen-text (if (< num-free-left 1000)
+                             (str num-free-left " left")
+                             (fee-str 0)))}
+          (let [after-discount (max 0 (+ delivery-fee sub-discount))]
             {:service_fee after-discount
              :text (gen-text (fee-str after-discount))})))
-      {:service_fee service-fee
-       :text (gen-text (fee-str service-fee))})))
+      {:service_fee delivery-fee
+       :text (gen-text (fee-str delivery-fee))})))
 
 (defn delivery-times-map
   "Given subscription usage map and service fee, create the delivery-times map."
-  [sub service-fees]
-  (merge {}
-         ;; don't include the 3-hour option is they're using 1-hour subscription
-         (when (not (pos? (or (:num_free_one_hour sub) 0)))
-           {180 (merge {:order 0}
-                       (delivery-time-map "within 3 hours"
-                                          (:180 service-fees)
-                                          (:num_free_three_hour sub)
-                                          (:num_free_three_hour_used sub)
-                                          (:discount_three_hour sub)))})
-         {60 (merge {:order 1}
-                    (delivery-time-map "within 1 hour"
-                                       (:60 service-fees)
-                                       (:num_free_one_hour sub)
-                                       (:num_free_one_hour_used sub)
-                                       (:discount_one_hour sub)))}))
+  [user zip-def sub delivery-fees]
+  (let [has-free-three-hour? (pos? (or (:num_free_three_hour sub) 0))
+        has-free-one-hour? (pos? (or (:num_free_one_hour sub) 0))]
+    (->> (remove #(or (and (= 300 (val %))
+                           ;; hide 5-hour option if using 1 or 3-hour sub
+                           (or has-free-three-hour? has-free-one-hour?))
+                      (and (= 180 (val %))
+                           ;; hide 3-hour option if using 1-hour sub
+                           (or has-free-one-hour?)))
+                 ;; (:time-choices zip-def) ; still show all three options always
+                 ;; temporarily hardcoding this in
+                 {:0 60
+                  :1 180
+                  :2 300})
+         (#(for [[k v] %
+                 :let [[num-as-word time-str]
+                       (case v
+                         300 ["five" "within 5 hours"]
+                         180 ["three" "within 3 hours"]
+                         60  ["one" "within 1 hour"])]]
+             [v (assoc (delivery-time-map time-str
+                                          (get delivery-fees v)
+                                          (((comp keyword str)
+                                            "num_free_" num-as-word "_hour") sub)
+                                          (((comp keyword str)
+                                            "num_free_" num-as-word "_hour_used") sub)
+                                          (((comp keyword str)
+                                            "discount_" num-as-word "_hour") sub))
+                       :order (Integer. (name k)))]))
+         (into {}))))
 
-(defn num-couriers-connected-in-market
-  "How many couriers are currently connected and on duty in the market that this
-  zone is in?"
-  [zone-id]
-  (->> (couriers/get-all-connected (conn))
-       (couriers/filter-by-market (quot zone-id 50))
-       count))
+
+;; this function isn't being used at the moment, but it has become broken
+;; because we don't currently have a distinction of 'market' amongst various
+;; zone definitions. you could look at the rank (= 100) or perhaps the zone id
+;; should be hardcoded in somewhere, hmmm... just something to think about if
+;; we need to resume use of this function
+;; hmm actually it should be something that is just defined in a zone definition
+;; (defn num-couriers-connected-in-market
+;;   "How many couriers are currently connected and on duty in this market?"
+;;   [market-id]
+;;   (->> (couriers/get-all-connected (conn))
+;;        (couriers/filter-by-market market-id)
+;;        count))
 
 (defn enough-couriers?
   "Does the market that this ZIP is in have enough couriers to offer service?"
-  [zip-code subscription]
-  (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-    (or (in? [0 2 3] (quot zone-id 50)) ;; LA, OC, SEA are exempt from this constraint
-        (and (not (nil? (:id subscription))) ;; subscribers are exempt
-             (not= (:id subscription) 0))
-        (pos? (num-couriers-connected-in-market zone-id)))))
+  [zip-def subscription]
+  true)
+;; This function is being bypassed for now because it's not really helpful
+;; (or (in? [0 2 3] (:market-id zip-def)) ;; LA, OC, SEA are exempt from this
+;;     (and (not (nil? (:id subscription))) ;; subscribers are exempt
+;;          (not= (:id subscription) 0))
+;;     (pos? (num-couriers-connected-in-market (:market-id zip-def))))
 
-;; TODO this function should consider if a zone is actually "active"
 (defn available
-  [good-time? zip-code subscription enough-couriers-delay octane]
+  [user good-time? zip-def subscription enough-couriers-delay octane]
   {:octane octane
-   :gallon_choices config/gallon-choices
-   :default_gallon_choice config/default-gallon-choice
-   :price_per_gallon (get (get-fuel-prices zip-code) (keyword octane))
-   :times (->> (get-service-fees zip-code)
-               (delivery-times-map subscription)
+   :gallon_choices (if (users/is-managed-account? user)
+                     {:0 7.5
+                      :1 10
+                      :2 15
+                      :3 20
+                      :4 25
+                      :5 30}
+                     (:gallon-choices zip-def))
+   :default_gallon_choice (:default-gallon-choice zip-def)
+   :price_per_gallon (get (:gas-price zip-def) octane)
+   :times (->> (:delivery-fee zip-def)
+               (delivery-times-map user zip-def subscription)
                (filter (fn [[time time-map]]
                          (and good-time?
                               @enough-couriers-delay)))
                (into {}))
-   :tire_pressure_check_price config/tire-pressure-check-price
+   ;; default_time_choice not implemented in app yet
+   :default_time_choice (:default-gallon-choice zip-def)
+   :tire_pressure_check_price (:tire-pressure-price zip-def)
    ;; for legacy app versions (< 1.2.2)
    :gallons 15})
 
+(defn availabilities-map
+  [db-conn zip-code user subscription]
+  (if-let [zip-def (get-zip-def db-conn zip-code)] ; do we service this ZIP code at all?
+    (let [enough-couriers-delay (delay (enough-couriers? zip-def subscription))]
+      {:availabilities (map (partial available
+                                     user
+                                     (is-open-now? zip-def)
+                                     zip-def
+                                     subscription
+                                     enough-couriers-delay)
+                            ["87" "91"])
+       ;; if unavailable (mobile app client will determine from :availabilities)
+       :unavailable-reason
+       (cond
+         (not (is-open-now? zip-def))
+         (do (only-prod-or-dev
+              (segment/track segment-client (:id user)
+                             "Availability Check Said Unavailable"
+                             {:address_zip zip-code
+                              :reason "outside-service-hours-or-closed"}))
+             (:closed-message zip-def))
+
+         (not @enough-couriers-delay)
+         (do (only-prod-or-dev
+              (segment/track segment-client (:id user)
+                             "Availability Check Said Unavailable"
+                             {:address_zip zip-code
+                              :reason "no-couriers-available"}))
+             (str "We are busy. There are no couriers available. Please "
+                  "try again later."))
+
+         ;; it's available, no unavailable-reason needed
+         :else "")})
+    ;; We don't service this ZIP code.
+    {:availabilities
+     ;; This is the quirky way we tell the app we don't provide service here.
+     [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
+      {:octane "91" :gallons 15 :times {} :price_per_gallon 0}]
+     :unavailable-reason
+     (do (only-prod-or-dev
+          (segment/track segment-client (:id user)
+                         "Availability Check Said Unavailable"
+                         {:address_zip zip-code
+                          :reason "outside-service-area"}))
+         (str "Sorry, we are unable to deliver gas to your "
+              "location. We are rapidly expanding our service "
+              "area and hope to offer service to your "
+              "location very soon."))}))
+
 (defn availability
   "Get an availability map to tell client what orders it can offer to user."
-  [db-conn zip-code user-id]
+  [db-conn zip-code-any-length user-id]
   (let [user (users/get-user-by-id db-conn user-id)
-        subscription (when (subscriptions/valid-subscription? user)
-                       (subscriptions/get-with-usage db-conn user))]
-    (segment/track segment-client user-id "Availability Check"
-                   {:address_zip (five-digit-zip-code zip-code)})
-    (merge
-     {:success true
-      :user (merge (select-keys user users/safe-authd-user-keys)
-                   {:subscription_usage subscription})
-      :system {:referral_referred_value config/referral-referred-value
-               :referral_referrer_gallons config/referral-referrer-gallons
-               :subscriptions
-               (into {} (map (juxt :id identity)
-                             (!select db-conn "subscriptions" ["*"] {})))}}
-     ;; construct a map of availability
-     (if (and (zip-in-zones? zip-code) (:active (get-zone-by-zip-code zip-code)))
-       ;; we service this ZIP code
-       (let [[open-minute close-minute] (get-service-time-bracket zip-code)
-             good-time? (<= open-minute
-                            (unix->minute-of-day (now-unix))
-                            close-minute)
-             enough-couriers-delay (delay (enough-couriers? zip-code subscription))]
-         {:availabilities (map (partial available
-                                        good-time?
-                                        zip-code
-                                        subscription
-                                        enough-couriers-delay)
-                               ["87" "91"])
-          :unavailable-reason ;; iff unavailable (client determines from :availabilities)
-          (cond (= 5 open-minute close-minute) ;; special case for closing zone
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-no-couriers"})
-                    (str "We are busy. There are no couriers available. Please "
-                         "try again later."))
+        subscription (when (subscriptions/valid? user)
+                       (subscriptions/get-with-usage db-conn user))
+        zip-code (five-digit-zip-code zip-code-any-length)]
+    (only-prod-or-dev (segment/track segment-client user-id "Availability Check"
+                                     {:address_zip zip-code}))
+    (merge {:success true
+            :user (merge (select-keys user users/safe-authd-user-keys)
+                         {:subscription_usage subscription})
+            :system {:referral_referred_value config/referral-referred-value
+                     :referral_referrer_gallons config/referral-referrer-gallons
+                     :subscriptions (subscriptions/get-all-mapped-by-id db-conn)}}
+           ;; this will give us :availabilities & :unavailable-reason
+           (availabilities-map db-conn zip-code user subscription))))
 
-                (= 6 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-holiday"})
-                    (str "We are closed for the holiday. We will be back soon. "
-                         "Please enjoy your holiday!"))
-
-                (= 7 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-inclement-weather"})
-                    (str "We want everyone to stay safe and are closed due to "
-                         "inclement weather. We will be back shortly!"))
-
-                ;; This one should only be used for the weekend.
-                (= 8 open-minute close-minute)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "manual-closure-custom"})
-                    (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-                      (cond
-                        (= 1 (quot zone-id 50)) ;; san diego
-                        (str "Sorry, the service hours for this ZIP code are "
-                             "7:30am to 8:30pm, Monday to Friday. Thank you "
-                             "for your business.")
-                        
-                        (= 2 (quot zone-id 50)) ;; oc
-                        (str "Sorry, the service hours for this ZIP code are "
-                             "9am to 3:30pm, Monday to Friday. Thank you "
-                             "for your business.")
-
-                        (= 3 (quot zone-id 50)) ;; seattle
-                        (str "Sorry, the service hours for this ZIP code are "
-                             "3pm to 8:30pm, Monday to Friday. Thank you "
-                             "for your business.")
-
-                        :else
-                        (str "Sorry, this ZIP code is currently closed."))))
-
-                (not good-time?)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "outside-service-hours"})
-                    (let [zone-id (:id (get-zone-by-zip-code zip-code))]
-                      (cond
-                        (in? [1 2 3] (quot zone-id 50))
-                        (str "Sorry, the service hours for this ZIP code are "
-                             (minute-of-day->hmma open-minute)
-                             " to "
-                             (minute-of-day->hmma close-minute)
-                             ", Monday to Friday. Thank you for your business.")
-
-                        :else
-                        (str "Sorry, the service hours for this ZIP code are "
-                             (minute-of-day->hmma open-minute)
-                             " to "
-                             (minute-of-day->hmma close-minute)
-                             " every day."))))
-
-                (not @enough-couriers-delay)
-                (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                                   {:address_zip (five-digit-zip-code zip-code)
-                                    :reason "no-couriers-available"})
-                    (str "We are busy. There are no couriers available. Please "
-                         "try again later."))
-
-                ;; it's available, no unavailable-reason needed
-                :else "")})
-       ;; we don't service this ZIP code
-       {:availabilities [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
-                         {:octane "91" :gallons 15 :times {} :price_per_gallon 0}]
-        :unavailable-reason
-        (do (segment/track segment-client user-id "Availability Check Said Unavailable"
-                           {:address_zip (five-digit-zip-code zip-code)
-                            :reason "outside-service-area"})
-            (str "Sorry, we are unable to deliver gas to your "
-                 "location. We are rapidly expanding our service "
-                 "area and hope to offer service to your "
-                 "location very soon."))}))))
+;; (do (println "-------========-------")
+;;     (clojure.pprint/pprint
+;;      (:availabilities (availability (common.db/conn) "90210" "9kaU0GW1aJ4wF94tLGVc")))
+;;     (println "-------========-------"))
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
@@ -227,11 +215,15 @@
   (let [expired-couriers (->> (couriers/get-all-expired db-conn)
                               (users/include-user-data db-conn))]
     (when-not (empty? expired-couriers)
-      (only-prod (run!
+      (only-prod (run! ;; notify all courier that got disconnected but are 'on_duty'
                   #(send-sms
                     (:phone_number %)
-                    "You have just disconnected from the Purple Courier App.")
-                  expired-couriers))
+                    (str "You've been disconnected from the Purple Courier app. "
+                         "This can happen if you are in an area with a poor "
+                         "internet connection. You may need to close the app and "
+                         "re-open it. If the problem persists, please contact a "
+                         "Purple dispatch manager."))
+                  (filter :on_duty expired-couriers)))
       (sql/with-connection db-conn
         (sql/update-values
          "couriers"
@@ -257,7 +249,8 @@
 (defn new-assignments
   [os cs]
   (let [new-and-first #(and (:new_assignment %)
-                            (= 1 (:courier_pos %)))]
+                            (= 1 (:courier_pos %)))
+        db-conn (conn)]
     (filter
      (comp new-and-first val)
      (fmap (comp keywordize-keys (partial into {}))
@@ -270,7 +263,7 @@
                                             (->> (remove s/blank?)
                                                  (apply hash-map)
                                                  (fmap read-string)))
-                                        :zone (order->zone-id %)))
+                                        :zones (order->zones db-conn %)))
                            (map (juxt :id stringify-keys))
                            (into {}))
              "couriers" (->> cs
@@ -300,20 +293,19 @@
 
 (defn auto-assign
   [db-conn]
-  (let [os (get-all-current db-conn)
-        cs (couriers/get-all-on-duty db-conn)]
-    (!insert
-     db-conn
-     "state_log"
-     {:data
-      (str {:current-orders (map #(select-keys % [:id :status :courier_id]) os)
-            :on-duty-couriers (map #(select-keys % [:id :active :on_duty
-                                                    :connected :busy :zones
-                                                    :gallons_87 :gallons_91
-                                                    :lat :lng :last_ping]) cs)})
-      })
-    (when (diff-state? os cs)
-      (run! #(orders/assign db-conn (key %) (:courier_id (val %))
-                            :no-reassigns true)
-            (new-assignments os cs)))))
-
+  (catch-notify
+   (let [os (get-all-current db-conn)
+         cs (couriers/get-all-on-duty db-conn)]
+     (!insert db-conn
+              "state_log"
+              {:data (str {:current-orders
+                           (map #(select-keys % [:id :status :courier_id]) os)
+                           :on-duty-couriers
+                           (map #(select-keys % [:id :active :on_duty
+                                                 :connected :busy :zones
+                                                 :gallons_87 :gallons_91
+                                                 :lat :lng :last_ping]) cs)})})
+     (when (diff-state? os cs)
+       (run! #(orders/assign db-conn (key %) (:courier_id (val %))
+                             :no-reassigns true)
+             (new-assignments os cs))))))

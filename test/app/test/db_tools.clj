@@ -1,34 +1,36 @@
 (ns app.test.db-tools
   (:require [common.db :as db]
+            [environ.core :refer [env]]
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
-(def db-config
-  "Configuration map for connecting to local database."
-  (let [db-host "localhost"
-        db-port "3306"
-        db-name "ebdb"
-        db-password ""
-        db-user "root"]
+;; (println env)
+
+;; (println {:db-host (env :test-db-host)
+;;           :db-port (env :test-db-port)
+;;           :db-name (env :test-db-name)
+;;           :db-password (env :test-db-password)
+;;           :db-user (env :test-db-user)
+;;           :db-sql "database/ebdb.sql"})
+
+(def ebdb-test-config
+  "Configuration map for connecting to the local test database."
+  (let [db-host (or (env :test-db-host)
+                    "localhost")
+        db-port (or (env :test-db-port)
+                    "3306")
+        db-name (or (env :test-db-name)
+                    "ebdb_test")
+        db-user (or (env :test-db-user)
+                    "root")
+        db-password (or (env :test-db-password)
+                        "")
+        db-sql "database/ebdb.sql"]
     {:classname "com.mysql.jdbc.Driver"
      :subprotocol "mysql"
      :subname (str "//" db-host ":" db-port "/" db-name
                    "?useLegacyDatetimeCode=false"
                    "&serverTimezone=UTC")
-     :user db-user
-     :password db-password}))
-
-(def ebdb-test-config
-  "Configuration map for connecting to the local test database."
-  (let [db-host "localhost"
-        db-port "3306"
-        db-name "ebdb_test"
-        db-password ""
-        db-user "root"
-        db-sql "database/ebdb.sql"]
-    {:classname "com.mysql.jdbc.Driver"
-     :subprotocol "mysql"
-     :subname (str "//" db-host ":" db-port "/" db-name)
      :user db-user
      :password db-password
      :sql db-sql}))
@@ -76,7 +78,7 @@
 ;; PERMISSIONS TO purplemaster FOR ebdb_test, OTHERWISE TESTS WILL FAIL!
 ;;
 ;; YOU SHOULD RUN THE FOLLOWING SCRIPT DESCRIBED IN README.md FIRST!
-;; $ lein exec -p resources/scripts/setupdb.clj root_password=<mysql_root_pwd>
+;; $ lein exec -p scripts/setupdb.clj root_password=<mysql_root_pwd>
 ;;
 ;; see: resources/database/ebdb_setup.sql for proper permissions
 (defn database-fixture

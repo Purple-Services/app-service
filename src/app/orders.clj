@@ -6,21 +6,18 @@
                                  minute-of-day->hmma
                                  rand-str-alpha-num coerce-double
                                  segment-client send-email send-sms
-                                 unless-p only-prod
+                                 unless-p only-prod only-prod-or-dev now-unix
                                  unix->fuller unix->full unix->minute-of-day]]
             [common.users :refer [details get-user-by-id include-user-data
-                                  charge-user]]
+                                  is-managed-account? charge-user]]
             [common.orders :refer [accept assign begin-route complete get-by-id
                                    next-status segment-props service
                                    unpaid-balance]]
             [common.coupons :refer [format-coupon-code
-                                    get-license-plate-by-vehicle-id
                                     mark-code-as-used
                                     mark-gallons-as-used]]
             [common.subscriptions :as subscriptions]
-            [common.zones :refer [get-fuel-prices get-service-fees
-                                  get-service-time-bracket
-                                  get-one-hour-orders-allowed order->zone-id]]
+            [common.zones :refer [get-zip-def is-open? order->zones]]
             [app.coupons :as coupons]
             [app.couriers :as couriers]
             [app.sift :as sift]
@@ -54,6 +51,20 @@
            {:status "unassigned"}
            :append "ORDER BY target_time_start DESC"))
 
+(defn get-all-pre-servicing
+  "All orders in a status chronologically before the Servicing status."
+  [db-conn]
+  (!select db-conn
+           "orders"
+           ["*"]
+           {}
+           :append (str "AND status IN ("
+                        "'unassigned',"
+                        "'assigned',"
+                        "'accepted',"
+                        "'enroute'"
+                        ") ORDER BY target_time_start DESC")))
+
 (defn get-all-current
   "Unassigned or in process."
   [db-conn]
@@ -69,21 +80,18 @@
                         "'servicing'"
                         ") ORDER BY target_time_start DESC")))
 
-(defn orders-in-same-market
-  [o os]
-  (let [order->market-id #(quot (order->zone-id %) 50)
-        market-id-of-o (order->market-id o)]
-    (filter (comp (partial = market-id-of-o) order->market-id) os)))
-
 (defn gen-charge-description
+  "Generate a description of the order (e.g., for including on a receipt)."
   [db-conn order]
-  (str "Reliability service for up to "
-       (gallons->display-str (:gallons order)) " Gallons of Gasoline ("
-       (->> (!select db-conn "vehicles" [:gas_type] {:id (:vehicle_id order)})
-            first
-            :gas_type)
-       " Octane)\n" "Where: " (:address_street order)
-       "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000))))
+  (let [vehicle (first (!select db-conn "vehicles" ["*"] {:id (:vehicle_id order)}))]
+    (str "Reliability service for up to "
+         (gallons->display-str (:gallons order)) " Gallons of Fuel"
+         " (" (:gas_type vehicle) " Octane)" ; assumes you're calling this when order is place (i.e., it could change)
+         (when (:tire_pressure_check order) "\n+ Tire Pressure Fill-up")
+         "\nVehicle: " (:year vehicle) " " (:make vehicle) " " (:model vehicle)
+         " (" (:license_plate order) ")"
+         "\nWhere: " (:address_street order)
+         "\n" "When: " (unix->fuller (quot (System/currentTimeMillis) 1000)))))
 
 (defn auth-charge-order
   [db-conn order]
@@ -116,6 +124,7 @@
   "Calculate cost of order based on current prices. Returns cost in cents."
   [db-conn               ;; Database Connection
    user                  ;; 'user' map
+   zip-def
    octane                ;; String
    gallons               ;; Double
    time                  ;; Integer, minutes
@@ -125,51 +134,51 @@
    referral-gallons-used ;; Double
    zip-code              ;; String
    & {:keys [bypass-zip-code-check]}]
-  (max 0
-       (int (Math/ceil
-             (+ (* (;; price per gallon
-                    (keyword octane) (get-fuel-prices zip-code))
-                   ;; number of gallons they need to pay for
-                   (- gallons
-                      (min gallons referral-gallons-used)))
-                ;; add service fee (w/ consideration of subscription)
-                (let [sub (subscriptions/get-with-usage db-conn user)
-                      service-fee ((keyword (str time))
-                                   (get-service-fees zip-code))]
-                  (if sub
-                    (let [[num-free num-free-used sub-discount]
-                          (case time
-                            60  [(:num_free_one_hour sub)
-                                 (:num_free_one_hour_used sub)
-                                 (:discount_one_hour sub)]
-                            180 [(:num_free_three_hour sub)
-                                 (:num_free_three_hour_used sub)
-                                 (:discount_three_hour sub)])]
-                      (if (pos? (- num-free num-free-used))
-                        0
-                        (max 0 (+ service-fee sub-discount))))
-                    service-fee))
-                ;; add cost of tire pressure check if applicable
-                (if tire-pressure-check
-                  config/tire-pressure-check-price
-                  0)
-                ;; apply value of coupon code 
-                (if-not (s/blank? coupon-code)
-                  (:value (coupons/code->value
-                           db-conn
-                           coupon-code
-                           vehicle-id
-                           (:id user)
-                           zip-code
-                           :bypass-zip-code-check bypass-zip-code-check))
-                  0))))))
+  ((comp (partial max 0) int #(Math/ceil %))
+   (+ (* (get (:gas-price zip-def) octane) ; cents/gallon
+         ;; number of gallons they need to pay for
+         (- gallons (min gallons referral-gallons-used)))
+      ;; add delivery fee (w/ consideration of subscription)
+      (let [sub (subscriptions/get-with-usage db-conn user)
+            delivery-fee (get (:delivery-fee zip-def) time)]
+        (if sub
+          (let [[num-free num-free-used sub-discount]
+                (case time
+                  60  [(:num_free_one_hour sub)
+                       (:num_free_one_hour_used sub)
+                       (:discount_one_hour sub)]
+                  180 [(:num_free_three_hour sub)
+                       (:num_free_three_hour_used sub)
+                       (:discount_three_hour sub)]
+                  300 [(:num_free_five_hour sub)
+                       (:num_free_five_hour_used sub)
+                       (:discount_five_hour sub)])]
+            (if (pos? (- num-free num-free-used))
+              0
+              (max 0 (+ delivery-fee sub-discount))))
+          delivery-fee))
+      ;; add cost of tire pressure check if applicable
+      (if tire-pressure-check
+        config/tire-pressure-check-price
+        0)
+      ;; apply value of coupon code 
+      (if-not (s/blank? coupon-code)
+        (:value (coupons/code->value
+                 db-conn
+                 coupon-code
+                 vehicle-id
+                 (:id user)
+                 zip-code
+                 :bypass-zip-code-check bypass-zip-code-check))
+        0))))
 
 (defn valid-price?
   "Is the stated 'total_price' accurate?"
-  [db-conn user o & {:keys [bypass-zip-code-check]}]
+  [db-conn user zip-def o & {:keys [bypass-zip-code-check]}]
   (= (:total_price o)
      (calculate-cost db-conn
                      user
+                     zip-def
                      (:gas_type o)
                      (:gallons o)
                      (:time-limit o)
@@ -180,52 +189,37 @@
                      (:address_zip o)
                      :bypass-zip-code-check bypass-zip-code-check)))
 
-(defn valid-time-limit?
+(defn orders-in-zone
+  [db-conn zone-id os]
+  (filter #(in? (order->zones db-conn %) zone-id) os))
+
+(defn valid-time-choice?
   "Is that Time choice (e.g., 1 hour / 3 hour) truly available?"
-  [db-conn o]
-  (if (and (< (:time-limit o) 180)
-           (not= (:subscription_id o) 2)) ;; special case for premium members
-    ;; if less than 3 hours time limit, check if it is allowed according to:
-    ;; time of day & number of available couriers
-    (and (>= (unix->minute-of-day (:target_time_start o))
-             (get-one-hour-orders-allowed
-              (:address_zip o)))
-         (let [zone-id (order->zone-id o)]
-           ;; Less one-hour orders in this zone (unassigned or current)
-           ;; than connected couriers who are assigned to this zone?
-           (< (->> (get-all-current db-conn)
-                   (orders-in-same-market o)
-                   (filter #(= (* 60 60) ;; only one-hour orders
-                               (- (:target_time_end %)
-                                  (:target_time_start %))))
-                   count)
-              (->> (couriers/get-all-connected db-conn)
-                   (couriers/filter-by-market (quot zone-id 50))
-                   count))))
-    true)) ;; 3-hour or greater is always available
-
-(defn within-time-bracket?
-  "Is the order being placed within the time bracket?"
-  [order]
-  (let [order-time (unix->minute-of-day (:target_time_start order))
-        time-bracket (get-service-time-bracket
-                      (:address_zip order))
-        time-start (first time-bracket)
-        time-end   (+ (last time-bracket) 10)]
-    (<= time-start
-        order-time
-        time-end)))
-
-(defn infer-gas-type-by-price
-  "This is only for backwards compatiblity."
-  [gas-price zip-code]
-  (let [fuel-prices (get-fuel-prices zip-code)]
-    (if (= gas-price ((keyword "87") fuel-prices))
-      "87"
-      (if (= gas-price ((keyword "91") fuel-prices))
-        "91"
-        "87" ;; if we can't find it then assume 87
-        ))))
+  [db-conn zip-def o]
+  (or
+   ;; "Premium" members can bypass
+   (and (= 2 (:subscription_id o)) 
+        (>= (:time-limit o) 60))
+   ;; "Standard" members can bypass
+   (and (= 1 (:subscription_id o)) (>= (:time-limit o) 180))
+   ;; "Unlimited" members can bypass all
+   (= 3 (:subscription_id o))
+   ;; otherwise, is it offered?
+   (and (in? (vals (:time-choices zip-def)) (:time-limit o))
+        (or (>= (:time-limit o) 180)
+            (not (:one-hour-constraining-zone-id zip-def))
+            ;; Are there less one-hour orders in this zone
+            ;; than connected couriers who are assigned to this zone?
+            (< (->> (get-all-pre-servicing db-conn)
+                    (orders-in-zone db-conn (:one-hour-constraining-zone-id zip-def))
+                    (filter #(= (* 60 60) ;; only one-hour orders
+                                (- (:target_time_end %)
+                                   (:target_time_start %))))
+                    count)
+               (->> (couriers/get-all-connected db-conn)
+                    (couriers/filter-by-zone
+                     (:one-hour-constraining-zone-id zip-def))
+                    count))))))
 
 (defn new-order-text
   [db-conn o charge-authorized?]
@@ -242,11 +236,11 @@
   "The user-id given is assumed to have been auth'd already."
   [db-conn user-id order & {:keys [bypass-zip-code-check]}]
   (let [time-limit (Integer. (:time order))
-        license-plate (get-license-plate-by-vehicle-id db-conn
-                                                       (:vehicle_id order))
+        vehicle (first (!select db-conn "vehicles" ["*"] {:id (:vehicle_id order)}))
         user (get-user-by-id db-conn user-id)
         referral-gallons-available (:referral_gallons user)
         curr-time-secs (quot (System/currentTimeMillis) 1000)
+        zip-def (get-zip-def db-conn (:address_zip order))
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -260,66 +254,65 @@
                  :gallons (coerce-double (:gallons order))
                  :gas_type (if (:gas_type order)
                              (:gas_type order)
-                             (infer-gas-type-by-price (:gas_price order)
-                                                      (:address_zip order)))
+                             (throw (Exception. "Outdated app version.")))
+                 :is_top_tier (:only_top_tier vehicle)
                  :lat (coerce-double (:lat order))
                  :lng (coerce-double (:lng order))
-                 :license_plate license-plate
+                 :license_plate (:license_plate vehicle)
                  ;; we'll use as many referral gallons as available
                  :referral_gallons_used (min (coerce-double (:gallons order))
                                              referral-gallons-available)
                  :coupon_code (format-coupon-code (or (:coupon_code order) ""))
-                 :subscription_id (if (subscriptions/valid-subscription? user)
+                 :subscription_id (if (subscriptions/valid? user)
                                     (:subscription_id user)
                                     0)
                  :tire_pressure_check (or (:tire_pressure_check order) false))]
 
     (cond
-      (not (valid-price? db-conn user o :bypass-zip-code-check bypass-zip-code-check))
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "price-changed-during-review"))
+      (not (valid-price? db-conn user zip-def o :bypass-zip-code-check bypass-zip-code-check))
+      (do (only-prod-or-dev
+           (segment/track segment-client (:user_id o) "Request Order Failed"
+                          (assoc (segment-props o)
+                                 :reason "price-changed-during-review")))
           {:success false
            :message (str "The price changed while you were creating your "
                          "order. Please press the back button TWICE to go back "
                          "to the map and start over.")
            :message_title "Sorry"})
 
-      (not (valid-time-limit? db-conn o))
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "high-demand"))
+      (not (valid-time-choice? db-conn zip-def o))
+      (do (only-prod-or-dev
+           (segment/track segment-client (:user_id o) "Request Order Failed"
+                          (assoc (segment-props o)
+                                 :reason "high-demand")))
           {:success false
            :message (str "We currently are experiencing high demand and "
                          "can't promise a delivery within that time limit. Please "
-                         "go back and choose the \"within 3 hours\" option.")
+                         "go back and choose the \"within 3 hours\" or "
+                         "\"within 5 hours\" option.")
            :message_title "Sorry"})
 
-      (not (within-time-bracket? o))
-      (do (segment/track segment-client (:user_id o) "Request Order Failed"
-                         (assoc (segment-props o)
-                                :reason "outside-service-hours"))
+      (not (is-open? zip-def (:target_time_start o)))
+      (do (only-prod-or-dev
+           (segment/track segment-client (:user_id o) "Request Order Failed"
+                          (assoc (segment-props o)
+                                 :reason "outside-service-hours")))
           {:success false
-           :message (let [service-time-bracket
-                          (get-service-time-bracket
-                           (:address_zip o))]
-                      (str "Sorry, the service hours for this ZIP code are "
-                           (minute-of-day->hmma (first service-time-bracket))
-                           " to "
-                           (minute-of-day->hmma (last service-time-bracket))
-                           " today."))})
+           :message (:closed-message zip-def)})
       
       :else
-      (let [auth-charge-result (if (zero? (:total_price o))
+      (let [auth-charge-result (if (or (zero? (:total_price o)) ; nothing to charge
+                                       (is-managed-account? user)) ; managed account (will be charged later)
                                  {:success true}
                                  (auth-charge-order db-conn o))
             charge-authorized? (:success auth-charge-result)]
         (if (not charge-authorized?)
           (do ;; payment failed, do not allow order to be placed
-            (segment/track segment-client (:user_id o) "Request Order Failed"
-                           (assoc (segment-props o)
-                                  :charge-authorized charge-authorized? ;; false
-                                  :reason "failed-charge"))
+            (only-prod-or-dev
+             (segment/track segment-client (:user_id o) "Request Order Failed"
+                            (assoc (segment-props o)
+                                   :charge-authorized charge-authorized? ;; false
+                                   :reason "failed-charge")))
             ;; TODO send notification to us? (async?)
             {:success false
              :message (str "Sorry, we were unable to charge your credit card. "
@@ -331,7 +324,7 @@
             (!insert db-conn "orders" (select-keys o [:id :user_id :vehicle_id
                                                       :status :target_time_start
                                                       :target_time_end
-                                                      :gallons :gas_type
+                                                      :gallons :gas_type :is_top_tier
                                                       :special_instructions
                                                       :lat :lng :address_street
                                                       :address_city :address_state
@@ -381,15 +374,19 @@
                                                         ;; "\n<https://NEED_ORDER_PAGE_LINK_HERE|View on Dashboard>"
                                                         )
                                              :icon_emoji ":fuelpump:"
-                                             :username "New Order"}})))
+                                             :username "New Order"}})
+                 (run! #(send-sms % order-text-info)
+                       ["4083388336" ; Jackson 
+                        ])))
               
-              (segment/track segment-client (:user_id o) "Request Order"
-                             (assoc (segment-props o)
-                                    :charge-authorized charge-authorized?))
-              ;; used by mailchimp
-              (segment/identify segment-client (:user_id o)
-                                {:email (:email user) ;; required every time
-                                 :HASORDERED 1}))
+              (only-prod-or-dev
+               (segment/track segment-client (:user_id o) "Request Order"
+                              (assoc (segment-props o)
+                                     :charge-authorized charge-authorized?))
+               ;; used by mailchimp
+               (segment/identify segment-client (:user_id o)
+                                 {:email (:email user) ;; required every time
+                                  :HASORDERED 1})))
             {:success true
              :message (str "Your order has been accepted, and a courier will be "
                            "on the way soon! Please ensure that the fueling door "
@@ -485,7 +482,8 @@ and their id matches the order's courier_id"
                      order-id
                      (:number_rating rating)
                      (:text_rating rating))
-      (segment/track segment-client user-id "Rate Order"
-                     {:order_id order-id
-                      :number_rating (:number_rating rating)})
+      (only-prod-or-dev
+       (segment/track segment-client user-id "Rate Order"
+                      {:order_id order-id
+                       :number_rating (:number_rating rating)}))
       (details db-conn user-id)))

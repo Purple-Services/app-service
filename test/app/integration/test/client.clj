@@ -1,11 +1,11 @@
-(ns app.functional.test.client
+(ns app.integration.test.client
   (:require [clj-webdriver.taxi :refer :all]
             [clj-webdriver.driver :refer [init-driver]]
-            [app.functional.test.dashboard :refer
+            [app.integration.test.dashboard :refer
              [sleep wait-until-alert-text
               start-server stop-server]]
+            [common.db :refer [conn]]
             [common.users :refer [get-user-by-id get-user]]
-            [app.test.db :refer [db-config]]
             [clojure.java.jdbc :as jdbc]
             [clojure.test :refer [use-fixtures deftest is test-ns testing
                                   run-tests]]
@@ -20,6 +20,7 @@
   []
   (let [options      (ChromeOptions. )
         capabilities (DesiredCapabilities. )]
+    (println "hey")
     (.addArguments options (into-array ["--disable-web-security"]))
     (.setCapability capabilities "locationContextEnabled" true)
     (.setCapability capabilities ChromeOptions/CAPABILITY options)
@@ -43,8 +44,13 @@
     (t)
     (stop-server server)))
 
+;; Only use one (deftest) in this namespace please. Have to use :each rather
+;; than :once because we don't want it to attempt to start up the chromedriver
+;; on a 'lein test' command (which should be excludig :integration tests)
+;; e.g., Travis CI will fail because no chromedriver
+(use-fixtures :each with-browser with-server)
 
-(use-fixtures :once with-browser with-server)
+
 ;; keeping this in place as proof it doesn't work
 ;; should work, in "theory", the science,however, is that it does not
 ;; see: http://goo.gl/mNEGZ7
@@ -159,7 +165,7 @@
 
 (defn find-visible
   "Given a query, return the first visible webelement. This is used to get
-around Sencha's dom mirroring"
+  around Sencha's dom mirroring"
   [q]
   (->> q
        find-elements
@@ -196,7 +202,7 @@ around Sencha's dom mirroring"
 (defn delete-user-with-email
   "delete the user with email"
   [db-conn email]
-  (jdbc/with-connection db-config
+  (jdbc/with-connection (conn)
     (jdbc/delete-rows :users ["email = ?" email])))
 
 (defn add-vehicle
@@ -238,7 +244,7 @@ around Sencha's dom mirroring"
 
 (defn delete-vehicle-with-license-plate
   [db-conn license-plate]
-  (jdbc/with-connection db-config
+  (jdbc/with-connection (conn)
     (jdbc/delete-rows :vehicles ["license_plate = ?" license-plate])))
 
 
@@ -307,7 +313,7 @@ around Sencha's dom mirroring"
 
 ;; test that a user can be created, a vehicle added, a card added and an order
 ;; placed in beverly hills, ca
-(deftest client-user-test
+(deftest ^:integration client-user-test
   (let [email          "foo@bar.com"
         password       "password"
         full-name      "Foo Bar"
@@ -322,6 +328,7 @@ around Sencha's dom mirroring"
         exp-year       "2017"
         cvc            "123"
         gas-location   "Beverly Hills"]
+    (println "yo yo yo")
     ;; add the user foobar
     (create-account email password full-name phone-number)
     ;; make sure the account name and number are correct
@@ -337,12 +344,12 @@ around Sencha's dom mirroring"
     ;; delete the credit card
     (delete-card-by-last-four-digits "4242")
     ;; delete the vehicle
-    (delete-vehicle-with-license-plate db-config license-plate)
+    (delete-vehicle-with-license-plate (conn) license-plate)
     ;; delete the user
-    (delete-user-with-email db-config email)))
+    (delete-user-with-email (conn) email)))
 
 (defn quick-delete
   []
   (delete-card-by-last-four-digits "4242")
-  (delete-vehicle-with-license-plate db-config "FOOBAR")
-  (delete-user-with-email db-config "foo@bar.com"))
+  (delete-vehicle-with-license-plate (conn) "FOOBAR")
+  (delete-user-with-email (conn) "foo@bar.com"))

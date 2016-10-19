@@ -4,10 +4,10 @@
 
 (def db-config 
   {;; the user name for the ebdb table, in src/purple/config.clj
-   :db-user "purplemaster"
+   :db-user "root"
    ;; the password for local development, in src/purple/config.clj
    ;; also in resources/database/ebdb_setup.sql
-   :db-password "localpurpledevelopment2015"
+   :db-password ""
    ;; sql for creating ebdb database and allowing access to purplemaster
    :ebdb-setup-sql "database/ebdb_setup.sql"
    ;; sql for creating tables and populating them in the ebdb database
@@ -20,7 +20,7 @@
                              :subname "//localhost:3306"
                              :user "root"
                              ;; use root_password=<your_password> with script
-                             :password "secret"
+                             :password ""
                              :delimiters "`"}))
 
 (def purplemaster-ebdb-config {:classname "com.mysql.jdbc.Driver"
@@ -52,15 +52,16 @@
   "Create tables and load test data for the ebdb database"
   []
   (let [ebdb-sql (process-sql (:ebdb-create-sql db-config))
-        zcta-sql (process-sql (-> (:ebdb-zcta-sql db-config)
-                                  io/input-stream
-                                  GZIPInputStream.))
+        ;; temp removing zcta-sql because it's too big for travis ci (i'm sure there's a fix for that though)
+        ;; zcta-sql (process-sql (-> (:ebdb-zcta-sql db-config)
+        ;;                           io/input-stream
+        ;;                           GZIPInputStream.))
         ]
     (do
-      (with-connection purplemaster-ebdb-config
+      (with-connection @root-ebdb-config
         (apply do-commands ebdb-sql))
-      (with-connection purplemaster-ebdb-config
-        (apply do-commands zcta-sql))
+      ;; (with-connection purplemaster-ebdb-config
+      ;;   (apply do-commands zcta-sql))
       )))
 
 
@@ -79,9 +80,10 @@
 (do
   (swap! root-ebdb-config
          assoc
-         :password
-         (get-value-of-command-line-option *command-line-args* "root_password"))
+         :password ""
+         ;; (get-value-of-command-line-option *command-line-args* "root_password")
+         )
   (println "Creating ebdb database and granting permissions to purplemaster")
   (create-ebdb-database)
-  (println "Creatings tables and populating them in ebdb as user purplemaster")
+  (println "Creatings tables and populating them in ebdb as user root")
   (create-tables-and-populate-ebdb-database))

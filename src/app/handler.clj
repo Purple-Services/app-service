@@ -1,5 +1,6 @@
 (ns app.handler
-  (:require [common.util :refer [! unless-p ver< coerce-double]]
+  (:require [common.util :refer [! unless-p ver< coerce-double segment-client
+                                 log-error only-prod-or-dev]]
             [common.db :refer [conn]]
             [common.config :as config]
             [common.coupons :refer [format-coupon-code]]
@@ -9,9 +10,11 @@
             [app.couriers :as couriers]
             [app.orders :as orders]
             [app.dispatch :as dispatch]
+            [app.fleet :as fleet]
             [app.periodic :as periodic]
             [app.coupons :as coupons]
             [app.pages :as pages]
+            [ardoq.analytics-clj :as segment]
             [clojure.walk :refer [keywordize-keys]]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
@@ -19,7 +22,8 @@
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :as middleware]
             [ring.util.response :refer [header response redirect]]
-            [ring.middleware.ssl :refer [wrap-ssl-redirect]]))
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]
+            [clojure.string :as s]))
 
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
@@ -70,6 +74,9 @@
                                     ;; and Google users, this will be their
                                     ;; auth token from that platform.
                                     (:auth_key b)
+                                    ;; auth-key-is-token-id? (newer google login on android)
+                                    (and (= "android" (s/lower-case (or (:os b) "")))
+                                         (not (ver< (or (:version b) "0") "1.5.0")))
                                     ;; email-override isn't checked for
                                     ;; security; could be spoofed.
                                     ;; but, currently, it's the only way we can
@@ -79,7 +86,8 @@
                                     ;; give the email address in the JS object
                                     :email-override (:email_override b)
                                     :client-ip (or (get headers "x-forwarded-for")
-                                                   remote-addr)))))
+                                                   remote-addr)
+                                    :app-version (or (:version b) "0")))))
               ;; Only for native users
               (POST "/register" {body :body
                                  headers :headers
@@ -250,8 +258,9 @@
               ;; Get current gas price
               (POST "/gas-prices" {body :body}
                     (response
-                     (let [b (keywordize-keys body)]
-                       (dispatch/get-gas-prices (:zip_code b)))))
+                     (let [b (keywordize-keys body)
+                           db-conn (conn)]
+                       (dispatch/get-gas-prices db-conn (:zip_code b)))))
               ;; Check availability options for given params (location, etc.)
               (POST "/availability" {body :body}
                     (response
@@ -264,6 +273,44 @@
                         (dispatch/availability db-conn
                                                (:zip_code b)
                                                (:user_id b)))))))))
+  (context "/fleet" [] ; B2B orders
+           (wrap-force-ssl
+            (defroutes fleet-routes
+              (POST "/get-accounts" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/get-accounts
+                         db-conn
+                         (:user_id b)
+                         (coerce-double (:lat b))
+                         (coerce-double (:lng b)))))))
+              (POST "/add-delivery" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/add-delivery db-conn
+                                            (:account_id b)
+                                            (:user_id b)
+                                            (:vin b)
+                                            (:license_plate b)
+                                            (if (s/blank? (:gallons b))
+                                              0
+                                              (coerce-double (:gallons b)))
+                                            (:gas_type b)
+                                            (:is_top_tier b))))))
+              ;; for saved deliveries that couldn't be sent earlier
+              (POST "/add-deliveries" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)
+                           _ (log-error (str b))]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/add-deliveries db-conn
+                                              (:user_id b)
+                                              (:deliveries b)))))))))
   (context "/courier" []
            (wrap-force-ssl
             (defroutes courier-routes
@@ -288,6 +335,10 @@
                                 (let [b (keywordize-keys body) db-conn (conn)]
                                   (demand-user-auth
                                    db-conn (:user_id b) (:token b)
+                                   (only-prod-or-dev
+                                    (segment/track segment-client
+                                                   (:user_id b)
+                                                   "Get Gas Station Recommendation"))
                                    (couriers/get-stations
                                     db-conn
                                     (coerce-double (:lat b))
@@ -359,8 +410,25 @@
        (redirect-to-app-download headers))
   (GET "/app" {headers :headers}
        (redirect-to-app-download headers))
-  (GET "/courierapp" []
-       (redirect "https://build.phonegap.com/apps/1205677/install/kP_AVprocspwUdewxfht"))
+  (GET "/app-link" {headers :headers}
+       (if (re-find #"Android|iPhone|iPad|iPod"
+                    (str (get headers "user-agent")))
+         (redirect "purpleapp://")
+         (redirect "http://purpleapp.com")))
+  (GET "/app-link/:path" [path :as {headers :headers}]
+       (if (re-find #"Android|iPhone|iPad|iPod"
+                    (str (get headers "user-agent")))
+         (redirect (str "purpleapp://" path))
+         (redirect "http://purpleapp.com")))
+  (GET "/courierapp" {headers :headers}
+       (if (re-find #"Android|iPhone|iPad|iPod" (str (get headers "user-agent")))
+         (redirect (if (.contains (str (get headers "user-agent")) "Android")
+                     ;; Android
+                     config/courier-app-download-url-android
+                     ;; iPhone
+                     config/courier-app-download-url-iphone))
+         ;; Desktop
+         (wrap-page (response "Please visit this page using either your Android or iPhone to download the Purple Courier App."))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
   (GET "/ok" [] (response {:success true}))
   (GET "/" [] (redirect "http://purpleapp.com"))

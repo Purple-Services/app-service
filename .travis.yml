@@ -1,0 +1,26 @@
+language: clojure
+before_install:
+  - cd ../
+  - git clone git@github.com:Purple-Services/common.git
+  - cd common
+  - lein install
+  - cd ../
+  - git clone git@github.com:Purple-Services/opt.git
+  - cd opt
+  - lein install
+  - cd ../
+  - cd app-service
+  - mysql -e "DROP DATABASE if exists ebdb;" -uroot
+  - mysql -e "DROP DATABASE if exists ebdb_test;" -uroot
+  - mysql -e "create database if not exists ebdb;" -uroot
+  - mysql -e "create database if not exists ebdb_test;" -uroot
+script:
+  - lein exec -p scripts/setupdb.clj root_password=
+  - lein test
+notifications:
+  slack:
+    rooms:
+      - purpledelivery:LSIV4jgY6MoQMOWpAr6nnpo7#github
+    on_success: always
+    on_failure: always
+  email: false
