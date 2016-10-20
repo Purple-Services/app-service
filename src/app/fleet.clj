@@ -40,7 +40,7 @@
               ;; for reference, record gas price at this point in space-time
               :gas_price (-> (get-account-by-id db-conn account-id)
                              :address_zip
-                             get-zip-def
+                             (#(get-zip-def db-conn %))
                              (get gas-type))})))
 
 (defn add-deliveries
