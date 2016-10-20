@@ -41,6 +41,7 @@
               :gas_price (-> (get-account-by-id db-conn account-id)
                              :address_zip
                              (#(get-zip-def db-conn %))
+                             :gas-price
                              (get gas-type))})))
 
 (defn add-deliveries
