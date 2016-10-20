@@ -5216,7 +5216,7 @@ ALTER TABLE `dashboard_users`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `fleet_accounts`
+-- Indexes for table `accounts`
 --
 ALTER TABLE `fleet_accounts`
   ADD PRIMARY KEY (`id`);
