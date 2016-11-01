@@ -272,7 +272,7 @@
       (not (valid-price? db-conn user zip-def o :bypass-zip-code-check bypass-zip-code-check))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
-                          (assoc (segment-props o)
+                          (assoc (segment-props o :zip-def zip-def)
                                  :reason "price-changed-during-review")))
           {:success false
            :message (str "The price changed while you were creating your "
@@ -283,7 +283,7 @@
       (not (valid-time-choice? db-conn zip-def o))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
-                          (assoc (segment-props o)
+                          (assoc (segment-props o :zip-def zip-def)
                                  :reason "high-demand")))
           {:success false
            :message (str "We currently are experiencing high demand and "
@@ -295,7 +295,7 @@
       (not (is-open? zip-def (:target_time_start o)))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
-                          (assoc (segment-props o)
+                          (assoc (segment-props o :zip-def zip-def)
                                  :reason "outside-service-hours")))
           {:success false
            :message (:closed-message zip-def)})
@@ -310,7 +310,7 @@
           (do ;; payment failed, do not allow order to be placed
             (only-prod-or-dev
              (segment/track segment-client (:user_id o) "Request Order Failed"
-                            (assoc (segment-props o)
+                            (assoc (segment-props o :zip-def zip-def)
                                    :charge-authorized charge-authorized? ;; false
                                    :reason "failed-charge")))
             ;; TODO send notification to us? (async?)
@@ -381,7 +381,7 @@
               
               (only-prod-or-dev
                (segment/track segment-client (:user_id o) "Request Order"
-                              (assoc (segment-props o)
+                              (assoc (segment-props o :zip-def zip-def)
                                      :charge-authorized charge-authorized?))
                ;; used by mailchimp
                (segment/identify segment-client (:user_id o)
