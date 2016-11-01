@@ -1,6 +1,7 @@
 ;; in users namespace
 
 ;; Create Managed Accounts
+;; be sure to change code so that managed users can add vehicles
 (let [db-conn (common.db/conn)]
   (run! #(add-vehicle
           db-conn
