@@ -1,5 +1,18 @@
 ;; in users namespace
 
+
+
+
+;; !!!
+;;
+;; WARNING: this is outdated and needs to be modified in order to be compatible
+;; with the new Accounts system
+;;
+;; !!!
+
+
+
+
 ;; Create Managed Accounts
 ;; be sure to change code so that managed users can add vehicles
 (let [db-conn (common.db/conn)]

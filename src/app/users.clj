@@ -288,8 +288,7 @@
 (defn register
   "Only for native users."
   [db-conn platform-id auth-key
-   & {:keys [client-ip account-manager-id prepop-reset-key
-             subscription]}]
+   & {:keys [client-ip prepop-reset-key subscription]}]
   (if (and (valid-email? platform-id)
            (email-available? db-conn platform-id))
     (if (valid-password? auth-key)
@@ -298,7 +297,6 @@
              (merge {:id new-user-id
                      :email platform-id
                      :type "native"
-                     :account_manager_id (or account-manager-id "")
                      :reset_key (if prepop-reset-key
                                   (rand-str-alpha-num 22)
                                   "")}
@@ -308,13 +306,9 @@
                        :subscription_expiration_time (:expiration-time subscription)
                        :subscription_auto_renew (:auto-renew subscription)}))
              :password auth-key
-             :client-ip client-ip
-             :is-managed-account account-manager-id)
-        (if (not account-manager-id)
-          ;; this is a user creating their own account; log them in now...
-          (login db-conn "native" platform-id auth-key false :client-ip client-ip)
-          ;; for automation purposes
-          new-user-id))
+             :client-ip client-ip)
+        ;; log them in now...
+        (login db-conn "native" platform-id auth-key false :client-ip client-ip))
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false
