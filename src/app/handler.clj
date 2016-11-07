@@ -23,7 +23,8 @@
             [ring.middleware.json :as middleware]
             [ring.util.response :refer [header response redirect]]
             [ring.middleware.ssl :refer [wrap-ssl-redirect]]
-            [clojure.string :as s]))
+            [clojure.string :as s]
+            [clojure.tools.logging :as log]))
 
 (defn wrap-page [resp]
   (header resp "Content-Type" "text/html; charset=utf-8"))
@@ -430,7 +431,8 @@
          ;; Desktop
          (wrap-page (response "Please visit this page using either your Android or iPhone to download the Purple Courier App."))))
   (GET "/terms" [] (wrap-page (response (pages/terms))))
-  (GET "/ok" [] (response {:success true}))
+  (GET "/ok" [] (do (log/error "OK hit.")
+                    (response {:success true})))
   (GET "/" [] (redirect "http://purpleapp.com"))
   (route/resources "/")
   (route/not-found (wrap-page (response (pages/not-found-page)))))
@@ -443,3 +445,9 @@
       (middleware/wrap-json-response)))
 
 (! (periodic/init))
+
+(log/info "App initiated info.")
+
+(log/debug "App initiated debug.")
+
+(log/error "App initiated.")

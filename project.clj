@@ -1,6 +1,7 @@
 (defproject app "2.0.1-SNAPSHOT"
   :description "Purple mobile app web service."
   :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.clojure/tools.logging "0.3.1"]
                  [compojure "1.1.8"]
                  [ring/ring-json "0.1.2"]
                  ;; json and related utilities
