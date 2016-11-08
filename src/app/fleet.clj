@@ -5,20 +5,20 @@
             [common.zones :refer [get-zip-def]]
             [clojure.string :as s]))
 
-(defn get-account-by-id
-  [db-conn account-id]
-  (first (!select db-conn "fleet_accounts" ["*"] {:id account-id})))
+(defn get-fleet-location-by-id
+  [db-conn fleet-location-id]
+  (first (!select db-conn "fleet_locations" ["*"] {:id fleet-location-id})))
 
-(defn get-accounts
+(defn get-fleet-locations
   [db-conn courier-id lat lng]
-  (let [accounts (!select db-conn "fleet_accounts" ["*"] {})]
+  (let [locations (!select db-conn "fleet_locations" ["*"] {})]
     {:success true
-     :accounts accounts
-     :default_account_id (:id (first accounts))}))
+     :accounts locations
+     :default_account_id (:id (first locations))}))
 
 (defn add-delivery
   "Report a delivery of fuel for a fleet account."
-  [db-conn account-id courier-id vin license-plate gallons gas-type is-top-tier]
+  [db-conn fleet-location-id courier-id vin license-plate gallons gas-type is-top-tier]
   (cond
     (and (s/blank? vin) (s/blank? license-plate))
     {:sucess false :message "You must enter a VIN or a License Plate."}
@@ -31,14 +31,14 @@
              "fleet_deliveries"
              {:id (rand-str-alpha-num 20)
               :courier_id courier-id
-              :account_id account-id
+              :fleet_location_id fleet-location-id
               :vin (s/upper-case vin)
               :license_plate (s/upper-case license-plate)
               :gallons gallons
               :gas_type gas-type
               :is_top_tier (or is-top-tier false)
               ;; for reference, record gas price at this point in space-time
-              :gas_price (-> (get-account-by-id db-conn account-id)
+              :gas_price (-> (get-fleet-location-by-id db-conn fleet-location-id)
                              :address_zip
                              (#(get-zip-def db-conn %))
                              :gas-price
