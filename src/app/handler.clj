@@ -281,7 +281,7 @@
                      (let [b (keywordize-keys body) db-conn (conn)]
                        (demand-user-auth
                         db-conn (:user_id b) (:token b)
-                        (fleet/get-accounts
+                        (fleet/get-fleet-locations
                          db-conn
                          (:user_id b)
                          (coerce-double (:lat b))

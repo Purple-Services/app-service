@@ -48,7 +48,9 @@
                     :injections
                     [(require 'pjstadig.humane-test-output)
                      (pjstadig.humane-test-output/activate!)]}
-                   :profiles/dev]
+                   :profiles/dev
+                   ;; :profiles/local
+                   ]
              :app-integration-test [:dev
                                     {:db-host "localhost"
                                      :db-name "ebdb_test"
