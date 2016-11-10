@@ -403,9 +403,11 @@
                      " vehicle without plates, write: NOPLATES. Vehicles"
                      " without license plates are ineligible for coupon"
                      " codes.")}
+      
       required-fields-blank?
       {:success false
        :message "Required fields cannot be empty."}
+      
       ;; license_plate is valid
       (valid-license-plate? (:license_plate record-map))
       (do (doto (assoc record-map
