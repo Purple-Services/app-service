@@ -77,7 +77,7 @@
           [{:octane "87",
             :gallon_choices {:0 7.5, :1 10, :2 15},
             :default_gallon_choice :2,
-            :price_per_gallon 305,
+            :price_per_gallon 312,
             :times
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
@@ -88,7 +88,7 @@
            {:octane "91",
             :gallon_choices {:0 7.5, :1 10, :2 15},
             :default_gallon_choice :2,
-            :price_per_gallon 329,
+            :price_per_gallon 339,
             :times
             {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
              180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},
@@ -175,7 +175,7 @@
            [{:octane "87",
              :gallon_choices {:0 7.5, :1 10, :2 15},
              :default_gallon_choice :2,
-             :price_per_gallon 309,
+             :price_per_gallon 299,
              :times
              {300 {:service_fee 299, :text "within 5 hours ($2.99)", :order 2},
               180 {:service_fee 399, :text "within 3 hours ($3.99)", :order 1},

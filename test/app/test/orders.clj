@@ -118,9 +118,9 @@
                 :zones "0"}
                {})
       ;; test that there are two connected couriers
-      (is (= 2 (count (couriers/get-all-connected db-conn))))
+      (is (= 8 (count (couriers/get-all-connected db-conn))))
       ;; set courier 1 as busy
       (!update db-conn "couriers" {:busy 1} {:id courier-id})
       ;; test that only one courier is connected, not busy
-      (is (= 1 (count (->> (couriers/get-all-available db-conn)))))
+      (is (= 7 (count (->> (couriers/get-all-available db-conn)))))
       )))
