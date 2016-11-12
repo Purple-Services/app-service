@@ -25,7 +25,7 @@
 (defn get-gas-prices
   "Given a zip-code, return the gas prices."
   [db-conn zip-code]
-  (if-let [zip-def (get-zip-def db-conn zip-code)] ; do we service this ZIP code at all?
+  (if-let [zip-def (get-zip-def db-conn zip-code)]
     {:success true
      :gas_prices (:gas-price zip-def)}
     {:success false
@@ -37,8 +37,8 @@
   "Build a map that describes a delivery time option for the mobile app."
   [time-str      ; e.g., "within 5 hours"
    delivery-fee  ; fee amount in cents
-   num-free      ; number of free uses that subscription provides
-   num-free-used ; number of free uses already used in this period
+   num-free      ; number of free deliveries that subscription provides
+   num-free-used ; number of free deliveries already used in this period
    sub-discount] ; the discount the subscription gives after all free used
   (let [fee-str #(if (= % 0) "free" (str "$" (cents->dollars-str %)))
         gen-text #(str time-str " (" % ")")]
@@ -88,32 +88,8 @@
                        :order (Integer. (name k)))]))
          (into {}))))
 
-
-;; this function isn't being used at the moment, but it has become broken
-;; because we don't currently have a distinction of 'market' amongst various
-;; zone definitions. you could look at the rank (= 100) or perhaps the zone id
-;; should be hardcoded in somewhere, hmmm... just something to think about if
-;; we need to resume use of this function
-;; hmm actually it should be something that is just defined in a zone definition
-;; (defn num-couriers-connected-in-market
-;;   "How many couriers are currently connected and on duty in this market?"
-;;   [market-id]
-;;   (->> (couriers/get-all-connected (conn))
-;;        (couriers/filter-by-market market-id)
-;;        count))
-
-(defn enough-couriers?
-  "Does the market that this ZIP is in have enough couriers to offer service?"
-  [zip-def subscription]
-  true)
-;; This function is being bypassed for now because it's not really helpful
-;; (or (in? [0 2 3] (:market-id zip-def)) ;; LA, OC, SEA are exempt from this
-;;     (and (not (nil? (:id subscription))) ;; subscribers are exempt
-;;          (not= (:id subscription) 0))
-;;     (pos? (num-couriers-connected-in-market (:market-id zip-def))))
-
 (defn available
-  [user good-time? zip-def subscription enough-couriers-delay octane]
+  [user good-time? zip-def subscription octane]
   {:octane octane
    :gallon_choices (if (users/is-managed-account? user)
                      {:0 7.5
@@ -128,8 +104,8 @@
    :times (->> (:delivery-fee zip-def)
                (delivery-times-map user zip-def subscription)
                (filter (fn [[time time-map]]
-                         (and good-time?
-                              @enough-couriers-delay)))
+                         ;; currently, not very complex filtering here
+                         good-time?))
                (into {}))
    ;; default_time_choice not implemented in app yet
    :default_time_choice (:default-gallon-choice zip-def)
@@ -139,38 +115,26 @@
 
 (defn availabilities-map
   [db-conn zip-code user subscription]
-  (if-let [zip-def (get-zip-def db-conn zip-code)] ; do we service this ZIP code at all?
-    (let [enough-couriers-delay (delay (enough-couriers? zip-def subscription))]
-      {:availabilities (map (partial available
-                                     user
-                                     (is-open-now? zip-def)
-                                     zip-def
-                                     subscription
-                                     enough-couriers-delay)
-                            ["87" "91"])
-       ;; if unavailable (mobile app client will determine from :availabilities)
-       :unavailable-reason
-       (cond
-         (not (is-open-now? zip-def))
-         (do (only-prod-or-dev
-              (segment/track segment-client (:id user)
-                             "Availability Check Said Unavailable"
-                             {:address_zip zip-code
-                              :reason "outside-service-hours-or-closed"}))
-             (:closed-message zip-def))
-
-         (not @enough-couriers-delay)
-         (do (only-prod-or-dev
-              (segment/track segment-client (:id user)
-                             "Availability Check Said Unavailable"
-                             {:address_zip zip-code
-                              :reason "no-couriers-available"}))
-             (str "We are busy. There are no couriers available. Please "
-                  "try again later."))
-
-         ;; it's available, no unavailable-reason needed
-         :else "")})
-    ;; We don't service this ZIP code.
+  (if-let [zip-def (get-zip-def db-conn zip-code)]
+    {:availabilities (map (partial available
+                                   user
+                                   (is-open-now? zip-def)
+                                   zip-def
+                                   subscription)
+                          ["87" "91"])
+     :unavailable-reason ; not always seen but always set (app compatibility)
+     (cond
+       (not (is-open-now? zip-def))
+       (do (only-prod-or-dev
+            (segment/track segment-client (:id user)
+                           "Availability Check Said Unavailable"
+                           {:address_zip zip-code
+                            :reason "outside-service-hours-or-closed"}))
+           (:closed-message zip-def))
+       
+       ;; it's available, no unavailable-reason needed
+       :else "")}
+    ;; We don't service this ZIP code at all.
     {:availabilities
      ;; This is the quirky way we tell the app we don't provide service here.
      [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
@@ -203,11 +167,6 @@
                      :subscriptions (subscriptions/get-all-mapped-by-id db-conn)}}
            ;; this will give us :availabilities & :unavailable-reason
            (availabilities-map db-conn zip-code user subscription))))
-
-;; (do (println "-------========-------")
-;;     (clojure.pprint/pprint
-;;      (:availabilities (availability (common.db/conn) "90210" "9kaU0GW1aJ4wF94tLGVc")))
-;;     (println "-------========-------"))
 
 (defn update-courier-state
   "Marks couriers as disconnected as needed."
