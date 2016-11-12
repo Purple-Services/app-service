@@ -91,14 +91,12 @@
 (defn available
   [user good-time? zip-def subscription octane]
   {:octane octane
-   :gallon_choices (if (users/is-managed-account? user)
-                     {:0 7.5
-                      :1 10
-                      :2 15
-                      :3 20
-                      :4 25
-                      :5 30}
-                     (:gallon-choices zip-def))
+   :gallon_choices (cond
+                     (users/is-managed-account? user) {:0 7.5 :1 10 :2 15
+                                                       :3 20 :4 25 :5 30}
+                     (in? [1 2] (:id subscription)) {:0 7.5 :1 10 :2 15
+                                                     :3 20}
+                     :else (:gallon-choices zip-def))
    :default_gallon_choice (:default-gallon-choice zip-def)
    :price_per_gallon (get (:gas-price zip-def) octane)
    :times (->> (:delivery-fee zip-def)
