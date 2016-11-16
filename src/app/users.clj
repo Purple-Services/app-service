@@ -131,6 +131,7 @@
              "sessions"
              {:user_id (:id user)
               :token token
+              :source "app"
               :ip (or client-ip "")})
     (only-prod-or-dev
      (segment/track segment-client (:id user) "Login"))
