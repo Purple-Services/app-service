@@ -1,7 +1,8 @@
 (ns app.fleet
   (:require [common.config :as config]
             [common.db :refer [!select !insert !update mysql-escape-str]]
-            [common.util :refer [rand-str-alpha-num coerce-double]]
+            [common.util :refer [rand-str-alpha-num coerce-double
+                                 compute-total-price]]
             [common.zones :refer [get-zip-def]]
             [clojure.string :as s]))
 
@@ -27,11 +28,13 @@
     {:sucess false :message "You must enter the number of gallons delivered."}
     
     :else
-    (let [gas-price (-> (get-fleet-location-by-id db-conn fleet-location-id)
-                        :address_zip
-                        (#(get-zip-def db-conn %))
-                        :gas-price
-                        (get gas-type))
+    (let [gas-price (or (some-> (get-fleet-location-by-id db-conn
+                                                          fleet-location-id)
+                                :address_zip
+                                (#(get-zip-def db-conn %))
+                                :gas-price
+                                (get gas-type))
+                        0)
           service-fee 0
           gallons (Double. gallons-str)]
       (!insert db-conn
@@ -46,9 +49,9 @@
                 :is_top_tier (or is-top-tier false)
                 :gas_price gas-price
                 :service_fee service-fee
-                :total_price ((comp (partial max 0) int #(Math/ceil %))
-                              (+ (* gas-price gallons)
-                                 service-fee))}))))
+                :total_price (compute-total-price gas-price
+                                                  gallons
+                                                  service-fee)}))))
 
 (defn add-deliveries
   [db-conn
