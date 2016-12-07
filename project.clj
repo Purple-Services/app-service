@@ -1,4 +1,4 @@
-(defproject app "2.0.1-SNAPSHOT"
+(defproject app "2.1.0-SNAPSHOT"
   :description "Purple mobile app web service."
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [compojure "1.1.8"]
@@ -48,8 +48,8 @@
                     :injections
                     [(require 'pjstadig.humane-test-output)
                      (pjstadig.humane-test-output/activate!)]}
-                   :profiles/dev
-                   ;; :profiles/local
+                   ;; :profiles/dev
+                   :profiles/local
                    ]
              :app-integration-test [:dev
                                     {:db-host "localhost"
