@@ -38,25 +38,19 @@
          :auto-reload? true
          :auto-refresh? true
          :reload-paths ["src" "resources" "checkouts"]}
-  :profiles {:dev [{:dependencies
-                    [[javax.servlet/servlet-api "2.5"]
-                     [ring/ring-mock "0.3.0"]
-                     [org.seleniumhq.selenium/selenium-java "2.47.1"]
-                     [clj-webdriver "0.7.2"]
-                     [ring "1.5.0"]
-                     [pjstadig/humane-test-output "0.6.0"]]
-                    :injections
-                    [(require 'pjstadig.humane-test-output)
-                     (pjstadig.humane-test-output/activate!)]}
-                   ;; :profiles/dev
-                   :profiles/local
-                   ]
-             :app-integration-test [:dev
-                                    {:db-host "localhost"
-                                     :db-name "ebdb_test"
-                                     :db-port "3306"
-                                     :db-user "root"
-                                     :db-password ""}]}
+  :profiles {:shared [{:dependencies
+                       [[javax.servlet/servlet-api "2.5"]
+                        [ring/ring-mock "0.3.0"]
+                        [org.seleniumhq.selenium/selenium-java "2.47.1"]
+                        [clj-webdriver "0.7.2"]
+                        [ring "1.5.0"]
+                        [pjstadig/humane-test-output "0.6.0"]]
+                       :injections
+                       [(require 'pjstadig.humane-test-output)
+                        (pjstadig.humane-test-output/activate!)]}]
+             :local [:shared :profiles/local]
+             :dev [:shared :profiles/dev]
+             :prod [:shared :profiles/prod]}
   :test-selectors {:default (complement :integration)
                    :integration :integration}
   :aws {:beanstalk {:app-name "purple"

@@ -19,12 +19,12 @@
 
 (defn add-delivery
   "Report a delivery of fuel for a fleet account."
-  [db-conn fleet-location-id courier-id vin license-plate gallons-str gas-type is-top-tier]
+  [db-conn fleet-location-id courier-id vin license-plate gallons gas-type is-top-tier]
   (cond
     (and (s/blank? vin) (s/blank? license-plate))
     {:sucess false :message "You must enter a VIN or a License Plate."}
     
-    (= 0 (Double. gallons-str))
+    (zero? gallons)
     {:sucess false :message "You must enter the number of gallons delivered."}
     
     :else
@@ -35,8 +35,7 @@
                                 :gas-price
                                 (get gas-type))
                         0)
-          service-fee 0
-          gallons (Double. gallons-str)]
+          service-fee 0]
       (!insert db-conn
                "fleet_deliveries"
                {:id (rand-str-alpha-num 20)
@@ -62,7 +61,9 @@
                        courier-id
                        (:vin %)
                        (:license_plate %)
-                       (:gallons %)
+                       (if (s/blank? (:gallons %))
+                         0
+                         (coerce-double (:gallons %)))
                        (:gas_type %)
                        (:is_top_tier %))
         deliveries))

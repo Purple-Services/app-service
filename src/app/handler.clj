@@ -304,8 +304,7 @@
               ;; for saved deliveries that couldn't be sent earlier
               (POST "/add-deliveries" {body :body}
                     (response
-                     (let [b (keywordize-keys body) db-conn (conn)
-                           _ (log-error (str b))]
+                     (let [b (keywordize-keys body) db-conn (conn)]
                        (demand-user-auth
                         db-conn (:user_id b) (:token b)
                         (fleet/add-deliveries db-conn
