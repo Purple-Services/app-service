@@ -376,7 +376,7 @@
                                              :icon_emoji ":fuelpump:"
                                              :username "New Order"}})
                  (run! #(send-sms % order-text-info)
-                       ["4083388336" ; Jackson 
+                       [ ; no phone number in here atm
                         ])))
               
               (only-prod-or-dev

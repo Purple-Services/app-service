@@ -60,17 +60,11 @@
   [user zip-def sub delivery-fees]
   (let [has-free-three-hour? (pos? (or (:num_free_three_hour sub) 0))
         has-free-one-hour? (pos? (or (:num_free_one_hour sub) 0))]
-    (->> (remove #(or (and (= 300 (val %))
-                           ;; hide 5-hour option if using 1 or 3-hour sub
-                           (or has-free-three-hour? has-free-one-hour?))
-                      (and (= 180 (val %))
-                           ;; hide 3-hour option if using 1-hour sub
-                           (or has-free-one-hour?)))
-                 ;; (:time-choices zip-def) ; still show all three options always
-                 ;; temporarily hardcoding this in
-                 {:0 60
-                  :1 180
-                  :2 300})
+    (->> {:0 60
+          :1 180
+          :2 300} ;; (:time-choices zip-def)
+         ;; still show all three options always
+         ;; temporarily hardcoding this in
          (#(for [[k v] %
                  :let [[num-as-word time-str]
                        (case v
@@ -94,7 +88,7 @@
    :gallon_choices (cond
                      (users/is-managed-account? user) {:0 7.5 :1 10 :2 15
                                                        :3 20 :4 25 :5 30}
-                     (in? [1 2] (:id subscription)) {:0 7.5 :1 10 :2 15
+                     (in? [1 2 5] (:id subscription)) {:0 7.5 :1 10 :2 15
                                                      :3 20}
                      :else (:gallon-choices zip-def))
    :default_gallon_choice (:default-gallon-choice zip-def)
