@@ -7,7 +7,8 @@
                                  rand-str-alpha-num coerce-double
                                  segment-client send-email send-sms
                                  unless-p only-prod only-prod-or-dev now-unix
-                                 unix->fuller unix->full unix->minute-of-day]]
+                                 unix->fuller unix->full unix->minute-of-day
+                                 geocode]]
             [common.users :refer [details get-user-by-id include-user-data
                                   is-managed-account? charge-user]]
             [common.orders :refer [accept assign begin-route complete get-by-id
@@ -241,6 +242,17 @@
         referral-gallons-available (:referral_gallons user)
         curr-time-secs (quot (System/currentTimeMillis) 1000)
         zip-def (get-zip-def db-conn (:address_zip order))
+        ;; bad-coords? true means that geocoding failed client-side
+        bad-coords? (zero? (coerce-double (:lat order)))
+        good-coords (when bad-coords?
+                      (or (geocode (:address_street order) (:address_zip order))
+                          {:lat 0 :lng 0}))
+        lat (if bad-coords?
+              (:lat good-coords)
+              (coerce-double (:lat order)))
+        lng (if bad-coords?
+              (:lng good-coords)
+              (coerce-double (:lng order)))
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -256,8 +268,8 @@
                              (:gas_type order)
                              (throw (Exception. "Outdated app version.")))
                  :is_top_tier (:only_top_tier vehicle)
-                 :lat (coerce-double (:lat order))
-                 :lng (coerce-double (:lng order))
+                 :lat lat
+                 :lng lng
                  :license_plate (:license_plate vehicle)
                  ;; we'll use as many referral gallons as available
                  :referral_gallons_used (min (coerce-double (:gallons order))
