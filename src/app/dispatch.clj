@@ -88,7 +88,7 @@
    :gallon_choices (cond
                      (users/is-managed-account? user) {:0 7.5 :1 10 :2 15
                                                        :3 20 :4 25 :5 30}
-                     (in? [1 2 5] (:id subscription)) {:0 7.5 :1 10 :2 15
+                     (in? [1 2] (:id subscription)) {:0 7.5 :1 10 :2 15
                                                      :3 20}
                      :else (:gallon-choices zip-def))
    :default_gallon_choice (:default-gallon-choice zip-def)
