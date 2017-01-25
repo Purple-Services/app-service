@@ -1,7 +1,7 @@
 (ns app.orders
   (:require [common.config :as config]
             [common.db :refer [!select !insert !update]]
-            [common.util :refer [cents->dollars-str in?
+            [common.util :refer [cents->dollars-str in? log-error
                                  gallons->display-str
                                  minute-of-day->hmma
                                  rand-str-alpha-num coerce-double
@@ -245,14 +245,13 @@
         ;; bad-coords? true means that geocoding failed client-side
         bad-coords? (zero? (coerce-double (:lat order)))
         good-coords (when bad-coords?
-                      (or (geocode (:address_street order) (:address_zip order))
+                      (or (let [geocode-result (geocode (:address_street order)
+                                                        (:address_zip order))]
+                            geocode-result)
                           {:lat 0 :lng 0}))
-        lat (if bad-coords?
-              (:lat good-coords)
-              (coerce-double (:lat order)))
-        lng (if bad-coords?
-              (:lng good-coords)
-              (coerce-double (:lng order)))
+        [lat lng] (if bad-coords?
+                    [(:lat good-coords) (:lng good-coords)]
+                    [(coerce-double (:lat order)) (coerce-double (:lng order))])
         o (assoc (select-keys order [:vehicle_id :special_instructions
                                      :address_street :address_city
                                      :address_state :address_zip :gas_price
@@ -281,6 +280,16 @@
                  :tire_pressure_check (or (:tire_pressure_check order) false))]
 
     (cond
+      (and bad-coords? (not= (:resolved-zip good-coords) (:address_zip o)))
+      ;; it seems that there Saved Locations are bad, and are out of sync with
+      ;; their saved_locations in the database. This is a fix for a temporary bug.
+      (do (log-error (str "Bad Coords on Order: " o
+                          "\n\nGeocode Result: " good-coords))
+          {:success false
+           :message (str "There was a problem with your Saved Location. "
+                         "Please try editing it and re-entering the address.")
+           :message_title "Sorry"})
+      
       (not (valid-price? db-conn user zip-def o :bypass-zip-code-check bypass-zip-code-check))
       (do (only-prod-or-dev
            (segment/track segment-client (:user_id o) "Request Order Failed"
