@@ -2,7 +2,7 @@
   (:require [common.config :as config]
             [common.db :refer [!select !insert !update mysql-escape-str]]
             [common.util :refer [rand-str-alpha-num coerce-double
-                                 compute-total-price]]
+                                 compute-total-price reverse-geocode]]
             [common.zones :refer [get-zip-def]]
             [common.vin :refer [get-info-batch]]
             [clojure.string :as s]))
@@ -13,10 +13,16 @@
 
 (defn get-fleet-locations
   [db-conn courier-id lat lng]
-  (let [locations (!select db-conn "fleet_locations" ["*"] {})]
+  (let [zip-code (when (not= 0 lat)
+                   (:zip (reverse-geocode lat lng)))
+        locations (!select db-conn "fleet_locations" ["*"] {})]
     {:success true
      :accounts locations
-     :default_account_id (:id (first locations))}))
+     :default_account_id (-> (if zip-code
+                               (sort-by #(not= (:address_zip %) zip-code) locations)
+                               locations)
+                             first
+                             :id)}))
 
 (defn get-by-index
   "Get an el from coll whose k is equal to v. Returns nil if el doesn't exist"
