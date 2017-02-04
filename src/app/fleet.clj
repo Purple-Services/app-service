@@ -41,14 +41,15 @@
     {:sucess false :message "You must enter the number of gallons delivered."}
     
     :else
-    (let [gas-price (or (some-> (get-fleet-location-by-id db-conn
-                                                          fleet-location-id)
+    (let [fleet-location (get-fleet-location-by-id db-conn fleet-location-id)
+          gas-price (or (some-> fleet-location
                                 :address_zip
                                 (#(get-zip-def db-conn %))
                                 :gas-price
-                                (get gas-type))
+                                (get gas-type)
+                                (+ (Integer. (:gas_price_diff_fixed fleet-location))))
                         0)
-          service-fee 0
+          service-fee (:service_fee_per_delivery fleet-location)
           vin-infos (or vin-infos
                         (when vin
                           (->> [(s/upper-case vin)]
