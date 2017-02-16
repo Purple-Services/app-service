@@ -25,52 +25,60 @@
                              "170689"
                              18.1
                              "91"
-                             false))
+                             false
+                             1487208328))
         "Can add single fleet delivery.")))
 
 (deftest add-fleet-deliveries
   (let [db-conn     (conn)]
     (fleet/add-deliveries db-conn
                           "zA0WXhPpcS3fpYpCbhBa"
+                          "FxE0goGbIOqQ3cQkSVG3"
                           [{:user_id "zA0WXhPpcS3fpYpCbhBa",
                             :account_id "FxE0goGbIOqQ3cQkSVG3",
                             :vin "58ABK1GG7HU039401",
                             :license_plate "170682",
                             :gallons "12.1",
                             :gas_type "87",
-                            :is_top_tier true}
+                            :is_top_tier true
+                            :timestamp_recorded 1487208328}
                            {:user_id "zA0WXhPpcS3fpYpCbhBa",
                             :account_id "FxE0goGbIOqQ3cQkSVG3",
                             :vin "58ABK1GG6HU039177",
                             :license_plate "170691",
                             :gallons "12.5",
                             :gas_type "87",
-                            :is_top_tier true}
+                            :is_top_tier true
+                            :timestamp_recorded 1487208328}
                            {:user_id "zA0WXhPpcS3fpYpCbhBa",
                             :account_id "FxE0goGbIOqQ3cQkSVG3",
                             :vin "58ABK1GG4HU039565",
                             :license_plate "170720",
                             :gallons "11.9",
                             :gas_type "87",
-                            :is_top_tier true}
+                            :is_top_tier true
+                            :timestamp_recorded 1487208328}
                            {:user_id "zA0WXhPpcS3fpYpCbhBa",
                             :account_id "FxE0goGbIOqQ3cQkSVG3",
                             :vin "58ABK1GGXHU039358",
                             :license_plate "170719",
                             :gallons "12.3",
                             :gas_type "87",
-                            :is_top_tier true}
+                            :is_top_tier true
+                            :timestamp_recorded 1487208328}
                            {:user_id "zA0WXhPpcS3fpYpCbhBa",
                             :account_id "FxE0goGbIOqQ3cQkSVG3",
                             :vin "58ABK1GG5HU039364",
                             :license_plate "170686",
                             :gallons "12.8",
                             :gas_type "87",
-                            :is_top_tier true}
+                            :is_top_tier true
+                            :timestamp_recorded 1487208328}
                            {:user_id "zA0WXhPpcS3fpYpCbhBa",
                             :account_id "FxE0goGbIOqQ3cQkSVG3",
                             :vin "58ABK1GG2HU039483",
                             :license_plate "170718",
                             :gallons "12.4",
                             :gas_type "87",
-                            :is_top_tier true}])))
+                            :is_top_tier true
+                            :timestamp_recorded 1487208328}])))
