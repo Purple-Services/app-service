@@ -286,6 +286,15 @@
                          (:user_id b)
                          (coerce-double (:lat b))
                          (coerce-double (:lng b)))))))
+              (POST "/get-deliveries" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/get-deliveries
+                         db-conn
+                         (:user_id b)
+                         (:fleet_location_id b))))))
               (POST "/add-delivery" {body :body}
                     (response
                      (let [b (keywordize-keys body) db-conn (conn)]
@@ -300,7 +309,8 @@
                                               0
                                               (coerce-double (:gallons b)))
                                             (:gas_type b)
-                                            (:is_top_tier b))))))
+                                            (:is_top_tier b)
+                                            (:timestamp_recorded b))))))
               ;; for saved deliveries that couldn't be sent earlier
               (POST "/add-deliveries" {body :body}
                     (response
@@ -309,7 +319,36 @@
                         db-conn (:user_id b) (:token b)
                         (fleet/add-deliveries db-conn
                                               (:user_id b)
-                                              (:deliveries b)))))))))
+                                              (:fleet_location_id b)
+                                              (:deliveries b))))))
+              (POST "/edit-delivery" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (fleet/edit-delivery db-conn
+                                             (:id b)
+                                             (:account_id b)
+                                             (:user_id b)
+                                             (:vin b)
+                                             (:license_plate b)
+                                             (if (s/blank? (:gallons b))
+                                               0
+                                               (coerce-double (:gallons b)))
+                                             (:gas_type b)
+                                             (:is_top_tier b)
+                                             (:timestamp_recorded b))))))
+              (POST "/delete-delivery" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn
+                        (:user_id b)
+                        (:token b)
+                        (fleet/delete-delivery db-conn
+                                               (:user_id b)
+                                               (:fleet_location_id b)
+                                               (:delivery_id b)))))))))
   (context "/courier" []
            (wrap-force-ssl
             (defroutes courier-routes

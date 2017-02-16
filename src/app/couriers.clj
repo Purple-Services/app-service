@@ -51,9 +51,9 @@
 (defn ping
   "The courier app periodically pings us with courier status details."
   [db-conn user-id app-version lat lng gallons_87 gallons_91 set-on-duty]
-  (merge (if (ver< (or app-version "0") "1.11.0")
+  (merge (if (ver< (or app-version "0") "1.11.8")
            {:success false
-            :message "Please update your courier app to the latest version. You seem to be using the customer app or an old version of the courier app."
+            :message "Please update your courier app to the latest version. You seem to be using the customer app or an old version of the courier app. https://purpleapp.com/courierapp"
             :message_title "Error"}
            (!update db-conn
                     "couriers"
