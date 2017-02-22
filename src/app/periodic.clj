@@ -25,7 +25,7 @@
   "Does a few periodic tasks to maintain dispatch state etc."
   [db-conn]
   ((juxt dispatch/update-courier-state
-         dispatch/remind-couriers
+         ;; dispatch/remind-couriers
          dispatch/auto-assign)
    db-conn))
 
