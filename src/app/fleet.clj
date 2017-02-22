@@ -55,45 +55,56 @@
     {:sucess false :message "You must enter a number of Gallons greater than 0."}
     
     :else
-    (let [fleet-location (get-fleet-location-by-id db-conn fleet-location-id)
-          gas-price (or (some-> fleet-location
-                                :address_zip
-                                (#(get-zip-def db-conn %))
-                                :gas-price
-                                (get gas-type)
-                                (+ (Integer. (:gas_price_diff_fixed fleet-location))))
-                        0)
-          service-fee (:service_fee_per_delivery fleet-location)
-          vin-infos (or vin-infos
-                        (when vin
-                          (->> [(s/upper-case vin)]
-                               distinct
-                               (into [])
-                               get-info-batch
-                               :resp)))
-          vin-info (when vin-infos
-                     (get-by-index vin-infos :vin (s/upper-case vin)))]
-      (!insert db-conn
-               "fleet_deliveries"
-               {:id (rand-str-alpha-num 20)
-                :courier_id courier-id
-                :fleet_location_id fleet-location-id
-                :vin (s/upper-case vin)
-                :year (:year vin-info)
-                :make (:make vin-info)
-                :model (:model vin-info)
-                :license_plate (s/upper-case license-plate)
-                :gallons gallons
-                :gas_type gas-type
-                :is_top_tier (or is-top-tier false)
-                :gas_price gas-price
-                :service_fee service-fee
-                :total_price (compute-total-price gas-price
-                                                  gallons
-                                                  service-fee)
-                :timestamp_recorded timestamp-recorded})
-      (when-not no-select-query
-        (get-deliveries db-conn courier-id fleet-location-id)))))
+    (do (when (empty? (!select db-conn ; pass thru w/o adding if already exists
+                               "fleet_deliveries"
+                               ["1"]
+                               {:fleet_location_id fleet-location-id
+                                :courier_id courier-id
+                                :vin (s/upper-case vin)
+                                :license_plate (s/upper-case license-plate)
+                                :gallons gallons
+                                :gas_type gas-type
+                                :is_top_tier (or is-top-tier false)
+                                :timestamp_recorded timestamp-recorded}))
+          (let [fleet-location (get-fleet-location-by-id db-conn fleet-location-id)
+                gas-price (or (some-> fleet-location
+                                      :address_zip
+                                      (#(get-zip-def db-conn %))
+                                      :gas-price
+                                      (get gas-type)
+                                      (+ (Integer. (:gas_price_diff_fixed fleet-location))))
+                              0)
+                service-fee (:service_fee_per_delivery fleet-location)
+                vin-infos (or vin-infos
+                              (when vin
+                                (->> [(s/upper-case vin)]
+                                     distinct
+                                     (into [])
+                                     get-info-batch
+                                     :resp)))
+                vin-info (when vin-infos
+                           (get-by-index vin-infos :vin (s/upper-case vin)))]
+            (!insert db-conn
+                     "fleet_deliveries"
+                     {:id (rand-str-alpha-num 20)
+                      :courier_id courier-id
+                      :fleet_location_id fleet-location-id
+                      :vin (s/upper-case vin)
+                      :year (:year vin-info)
+                      :make (:make vin-info)
+                      :model (:model vin-info)
+                      :license_plate (s/upper-case license-plate)
+                      :gallons gallons
+                      :gas_type gas-type
+                      :is_top_tier (or is-top-tier false)
+                      :gas_price gas-price
+                      :service_fee service-fee
+                      :total_price (compute-total-price gas-price
+                                                        gallons
+                                                        service-fee)
+                      :timestamp_recorded timestamp-recorded})))
+        (when-not no-select-query
+          (get-deliveries db-conn courier-id fleet-location-id)))))
 
 (defn add-deliveries
   [db-conn
