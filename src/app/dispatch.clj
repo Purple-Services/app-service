@@ -39,7 +39,8 @@
    delivery-fee  ; fee amount in cents
    num-free      ; number of free deliveries that subscription provides
    num-free-used ; number of free deliveries already used in this period
-   sub-discount] ; the discount the subscription gives after all free used
+   sub-discount  ; the discount the subscription gives after all free used
+   is-available?] ; is this time option currently available?
   (let [fee-str #(if (= % 0) "free" (str "$" (cents->dollars-str %)))
         gen-text #(str time-str " (" % ")")]
     (if (not (nil? num-free)) ;; using a subscription?
@@ -51,20 +52,29 @@
                              (fee-str 0)))}
           (let [after-discount (max 0 (+ delivery-fee sub-discount))]
             {:service_fee after-discount
-             :text (gen-text (fee-str after-discount))})))
+             :text (gen-text (if is-available?
+                               (fee-str after-discount)
+                               "sold out"))})))
       {:service_fee delivery-fee
-       :text (gen-text (fee-str delivery-fee))})))
+       :text (gen-text (if is-available?
+                         (fee-str delivery-fee)
+                         "sold out"))})))
 
 (defn delivery-times-map
   "Given subscription usage map and service fee, create the delivery-times map."
   [user zip-def sub delivery-fees]
   (let [has-free-three-hour? (pos? (or (:num_free_three_hour sub) 0))
-        has-free-one-hour? (pos? (or (:num_free_one_hour sub) 0))]
-    (->> {:0 60
-          :1 180
-          :2 300} ;; (:time-choices zip-def)
-         ;; still show all three options always
-         ;; temporarily hardcoding this in
+        has-free-one-hour? (pos? (or (:num_free_one_hour sub) 0))
+        times {:0 60
+               :1 180
+               :2 300}
+        available-times (->> (:time-choices zip-def)
+                             vals
+                             (#(cond-> %
+                                 has-free-one-hour? (conj 60)
+                                 has-free-three-hour? (conj 180)))
+                             distinct)]
+    (->> times
          (#(for [[k v] %
                  :let [[num-as-word time-str]
                        (case v
@@ -78,7 +88,8 @@
                                           (((comp keyword str)
                                             "num_free_" num-as-word "_hour_used") sub)
                                           (((comp keyword str)
-                                            "discount_" num-as-word "_hour") sub))
+                                            "discount_" num-as-word "_hour") sub)
+                                          (in? available-times v))
                        :order (Integer. (name k)))]))
          (into {}))))
 

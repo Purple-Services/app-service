@@ -199,10 +199,12 @@
   [db-conn zip-def o]
   (or
    ;; "Premium" members can bypass
-   (and (= 2 (:subscription_id o)) 
-        (>= (:time-limit o) 60))
+   (or (and (= 2 (:subscription_id o)) 
+            (= (:time-limit o) 60))
+       (and (= 2 (:subscription_id o)) 
+            (= (:time-limit o) 180)))
    ;; "Standard" members can bypass
-   (and (= 1 (:subscription_id o)) (>= (:time-limit o) 180))
+   (and (= 1 (:subscription_id o)) (= (:time-limit o) 180))
    ;; "Unlimited" members can bypass all
    (= 3 (:subscription_id o))
    ;; otherwise, is it offered?
@@ -309,8 +311,7 @@
           {:success false
            :message (str "We currently are experiencing high demand and "
                          "can't promise a delivery within that time limit. Please "
-                         "go back and choose the \"within 3 hours\" or "
-                         "\"within 5 hours\" option.")
+                         "go back and choose a different Time option.")
            :message_title "Sorry"})
 
       (not (is-open? zip-def (:target_time_start o)))
