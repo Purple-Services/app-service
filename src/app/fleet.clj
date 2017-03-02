@@ -4,6 +4,7 @@
             [common.util :refer [rand-str-alpha-num coerce-double
                                  compute-total-price reverse-geocode]]
             [common.zones :refer [get-zip-def]]
+            [common.couriers :refer [get-couriers]]
             [common.vin :refer [get-info-batch]]
             [clojure.string :as s]))
 
@@ -26,9 +27,16 @@
 
 (defn get-fleet-locations
   [db-conn courier-id lat lng]
-  (let [zip-code (when (not= 0 lat)
-                   (:zip (reverse-geocode lat lng)))
-        locations (!select db-conn "fleet_locations" ["*"] {:deleted 0})]
+  (let [zip-code (when-not (= 0 lat) (:zip (reverse-geocode lat lng)))
+        assigned-zones (->> (get-couriers db-conn :where {:id courier-id})
+                            first
+                            :zones)
+        locations (!select db-conn "fleet_locations" ["*"]
+                           {}
+                           :custom-where
+                           (str "market_zone_id IN (\""
+                                (s/join "\",\"" assigned-zones)
+                                "\") AND deleted = 0 ORDER BY name ASC"))]
     {:success true
      :accounts locations
      :default_account_id (-> (if zip-code
