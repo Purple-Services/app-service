@@ -28,7 +28,7 @@
   [db-conn courier-id lat lng]
   (let [zip-code (when (not= 0 lat)
                    (:zip (reverse-geocode lat lng)))
-        locations (!select db-conn "fleet_locations" ["*"] {})]
+        locations (!select db-conn "fleet_locations" ["*"] {:deleted 0})]
     {:success true
      :accounts locations
      :default_account_id (-> (if zip-code
