@@ -11,6 +11,7 @@
             [common.users :as users]
             [common.zones :refer [get-zip-def is-open-now? order->zones]]
             [common.subscriptions :as subscriptions]
+            [common.users :refer [is-child-user-with-no-vehicles?]]
             [ardoq.analytics-clj :as segment]
             [clojure.algo.generic.functor :refer [fmap]]
             [clojure.java.jdbc :as sql]
@@ -119,24 +120,38 @@
 (defn availabilities-map
   [db-conn zip-code user subscription]
   (if-let [zip-def (get-zip-def db-conn zip-code)]
-    {:availabilities (map (partial available
-                                   user
-                                   (is-open-now? zip-def)
-                                   zip-def
-                                   subscription)
-                          ["87" "91"])
-     :unavailable-reason ; not always seen but always set (app compatibility)
-     (cond
-       (not (is-open-now? zip-def))
+    (if-not (is-child-user-with-no-vehicles? db-conn user)
+      {:availabilities (map (partial available
+                                     user
+                                     (is-open-now? zip-def)
+                                     zip-def
+                                     subscription)
+                            ["87" "91"])
+       :unavailable-reason ; not always seen but always set (app compatibility)
+       (cond
+         (not (is-open-now? zip-def))
+         (do (only-prod-or-dev
+              (segment/track segment-client (:id user)
+                             "Availability Check Said Unavailable"
+                             {:address_zip zip-code
+                              :reason "outside-service-hours-or-closed"}))
+             (:closed-message zip-def))
+         
+         ;; it's available, no unavailable-reason needed
+         :else "")}
+      ;; is a child user that doesn't have any vehicles
+      {:availabilities
+       ;; This is the quirky way we tell the app we don't provide service here.
+       [{:octane "87" :gallons 15 :times {} :price_per_gallon 0}
+        {:octane "91" :gallons 15 :times {} :price_per_gallon 0}]
+       :unavailable-reason
        (do (only-prod-or-dev
             (segment/track segment-client (:id user)
                            "Availability Check Said Unavailable"
                            {:address_zip zip-code
-                            :reason "outside-service-hours-or-closed"}))
-           (:closed-message zip-def))
-       
-       ;; it's available, no unavailable-reason needed
-       :else "")}
+                            :reason "child-user-no-vehicles"}))
+           (str "Sorry, you have no vehicles assigned to your account. "
+                "Please contact your account manager."))})
     ;; We don't service this ZIP code at all.
     {:availabilities
      ;; This is the quirky way we tell the app we don't provide service here.
