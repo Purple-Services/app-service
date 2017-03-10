@@ -224,29 +224,34 @@
     (run! f assigned-orders)))
 
 (defn new-assignments
-  [os cs]
-  (let [new-and-first #(and (:new_assignment %)
-                            (= 1 (:courier_pos %)))
-        db-conn (conn)]
-    (filter
-     (comp new-and-first val)
-     (fmap (comp keywordize-keys (partial into {}))
-           (compute-suggestion
-            {"orders" (->> os
-                           (map #(assoc %
-                                        :status_times
-                                        (-> (:event_log %)
-                                            (s/split #"\||\s")
-                                            (->> (remove s/blank?)
-                                                 (apply hash-map)
-                                                 (fmap read-string)))
-                                        :zones (order->zones db-conn %)))
-                           (map (juxt :id stringify-keys))
-                           (into {}))
-             "couriers" (->> cs
-                             (map #(assoc % :zones (apply list (:zones %))))
-                             (map (juxt :id stringify-keys))
-                             (into {}))})))))
+  [orders couriers]
+  (let [suggestions (fmap (comp keywordize-keys (partial into {}))
+                          (compute-suggestion
+                           {"orders" (->> orders
+                                          (map #(assoc %
+                                                       :status_times
+                                                       (-> (:event_log %)
+                                                           (s/split #"\||\s")
+                                                           (->> (remove s/blank?)
+                                                                (apply hash-map)
+                                                                (fmap read-string)))
+                                                       :zones (order->zones (conn) %)))
+                                          (map (juxt :id stringify-keys))
+                                          (into {}))
+                            "couriers" (->> couriers
+                                            (map #(assoc % :zones (apply list (:zones %))))
+                                            (map (juxt :id stringify-keys))
+                                            (into {}))}))
+        skim-the-top (fn [[k v]]
+                       (and (:new_assignment v)
+                            (or (= 1 ; is first priority assignment?
+                                   (:courier_pos v))
+                                ;; or, part of a currently assigned cluster?
+                                (some->> (:cluster_first_order v)
+                                         (get suggestions)
+                                         :courier_pos
+                                         (= 1)))))]
+    (filter skim-the-top suggestions)))
 
 ;; We start with a prev-state of blank; so that auto-assign is called when
 ;; server is booted.
