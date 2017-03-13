@@ -289,5 +289,8 @@
                                                  :lat :lng :last_ping]) cs)})})
      (when (diff-state? os cs)
        (run! #(orders/assign db-conn (key %) (:courier_id (val %))
-                             :no-reassigns true)
+                             :no-reassigns true
+                             :auto-assign-note (if-not (nil? (:cluster_first_order (val %)))
+                                                 "Clustered"
+                                                 "Individual"))
              (new-assignments os cs))))))
