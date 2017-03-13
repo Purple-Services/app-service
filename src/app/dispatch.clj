@@ -291,6 +291,6 @@
        (run! #(orders/assign db-conn (key %) (:courier_id (val %))
                              :no-reassigns true
                              :auto-assign-note (if-not (nil? (:cluster_first_order (val %)))
-                                                 "Clustered"
-                                                 "Individual"))
+                                                 "Auto-Assign (Clustered)"
+                                                 "Auto-Assign (Single)"))
              (new-assignments os cs))))))
