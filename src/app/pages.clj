@@ -34,8 +34,12 @@
   [:#config] (set-attr :data-base-url (:base-url x))
   [:#heading] (content (:heading x))
   [:#email] (content (:email x))
-  [:#key] (set-attr :value (:key x))
-  )
+  [:#key] (set-attr :value (:key x)))
+
+(deftemplate reset-password-invalid-template "templates/reset-password-invalid.html"
+  [x]
+  [:title] (content (:title x))
+  [:#heading] (content (:heading x)))
 
 (defn reset-password [db-conn key]
   (let [user (users/get-user-by-reset-key db-conn key)]
@@ -45,7 +49,8 @@
                                            :heading "Reset Password"
                                            :email (:email user)
                                            :key key}))
-      (not-found-page))))
+      (apply str (reset-password-invalid-template {:title "Purple - Reset Password"
+                                                   :heading "Reset Password"})))))
 
 (defn twiml-text
   [message]
