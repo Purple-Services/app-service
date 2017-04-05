@@ -395,7 +395,67 @@
                                    (couriers/blacklist-station db-conn
                                                                (:user_id b)
                                                                (:station_id b)
-                                                               (:reason b)))))))))))
+                                                               (:reason b))))))))
+              (POST "/get-gas-purchases" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (couriers/get-gas-purchases
+                         db-conn
+                         (:user_id b))))))
+              (POST "/add-gas-purchase" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (couriers/add-gas-purchase db-conn
+                                                   (:user_id b)
+                                                   (if (s/blank? (:gallons b))
+                                                     0
+                                                     (coerce-double (:gallons b)))
+                                                   (if (s/blank? (:total_price b))
+                                                     0
+                                                     (coerce-double (:total_price b)))
+                                                   (:gas_type b)
+                                                   (:lat b)
+                                                   (:lng b)
+                                                   (:timestamp_recorded b))))))
+              ;; for saved gas-purchases that couldn't be sent earlier
+              (POST "/add-gas-purchases" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (couriers/add-gas-purchases db-conn
+                                                    (:user_id b)
+                                                    (:gas_purchases b))))))
+              (POST "/edit-gas-purchase" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn (:user_id b) (:token b)
+                        (couriers/edit-gas-purchase db-conn
+                                                    (:id b)
+                                                    (:user_id b)
+                                                    (if (s/blank? (:gallons b))
+                                                      0
+                                                      (coerce-double (:gallons b)))
+                                                    (if (s/blank? (:total_price b))
+                                                      0
+                                                      (coerce-double (:total_price b)))
+                                                    (:gas_type b)
+                                                    (:timestamp_recorded b))))))
+              (POST "/delete-gas-purchase" {body :body}
+                    (response
+                     (let [b (keywordize-keys body) db-conn (conn)]
+                       (demand-user-auth
+                        db-conn
+                        (:user_id b)
+                        (:token b)
+                        (couriers/delete-gas-purchase db-conn
+                                                      (:user_id b)
+                                                      (:id b)))))))))
   (context "/feedback" []
            (wrap-force-ssl
             (defroutes feedback-routes

@@ -2,7 +2,7 @@
   (:require [common.config :as config]
             [common.couriers :refer [get-couriers parse-courier-zones]]
             [common.db :refer [!select !insert !update mysql-escape-str]]
-            [common.util :refer [in? ver< now-unix]]
+            [common.util :refer [in? ver< now-unix rand-str-alpha-num coerce-double]]
             [opt.gas-station-recommendation :as gas-rec]
             [clojure.string :as s]))
 
@@ -115,3 +115,97 @@
       {:success false
        :message "That station does not exist."
        :message_title "Error"})))
+
+(defn get-gas-purchases
+  [db-conn courier-id]
+  {:success true
+   :gas_purchases
+   (or (!select db-conn "gas_purchases" ["*"] {}
+                :custom-where
+                (str "deleted != 1 "
+                     "AND courier_id = \"" (mysql-escape-str courier-id) "\" "
+                     "ORDER BY timestamp_created DESC LIMIT 30"))
+       [])})
+
+(defn add-gas-purchase
+  "For a courier to report a purchase of fuel."
+  [db-conn courier-id gallons total-price gas-type lat lng timestamp-recorded &
+   {:keys [no-select-query]}]
+  (cond
+    (not (pos? gallons))
+    {:sucess false :message "You must enter a number of Gallons greater than 0."}
+    
+    (not (pos? total-price))
+    {:sucess false :message "You must enter a Total Price greater than 0."}
+    
+    :else
+    (do (when (empty? (!select db-conn ; pass thru w/o adding if already exists
+                               "gas_purchases"
+                               ["1"]
+                               {:courier_id courier-id
+                                :gallons gallons
+                                :total_price total-price
+                                :gas_type gas-type
+                                :timestamp_recorded timestamp-recorded}))
+          (!insert db-conn
+                   "gas_purchases"
+                   {:id (rand-str-alpha-num 20)
+                    :courier_id courier-id
+                    :gallons gallons
+                    :total_price (int (* total-price 100))
+                    :gas_type gas-type
+                    :lat lat
+                    :lng lng
+                    :timestamp_recorded timestamp-recorded}))
+        (when-not no-select-query
+          (get-gas-purchases db-conn courier-id)))))
+
+(defn add-gas-purchases
+  [db-conn
+   courier-id ; i.e., the auth'd user-id
+   gas-purchases]
+  (run! #(add-gas-purchase db-conn
+                           courier-id
+                           (if (s/blank? (:gallons %))
+                             0
+                             (coerce-double (:gallons %)))
+                           (if (s/blank? (:total_price %))
+                             0
+                             (coerce-double (:total_price %)))
+                           (:gas_type %)
+                           (:lat %)
+                           (:lng %)
+                           (:timestamp_recorded %)
+                           :no-select-query true)
+        gas-purchases)
+  (get-gas-purchases db-conn courier-id))
+
+(defn edit-gas-purchase
+  [db-conn gas-purchase-id courier-id gallons total-price gas-type
+   timestamp-recorded & {:keys [no-select-query]}]
+  (cond
+    (not (pos? gallons))
+    {:sucess false :message "You must enter a number of Gallons greater than 0."}
+    
+    (not (pos? total-price))
+    {:sucess false :message "You must enter a Total Price greater than 0."}
+    
+    :else
+    (do (!update db-conn
+                 "gas_purchases"
+                 {:courier_id courier-id
+                  :gallons gallons
+                  :total_price (int (* total-price 100))
+                  :gas_type gas-type}
+                 {:id gas-purchase-id})
+        (when-not no-select-query
+          (get-gas-purchases db-conn courier-id)))))
+
+(defn delete-gas-purchase
+  [db-conn courier-id gas-purchase-id]
+  (do (!update db-conn
+               "gas_purchases"
+               {:deleted 1}
+               {:courier_id courier-id
+                :id gas-purchase-id})
+      (get-gas-purchases db-conn courier-id)))
