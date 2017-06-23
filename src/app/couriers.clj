@@ -63,7 +63,7 @@
                             :gallons_91 gallons_91
                             :connected 1
                             :last_ping (quot (System/currentTimeMillis) 1000)}
-                           (when (not (nil? set-on-duty))
+                           (when-not (nil? set-on-duty)
                              {:on_duty set-on-duty}))
                     {:id user-id}))
          {:on_duty (on-duty? db-conn user-id)}))
