@@ -162,14 +162,17 @@
                                (response
                                 (let [b (keywordize-keys body)
                                       db-conn (conn)]
-                                  (demand-user-auth
-                                   db-conn
-                                   (:user_id b)
-                                   (:token b)
-                                   (users/set-auto-renew
-                                    db-conn
-                                    (:user_id b)
-                                    (:subscription_auto_renew b))))))))
+                                  {:success false
+                                   :message "Sorry, subscriptions are currently unavailable."}
+                                  ;; (demand-user-auth
+                                  ;;  db-conn
+                                  ;;  (:user_id b)
+                                  ;;  (:token b)
+                                  ;;  (users/set-auto-renew
+                                  ;;   db-conn
+                                  ;;   (:user_id b)
+                                  ;;   (:subscription_auto_renew b)))
+                                  )))))
               ;; Try a coupon code
               (POST "/code" {body :body}
                     (response
