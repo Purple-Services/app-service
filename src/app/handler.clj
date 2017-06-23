@@ -147,13 +147,16 @@
                                (response
                                 (let [b (keywordize-keys body)
                                       db-conn (conn)]
-                                  (demand-user-auth
-                                   db-conn
-                                   (:user_id b)
-                                   (:token b)
-                                   (users/subscribe db-conn
-                                                    (:user_id b)
-                                                    (:subscription_id b))))))
+                                  {:success false
+                                   :message "Sorry, subscriptions are currently unavailable."}
+                                  ;; (demand-user-auth
+                                  ;;  db-conn
+                                  ;;  (:user_id b)
+                                  ;;  (:token b)
+                                  ;;  (users/subscribe db-conn
+                                  ;;                   (:user_id b)
+                                  ;;                   (:subscription_id b)))
+                                  )))
                          ;; update auto-renew setting
                          (POST "/set-auto-renew" {body :body}
                                (response
